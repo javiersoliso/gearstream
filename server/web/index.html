@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GearStream</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <h1>GearStream</h1>
+      <span id="device" class="muted"></span>
+    </div>
+    <div class="controls">
+      <span id="conn" class="pill"></span>
+      <span id="total" class="muted num"></span>
+      <span id="lag" class="muted num" title="retraso: desde que el reloj generó la muestra más reciente hasta verla aquí (anclado a la entrega más rápida vista). desde el puente: solo el tramo puente → servidor → navegador, exacto si el navegador corre en el mismo equipo que el puente. ráfaga máx: mayor pausa entre lotes en el último segundo y el lote más grande."></span>
+      <div class="seg" role="group" aria-label="Ventana de tiempo">
+        <button data-win="5">5 s</button>
+        <button data-win="10" aria-pressed="true">10 s</button>
+        <button data-win="30">30 s</button>
+      </div>
+      <button id="pause" title="Barra espaciadora">Pausar</button>
+    </div>
+  </header>
+
+  <main>
+    <div id="empty" class="empty">
+      <p><strong>Esperando datos del reloj…</strong></p>
+      <p class="muted">En la app GearStream del reloj usa esta URL de servidor:</p>
+      <ul id="urls"></ul>
+    </div>
+    <section id="grid" class="grid"></section>
+    <section id="unavailable" class="unavailable" hidden>
+      <h2>No disponibles en este reloj</h2>
+      <ul id="unavailableList"></ul>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

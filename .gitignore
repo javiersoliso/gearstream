@@ -1,0 +1,17 @@
+# Datos personales: grabaciones de sensores (pulso, movimiento) y gestos. Nunca se suben.
+recordings/
+
+# Paquete para el teléfono: se genera con `python tools/build_phone_zip.py`
+server/web/gearstream-phone.zip
+
+# Python
+__pycache__/
+*.pyc
+
+# Configuración local del editor / sesión
+.vscode/
+.idea/
+
+# Sistema
+Thumbs.db
+.DS_Store

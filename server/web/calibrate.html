@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GearStream · calibración</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Page-specific styles. Colours come only from the tokens in style.css, so light/dark follow its media query. */
+    main { max-width: 1100px; margin: 0 auto; display: grid; gap: 12px; }
+    section.card { scroll-margin-top: calc(var(--top-h, 72px) + 8px); }
+    section.card > header { flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+    section.card h3 { margin: 14px 0 4px; font-size: 13px; color: var(--text-secondary); }
+    .hint { color: var(--muted); font-size: 12px; margin: 4px 0 0; }
+    .hint code, .msg code { font-family: ui-monospace, Consolas, monospace; font-size: 11.5px; }
+    .needsCursor { margin: 8px 0 0; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; color: var(--text-secondary); font-size: 12px; }
+    .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
+    .row .muted { font-size: 12px; }
+    .pill.warning::before { background: var(--warning); }
+    .msg { font-size: 12px; min-height: 1.4em; color: var(--text-secondary); }
+    .msg.critical { color: var(--critical); }
+    .msg.good { color: var(--good); }
+    .brand a { color: var(--text-secondary); font-size: 13px; }
+    .seg a { white-space: nowrap; font: inherit; color: var(--text-primary); background: var(--surface-1); border: 1px solid var(--border); padding: 4px 10px; margin-left: -1px; text-decoration: none; }
+    .seg a:first-child { border-radius: 8px 0 0 8px; margin-left: 0; }
+    .seg a:last-child { border-radius: 0 8px 8px 0; }
+    button:disabled { opacity: 0.5; cursor: default; }
+    input[type="range"], input[type="checkbox"] { accent-color: var(--series-1); }
+    select, input[type="text"] { font: inherit; color: var(--text-primary); background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px; padding: 4px 8px; min-width: 0; }
+
+    /* 1. Estado en vivo */
+    .meters { display: grid; grid-template-columns: 9ch 1fr 9ch; gap: 6px 10px; align-items: center; margin-top: 10px; }
+    .meters .lab { font-size: 12px; color: var(--text-secondary); }
+    .meters .track { position: relative; height: 10px; border-radius: 5px; overflow: hidden;
+                     background: color-mix(in srgb, var(--c) 18%, var(--surface-1)); }
+    .meters .track::after { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: var(--axis); }
+    .meters .fill { position: absolute; top: 0; bottom: 0; left: 50%; width: 0; background: var(--c); }
+    .meters .val { font-size: 12px; text-align: right; }
+    .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; margin-top: 12px; }
+    .tile { border: 1px solid var(--border); border-radius: 10px; padding: 6px 10px; min-width: 0; }
+    .tile .lab { display: block; font-size: 11px; color: var(--muted); }
+    .tile .val { display: block; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tile.wide { grid-column: span 2; }
+    .pills { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 12px; font-size: 13px; }
+    .log { list-style: none; margin: 4px 0 0; padding: 0; max-height: 220px; overflow: auto; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+    .log li { padding: 1px 0; border-bottom: 1px solid var(--grid); overflow-wrap: anywhere; }
+    .log li .t { color: var(--muted); margin-right: 6px; }
+    .log li .k { color: var(--text-secondary); margin-right: 6px; }
+
+    /* 2. Ajustes */
+    .groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(440px, 100%), 1fr)); gap: 10px; margin-top: 10px; }
+    fieldset.grp { border: 1px solid var(--border); border-radius: 10px; padding: 6px 12px 10px; margin: 0; min-width: 0; }
+    fieldset.grp legend { font-size: 12px; font-weight: 600; color: var(--text-secondary); padding: 0 4px; }
+    .ctl { display: grid; grid-template-columns: minmax(150px, 1fr) minmax(0, 1.6fr) 9ch; gap: 4px 10px; align-items: center; padding: 3px 0; }
+    .ctl > span { font-size: 13px; overflow-wrap: anywhere; }
+    .ctl output { font-size: 12px; text-align: right; color: var(--text-secondary); }
+    .ctl.pending > span::after { content: ' …'; color: var(--muted); }
+    .ctl input[type="range"] { width: 100%; margin: 0; }
+    .ctl input[type="checkbox"] { justify-self: start; width: 18px; height: 18px; margin: 0; }
+    @media (max-width: 600px) {
+      .ctl { grid-template-columns: minmax(0, 1fr) 9ch; }
+      .ctl > span { grid-column: 1 / -1; }
+    }
+    #bezelTestBox { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--grid); }
+    #bezelResult { font-size: 12px; margin-top: 6px; white-space: pre-line; }
+
+    /* 3. Prueba de objetivos */
+    #arena { position: relative; height: clamp(360px, 60vh, 720px); border: 1px solid var(--border); border-radius: 12px;
+             overflow: hidden; touch-action: none; margin-top: 10px; background: var(--page); user-select: none; }
+    #board { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    .target { position: absolute; padding: 0; border: 2px solid var(--surface-1); border-radius: 50%; background: var(--series-1);
+              color: #fff; font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center;
+              box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25); line-height: 1.1; text-align: center; }
+    .target.start { background: var(--text-primary); color: var(--surface-1); width: 56px; height: 56px; font-size: 10px; }
+    #arena.boarding .target { display: none; }
+    .tscroll { overflow-x: auto; margin-top: 10px; }
+    .tbl { width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+    .tbl th, .tbl td { padding: 3px 6px; text-align: right; border-bottom: 1px solid var(--grid); }
+    .tbl th { color: var(--muted); font-weight: 500; }
+    .tbl th:nth-child(-n+2), .tbl td:nth-child(-n+2) { text-align: left; }
+    .tbl tr.agg td { font-weight: 600; border-top: 1px solid var(--axis); }
+    .chart { position: relative; margin-top: 12px; }
+    .bars { display: grid; grid-template-columns: 3ch 1fr; gap: 2px 8px; align-items: center; }
+    .bars .blab { font-size: 11px; color: var(--muted); text-align: right; }
+    .bars .btrack { position: relative; height: 12px; display: flex; align-items: center; }
+    .bars .bar { height: 10px; border-radius: 0 4px 4px 0; min-width: 2px; cursor: default; }
+    .bars .bar:hover { box-shadow: 0 0 0 2px var(--surface-1), 0 0 0 3px var(--axis); }
+    .bars .baxis { grid-column: 2; border-top: 1px solid var(--axis); display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); padding-top: 2px; }
+    .bars .btitle { grid-column: 1 / -1; font-size: 11px; color: var(--muted); }
+    #suggestion { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+    #suggestion li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 13px; }
+    #suggestion li:first-child { font-weight: 600; }
+    #suggestion li .val { font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: var(--text-secondary); }
+
+    /* 4. Prueba de clic */
+    #clickPad { min-height: 220px; margin-top: 10px; border: 2px dashed var(--axis); border-radius: 12px; display: flex;
+                align-items: center; justify-content: center; color: var(--muted); font-size: 15px; user-select: none; cursor: crosshair; }
+    #clickPad:active { border-color: var(--series-1); }
+
+    /* 5. Prueba de scroll */
+    #scrollPanel { height: 320px; overflow: auto; margin-top: 10px; border: 1px solid var(--border); border-radius: 12px; padding: 6px 12px;
+                   font-family: ui-monospace, Consolas, monospace; font-size: 13px; line-height: 1.6; }
+    #scrollPanel .mark { color: var(--series-2); font-weight: 600; }
+    #notchesCtl { display: inline-flex; align-items: center; gap: 6px; }
+    #notchesCtl b { min-width: 2ch; text-align: center; }
+
+    /* 6. Grabar gesto */
+    #gestureList { list-style: none; margin: 8px 0 0; padding: 0; font-size: 12px; font-variant-numeric: tabular-nums; }
+    #gestureList li { padding: 2px 0; border-bottom: 1px solid var(--grid); overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <h1>GearStream</h1>
+      <span class="muted">calibración del ratón aéreo</span>
+      <a href="/">dashboard</a>
+    </div>
+    <div class="controls">
+      <span id="amConn" class="pill"></span>
+      <span id="amEstado" class="muted"></span>
+      <nav class="seg" aria-label="Secciones">
+        <a href="#vivo">En vivo</a><a href="#ajustes">Ajustes</a><a href="#objetivos">Objetivos</a><a href="#clic">Clic</a><a href="#scroll">Scroll</a><a href="#gesto">Gesto</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <!-- 1 -->
+    <section id="vivo" class="card">
+      <header>
+        <h2>Estado en vivo</h2>
+        <span id="estadoPill" class="pill"></span>
+        <span id="stateHz" class="hz"></span>
+      </header>
+      <div id="meters" class="meters"></div>
+      <div id="tiles" class="tiles"></div>
+      <div class="pills">
+        <span id="inBezel" class="pill"></span>
+        <span id="inButton" class="pill"></span>
+        <span id="modos" class="muted"></span>
+      </div>
+      <h3>Últimos eventos</h3>
+      <ol id="log" class="log"></ol>
+    </section>
+
+    <!-- 2 -->
+    <section id="ajustes" class="card">
+      <header>
+        <h2>Ajustes</h2>
+        <span class="sub">cada cambio se aplica al momento</span>
+        <span id="profile" class="hz"></span>
+      </header>
+      <div class="row">
+        <button id="btnRecal">Recalibrar</button>
+        <button id="btnPause">Pausar</button>
+        <button id="btnSave">Guardar perfil</button>
+        <button id="btnReset">Restaurar valores</button>
+        <span id="ajustesMsg" class="msg"></span>
+      </div>
+      <div id="ajustesGroups" class="groups"></div>
+      <div id="bezelTestBox">
+        <button id="bezelTest">Probar: gira el bisel hacia la derecha (sentido horario)</button>
+        <button id="bezelFlip" hidden>Invertir bisel</button>
+        <div id="bezelResult" class="muted"></div>
+      </div>
+    </section>
+
+    <!-- 3 -->
+    <section id="objetivos" class="card">
+      <header>
+        <h2>Prueba de objetivos</h2>
+        <span class="sub">16 objetivos, movimientos puros horizontales y verticales</span>
+      </header>
+      <p class="needsCursor" hidden>esta prueba necesita el cursor de Windows: ábrela en la laptop</p>
+      <div class="row">
+        <button id="targetStart">Empezar (16 objetivos)</button>
+        <button id="boardToggle" aria-pressed="false">Pizarra</button>
+        <button id="boardClear">Limpiar</button>
+        <span id="targetProgress" class="muted"></span>
+        <span id="boardStats" class="muted num"></span>
+      </div>
+      <p class="hint">Mueve el cursor con el reloj y haz clic dentro de cada círculo. Se mide el tiempo, la eficiencia del trayecto, los sobrepasos y los fallos por eje, y de ahí sale una sugerencia de ajuste.</p>
+      <div id="arena">
+        <canvas id="board"></canvas>
+      </div>
+      <div id="targetResults" hidden>
+        <div class="tscroll"><table id="targetTable" class="tbl"></table></div>
+        <div id="targetChart" class="chart"></div>
+        <h3>Sugerencia</h3>
+        <ul id="suggestion"></ul>
+      </div>
+    </section>
+
+    <!-- 4 -->
+    <section id="clic" class="card">
+      <header>
+        <h2>Prueba de clic</h2>
+        <span class="sub">clics recibidos por la página frente a los que informa el ratón aéreo</span>
+      </header>
+      <p class="needsCursor" hidden>esta prueba necesita el cursor de Windows: ábrela en la laptop</p>
+      <div id="clickPad">haz clic aquí con el reloj</div>
+      <p class="hint">Un clic con el ratón físico no tiene evento del ratón aéreo y cuenta como clic falso: es tu propia comprobación de que el contador funciona. Un evento sin clic en la página significa que el cursor estaba fuera del recuadro.</p>
+      <div class="tiles">
+        <div class="tile"><span class="lab">clics en la página</span><span id="pageClicks" class="val num">0</span></div>
+        <div class="tile"><span class="lab">clics del ratón aéreo</span><span id="amClicks" class="val num">0</span></div>
+        <div class="tile"><span class="lab">latencia mediana ms</span><span id="clickLatency" class="val num">—</span></div>
+        <div class="tile"><span class="lab">clics falsos</span><span id="falseClicks" class="val num">0</span></div>
+        <div class="tile"><span class="lab">clics perdidos</span><span id="lostClicks" class="val num">0</span></div>
+      </div>
+      <div class="row">
+        <span id="tapStats" class="muted num"></span>
+        <span id="heldStats" class="muted num"></span>
+        <button id="clickReset">Reiniciar</button>
+      </div>
+    </section>
+
+    <!-- 5 -->
+    <section id="scroll" class="card">
+      <header>
+        <h2>Prueba de scroll</h2>
+        <span class="sub">muescas de rueda por detent del bisel y sentido</span>
+      </header>
+      <p class="needsCursor" hidden>esta prueba necesita el cursor de Windows: ábrela en la laptop</p>
+      <p class="hint">Pon el cursor sobre la lista y gira el bisel hacia la derecha (sentido horario): la lista debería bajar.</p>
+      <div id="scrollPanel"></div>
+      <div class="tiles">
+        <div class="tile"><span class="lab">detents del bisel</span><span id="detents" class="val num">0</span></div>
+        <div class="tile"><span class="lab">eventos de rueda por detent</span><span id="notchesPerDetent" class="val num">—</span></div>
+        <div class="tile"><span class="lab">muescas por detent</span><span id="notchesCtl" class="val"><button id="notchesMinus" title="menos">−</button><b class="num">1</b><button id="notchesPlus" title="más">+</button></span></div>
+      </div>
+      <div class="row">
+        <span id="scrollDir" class="msg"></span>
+        <button id="scrollFlip" hidden>Invertir bisel</button>
+        <button id="scrollReset">Reiniciar</button>
+      </div>
+    </section>
+
+    <!-- 6 -->
+    <section id="gesto" class="card">
+      <header>
+        <h2>Grabar gesto</h2>
+        <span class="sub">guarda los últimos 3 s de giroscopio, acelerómetro y gravedad para diseñar gestos</span>
+      </header>
+      <div class="row">
+        <label>etiqueta <input id="gestureLabel" type="text" value="empuje" pattern="[A-Za-z0-9_\-]{1,32}" maxlength="32" size="14"></label>
+        <button id="gestureRecord">Grabar los últimos 3 s</button>
+        <span id="gestoMsg" class="msg"></span>
+      </div>
+      <p class="hint">Haz el gesto y pulsa justo después: se guardan los 3 s anteriores en <code>recordings/gestures/&lt;etiqueta&gt;-&lt;fecha&gt;.csv</code>.</p>
+      <ul id="gestureList"></ul>
+    </section>
+  </main>
+
+  <script src="calibrate.js"></script>
+</body>
+</html>

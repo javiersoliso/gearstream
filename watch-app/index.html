@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, user-scalable=no">
+  <title>GearStream</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="main" class="stopped">
+    <div id="title">GearStream</div>
+    <div id="conn"><span id="dot"></span><span id="connText">Detenido</span></div>
+    <div id="url"></div>
+    <div id="stats"></div>
+    <ul id="list"></ul>
+    <button id="toggle">Iniciar</button>
+  </div>
+
+  <div id="settings" hidden>
+    <div class="label">Servidor</div>
+    <input id="urlInput" type="text" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <div class="row">
+      <button id="cancel">Cancelar</button>
+      <button id="save">Guardar</button>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
