@@ -20,7 +20,9 @@ const S = {
   bias: new THREE.Vector3(),
   lastGyroT: null, gyroCount: 0, hzCount: 0, hzT: performance.now(), hz: 0,
   rates: { yaw: 0, pitch: 0, roll: 0 },
-  handSign: 1, autoCenter: true, connected: false, watch: false, lastSampleAt: 0,
+  axis: new THREE.Vector3(1, 0, 0),   // eje del antebrazo hacia la mano, en el marco del reloj (medido: supinar gira sobre x)
+  qAxis: new THREE.Quaternion(),      // lleva el +y local de los meshes al eje del antebrazo
+  autoCenter: true, connected: false, watch: false, lastSampleAt: 0,
 };
 
 // ---------- orientación ----------
@@ -40,7 +42,7 @@ function onGyro(t, v) {
     // tasas en el marco de la gravedad para las lecturas (°/s)
     _qi.copy(S.q).invert();
     _up.copy(UP).applyQuaternion(_qi);                      // arriba, visto desde el sensor
-    const f = new THREE.Vector3(0, S.handSign, 0);           // eje del antebrazo (sensor)
+    const f = S.axis;                                        // eje del antebrazo (sensor)
     const side = new THREE.Vector3().crossVectors(_up, f).normalize();
     S.rates.yaw = _w.dot(_up);
     S.rates.pitch = _w.dot(side);
@@ -67,7 +69,13 @@ function onGravity(v) {
 }
 
 function displayQ() { return S.qOff.clone().multiply(S.q); }
-function forearmDir(qd) { return new THREE.Vector3(0, S.handSign, 0).applyQuaternion(qd); }
+function forearmDir(qd) { return S.axis.clone().applyQuaternion(qd); }
+function setAxis(name) {
+  const sign = name[0] === '-' ? -1 : 1;
+  S.axis.set(name[1] === 'x' ? sign : 0, name[1] === 'y' ? sign : 0, 0);
+  S.qAxis.setFromUnitVectors(UP, S.axis);                  // +y del mesh → eje del antebrazo
+  resetHeading();
+}
 function headingOf(f) { return Math.atan2(f.x, f.z); }      // 0 = hacia +Z (el frente del muñeco)
 
 function resetHeading() {
@@ -143,7 +151,6 @@ const watchFace = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.002, 2
 const axes = new THREE.AxesHelper(0.12); scene.add(axes);
 
 const E = new THREE.Vector3(), W = new THREE.Vector3(), H = new THREE.Vector3(), F = new THREE.Vector3(), U = new THREE.Vector3(), N = new THREE.Vector3();
-const _rz = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI);
 const _rx = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 2);
 
 function poseArm() {
@@ -158,11 +165,11 @@ function poseArm() {
   lElbow.position.copy(E);
   between(lFore, E, W, 0.038);
   lWrist.position.copy(W);
-  const qMesh = qd.clone(); if (S.handSign < 0) qMesh.multiply(_rz);   // +y local del mesh = hacia la mano
+  const qMesh = qd.clone().multiply(S.qAxis);               // +y local del mesh = eje del antebrazo
   lHand.position.copy(W).addScaledVector(F, L_HAND / 2 + 0.02); lHand.quaternion.copy(qMesh);
   N.set(0, 0, 1).applyQuaternion(qd);                       // normal de la pantalla del reloj
   watchBody.position.copy(W).addScaledVector(F, -0.03).addScaledVector(N, 0.028);
-  watchBody.quaternion.copy(qMesh).multiply(_rx);           // eje del cilindro (y local) → normal (z)
+  watchBody.quaternion.copy(qd).multiply(_rx);              // eje del cilindro (y local) → normal de pantalla (z del reloj)
   watchFace.position.copy(watchBody.position).addScaledVector(N, 0.007); watchFace.quaternion.copy(watchBody.quaternion);
   axes.position.copy(watchBody.position); axes.quaternion.copy(qd);
 }
@@ -231,8 +238,10 @@ requestAnimationFrame(frame);
 document.getElementById('reset').addEventListener('click', resetHeading);
 addEventListener('keydown', (e) => { if (e.key === 'r' || e.key === 'R') resetHeading(); });
 document.getElementById('autoCenter').addEventListener('change', (e) => { S.autoCenter = e.target.checked; });
-document.getElementById('handSign').addEventListener('change', (e) => { S.handSign = Number(e.target.value); resetHeading(); });
+document.getElementById('forearmAxis').addEventListener('change', (e) => setAxis(e.target.value));
 document.getElementById('showAxes').addEventListener('change', (e) => { axes.visible = e.target.checked; });
+
+setAxis('+x');
 
 // ---------- datos ----------
 const estado = document.getElementById('estado');
