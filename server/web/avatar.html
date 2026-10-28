@@ -31,15 +31,18 @@
     <label>eje del antebrazo (hacia la mano) <select id="forearmAxis"><option value="+x">+x del reloj</option><option value="-x">−x del reloj</option><option value="+y">+y del reloj</option><option value="-y">−y del reloj</option></select></label>
     <button id="reset" title="tecla R">Reiniciar rumbo (R)</button>
     <label><input type="checkbox" id="showAxes" checked> ejes del reloj</label>
+    <label title="estima el codo con la aceleración del reloj y los límites del brazo"><input type="checkbox" id="filterOn" checked> filtro con acelerómetro</label>
+    <label><input type="checkbox" id="showCloud" checked> nube de codos posibles</label>
   </header>
   <div id="views">
     <canvas id="gl"></canvas>
-    <div class="view orbit" id="vOrbit"><span class="tag">tercera persona · arrastra para orbitar</span><span class="num" id="numOrbit"></span><span class="hint">verde: antebrazo medido por el reloj · gris: hombro y codo estimados</span></div>
+    <div class="view orbit" id="vOrbit"><span class="tag">tercera persona · arrastra para orbitar</span><span class="num" id="numOrbit"></span><span class="hint">verde: antebrazo medido por el reloj · gris: brazo estimado · naranja: codos que el filtro aún considera posibles</span></div>
     <div class="view" id="vPov"><span class="tag">POV (como VR)</span></div>
     <div class="view" id="vArm"><span class="tag">solo el brazo</span><span class="num" id="numArm"></span></div>
   </div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="armfilter.js"></script>
   <script src="avatar.js"></script>
 </body>
 </html>

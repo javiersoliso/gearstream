@@ -166,5 +166,6 @@ tools/air_mouse.py  ratón aéreo (cursor de Windows con el reloj) + canal de aj
 tools/batch_test.py mide la red entre el puente y el reloj
 server/web/calibrate.html  página de calibración del ratón aéreo
 server/web/avatar.html     avatar 3D del brazo (orbital, POV y plano del brazo) a partir de gravedad + giroscopio
+server/web/armfilter.js    filtro de partículas del codo: aceleración del reloj + límites del brazo (prueba: node tools/test_armfilter.js)
 phone/start.sh      arranque en Termux (servidor + puente en el teléfono)
 ```

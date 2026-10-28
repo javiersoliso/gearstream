@@ -261,6 +261,19 @@ class AirMouseTests(unittest.TestCase):
         self.assertGreater(abs(rig.pos[1] - p0[1]), 50)
         self.assertLess(abs(rig.pos[0] - p0[0]), 2)
 
+    def test_arm_down_gate_is_one_sided(self):
+        # GRAVITY da la dirección de arriba en el reloj (igual que el acelerómetro en reposo). Antebrazo +y:
+        # mano arriba = (0, +g, 0) no pausa (hay que poder llegar al borde superior); colgando = (0, −g, 0) sí
+        up, down = (0.0, 9.807, 0.0), (0.0, -9.807, 0.0)
+        rig = Rig().calibrate()
+        rig.run(2.0, gravity=up, accel=up)
+        self.assertNotIn("brazo caído", rig.am.pause_reasons)
+        rig.run(1.0)                                     # de vuelta a la horizontal (en la realidad la mano pasa por ahí)
+        rig.run(2.0, gravity=down, accel=down)
+        self.assertIn("brazo caído", rig.am.pause_reasons)
+        rig.run(2.0)
+        self.assertNotIn("brazo caído", rig.am.pause_reasons)
+
     def test_roll_gives_no_motion(self):
         # horizontal forearm, and raised 20/30/45 deg (gf = -0.34/-0.5/-0.71): a pure roll about the forearm
         # has no component on the pointer axes at any tilt

@@ -1,7 +1,8 @@
 // Avatar 3D del brazo izquierdo a partir del reloj. Un solo IMU en la muñeca fija la ORIENTACIÓN del
 // antebrazo (3 grados de libertad): inclinación y torsión vienen de la gravedad (absolutas), el rumbo
-// de integrar el giroscopio (relativo, con corrección lenta). La posición del codo no se mide: se estima
-// con una regla de postura (el brazo cuelga y se adelanta con el antebrazo). Tres vistas sobre un solo
+// de integrar el giroscopio (relativo, con corrección lenta). La posición del codo no se mide: la estima
+// un filtro de partículas (armfilter.js) con la aceleración del reloj y los límites del brazo; sin filtro,
+// una regla de postura (el brazo cuelga y se adelanta con el antebrazo). Tres vistas sobre un solo
 // canvas WebGL recortado por viewport: orbital, POV desde la cabeza y plano cerrado del brazo.
 'use strict';
 
@@ -23,7 +24,17 @@ const S = {
   axis: new THREE.Vector3(1, 0, 0),   // eje del antebrazo hacia la mano, en el marco del reloj (medido: supinar gira sobre x)
   qAxis: new THREE.Quaternion(),      // lleva el +y local de los meshes al eje del antebrazo
   autoCenter: true, connected: false, watch: false, lastSampleAt: 0,
+  filterOn: true, showCloud: true,
+  grav: null,                         // última gravedad del reloj (m/s², marco del reloj)
+  aLin: [0, 0, 0],                    // aceleración lineal = acelerómetro − gravedad (m/s², marco del reloj)
+  uSmooth: new THREE.Vector3(0, -1, 0),
 };
+const AF = new ArmFilter({ shoulder: [SHOULDER_L.x, SHOULDER_L.y, SHOULDER_L.z], Lu: L_UPPER, Lf: L_FORE, Lw: L_FORE - 0.03 });
+
+function rotationRows(q) {   // matriz reloj → mundo, por filas (Matrix4 de three guarda por columnas)
+  const m = new THREE.Matrix4().makeRotationFromQuaternion(q).elements;
+  return [m[0], m[4], m[8], m[1], m[5], m[9], m[2], m[6], m[10]];
+}
 
 // ---------- orientación ----------
 const _w = new THREE.Vector3(), _dq = new THREE.Quaternion(), _um = new THREE.Vector3(), _up = new THREE.Vector3(), _ax = new THREE.Vector3(), _qi = new THREE.Quaternion();
@@ -47,13 +58,22 @@ function onGyro(t, v) {
     S.rates.yaw = _w.dot(_up);
     S.rates.pitch = _w.dot(side);
     S.rates.roll = _w.dot(f);
+    if (S.filterOn) {
+      const r = Math.PI / 180;
+      AF.step(rotationRows(displayQ()), [_w.x * r, _w.y * r, _w.z * r], S.aLin, dt);
+    }
   }
   S.lastGyroT = t;
   S.gyroCount++; S.hzCount++;
   if (S.gyroCount === 120) resetHeading();                  // tras ~1 s la gravedad ya fijó la inclinación: el frente es hacia donde apuntas
 }
 
+function onAccel(v) {
+  if (S.grav) S.aLin = [v.x - S.grav.x, v.y - S.grav.y, v.z - S.grav.z];
+}
+
 function onGravity(v) {
+  S.grav = v;
   _um.set(v.x, v.y, v.z);
   if (_um.lengthSq() < 1) return;
   _um.normalize();
@@ -74,6 +94,7 @@ function setAxis(name) {
   const sign = name[0] === '-' ? -1 : 1;
   S.axis.set(name[1] === 'x' ? sign : 0, name[1] === 'y' ? sign : 0, 0);
   S.qAxis.setFromUnitVectors(UP, S.axis);                  // +y del mesh → eje del antebrazo
+  AF.setAxis([S.axis.x, S.axis.y, S.axis.z]);
   resetHeading();
 }
 function headingOf(f) { return Math.atan2(f.x, f.z); }      // 0 = hacia +Z (el frente del muñeco)
@@ -81,12 +102,15 @@ function headingOf(f) { return Math.atan2(f.x, f.z); }      // 0 = hacia +Z (el 
 function resetHeading() {
   const th = headingOf(forearmDir(displayQ()));
   S.qOff.premultiply(new THREE.Quaternion().setFromAxisAngle(UP, -th));
+  AF.rotateY(-th);                                          // las partículas giran con el mundo
 }
 
 function autoCenterStep(dt) {
   if (!S.autoCenter) return;
   const th = headingOf(forearmDir(displayQ()));
-  S.qOff.premultiply(new THREE.Quaternion().setFromAxisAngle(UP, -th * Math.min(1, dt / CENTER_TAU_S)));
+  const ang = -th * Math.min(1, dt / CENTER_TAU_S);
+  S.qOff.premultiply(new THREE.Quaternion().setFromAxisAngle(UP, ang));
+  AF.rotateY(ang);
 }
 
 // ---------- escena ----------
@@ -149,15 +173,33 @@ const lHand = new THREE.Mesh(new THREE.BoxGeometry(0.075, L_HAND, 0.03), M.hand)
 const watchBody = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.026, 0.012, 24), M.watch); scene.add(watchBody);
 const watchFace = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.002, 24), M.face); scene.add(watchFace);
 const axes = new THREE.AxesHelper(0.12); scene.add(axes);
+// nube de partículas: cada punto es un codo que el filtro todavía considera posible
+const cloudGeo = new THREE.BufferGeometry();
+cloudGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3 * AF.o.n), 3));
+const cloud = new THREE.Points(cloudGeo, new THREE.PointsMaterial({ color: 0xba7517, size: 0.012, transparent: true, opacity: 0.55, depthWrite: false }));
+scene.add(cloud);
+function updateCloud() {
+  cloud.visible = S.filterOn && S.showCloud && AF.ready;
+  if (!cloud.visible) return;
+  const pos = cloudGeo.attributes.position.array;
+  for (let i = 0; i < AF.o.n; i++) { const e = AF.elbow(i); pos[3 * i] = e[0]; pos[3 * i + 1] = e[1]; pos[3 * i + 2] = e[2]; }
+  cloudGeo.attributes.position.needsUpdate = true;
+}
 
 const E = new THREE.Vector3(), W = new THREE.Vector3(), H = new THREE.Vector3(), F = new THREE.Vector3(), U = new THREE.Vector3(), N = new THREE.Vector3();
 const _rx = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 2);
+const _tmpU = new THREE.Vector3();
 
 function poseArm() {
   const qd = displayQ();
   F.copy(forearmDir(qd));                                   // dirección codo → mano
-  // regla de postura: el brazo cuelga y se adelanta con el antebrazo
-  U.set(0.12, -1, 0).addScaledVector(F, 0.8).normalize();
+  if (S.filterOn && AF.est.u) {                           // filtro: media de la nube, suavizada para la vista
+    S.uSmooth.lerp(_tmpU.set(AF.est.u[0], AF.est.u[1], AF.est.u[2]), 0.35).normalize();
+    U.copy(S.uSmooth);
+  } else {                                                // regla de postura: el brazo cuelga y se adelanta con el antebrazo
+    U.set(0.12, -1, 0).addScaledVector(F, 0.8).normalize();
+    S.uSmooth.copy(U);
+  }
   E.copy(SHOULDER_L).addScaledVector(U, L_UPPER);
   W.copy(E).addScaledVector(F, L_FORE);
   H.copy(W).addScaledVector(F, L_HAND);
@@ -214,7 +256,8 @@ function readouts() {
   const side = new THREE.Vector3().crossVectors(UP, F); const sl = side.length();
   let roll = 0;
   if (sl > 1e-3) { side.divideScalar(sl); const upP = new THREE.Vector3().crossVectors(F, side).normalize(); roll = THREE.MathUtils.radToDeg(Math.atan2(N.dot(side), N.dot(upP))); }   // 0 = pantalla hacia arriba
-  numArm.textContent = `elevación ${fmt(elev)}°\nrumbo ${fmt(head)}°\ntorsión ${fmt(roll)}°\nω yaw ${fmt(S.rates.yaw)}  pitch ${fmt(S.rates.pitch)}  roll ${fmt(S.rates.roll)} °/s`;
+  numArm.textContent = `elevación ${fmt(elev)}°\nrumbo ${fmt(head)}°\ntorsión ${fmt(roll)}°\nω yaw ${fmt(S.rates.yaw)}  pitch ${fmt(S.rates.pitch)}  roll ${fmt(S.rates.roll)} °/s`
+    + (S.filterOn && AF.est.u ? `\ncodo: nube ±${(100 * AF.est.spread).toFixed(0)} cm · ${AF.est.still ? 'quieto' : 'en movimiento'} · partículas útiles ${AF.est.neff.toFixed(0)}` : '\ncodo: regla de reposo');
   numOrbit.textContent = `${S.hz.toFixed(0)} Hz · sesgo ${S.bias.x.toFixed(2)} ${S.bias.y.toFixed(2)} ${S.bias.z.toFixed(2)} °/s`;
 }
 
@@ -225,6 +268,7 @@ function frame(now) {
   if (now - S.hzT >= 1000) { S.hz = S.hzCount * 1000 / (now - S.hzT); S.hzCount = 0; S.hzT = now; }
   autoCenterStep(dt);
   poseArm();
+  updateCloud();
   // cámara del brazo: sigue al codo desde delante y un poco arriba
   camArm.position.copy(E).add(new THREE.Vector3(0.55, 0.25, 0.75));
   camArm.lookAt(new THREE.Vector3().addVectors(E, W).multiplyScalar(0.5));
@@ -240,6 +284,8 @@ addEventListener('keydown', (e) => { if (e.key === 'r' || e.key === 'R') resetHe
 document.getElementById('autoCenter').addEventListener('change', (e) => { S.autoCenter = e.target.checked; });
 document.getElementById('forearmAxis').addEventListener('change', (e) => setAxis(e.target.value));
 document.getElementById('showAxes').addEventListener('change', (e) => { axes.visible = e.target.checked; });
+document.getElementById('filterOn').addEventListener('change', (e) => { S.filterOn = e.target.checked; AF.reset(); });
+document.getElementById('showCloud').addEventListener('change', (e) => { S.showCloud = e.target.checked; });
 
 setAxis('+x');
 
@@ -257,7 +303,7 @@ function connect() {
   ws.onmessage = (ev) => {
     let msg; try { msg = JSON.parse(ev.data); } catch { return; }
     if (msg.type === 'watch') S.watch = !!msg.connected;
-    else if (msg.type === 'hello') { S.watch = true; S.lastGyroT = null; }
+    else if (msg.type === 'hello') { S.watch = true; S.lastGyroT = null; AF.reset(); }
     else if (msg.type === 'data' && Array.isArray(msg.samples)) {
       for (const s of msg.samples) {
         if (!Array.isArray(s) || s.length < 3 || !s[2] || typeof s[2] !== 'object') continue;
@@ -265,6 +311,7 @@ function connect() {
         if (typeof v.x !== 'number' || typeof v.y !== 'number' || typeof v.z !== 'number') continue;
         if (name === 'GYROSCOPE') onGyro(t, v);
         else if (name === 'GRAVITY') onGravity(v);
+        else if (name === 'ACCELERATION') onAccel(v);
         else continue;
         S.lastSampleAt = performance.now();
       }

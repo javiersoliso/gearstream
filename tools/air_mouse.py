@@ -1770,7 +1770,9 @@ class AirMouse:
         self.frozen_until = -INF
 
     def _pose_gate(self, t, gf):
-        a = abs(gf)
+        # gf = arriba·antebrazo: +1 con la mano hacia arriba, −1 con el brazo colgando. Solo pausa colgando
+        # (mano más de 60° por debajo de la horizontal); subir la mano para llegar arriba de la pantalla no.
+        a = -gf
         if a > 0.87:
             self.pose_high_since = t if self.pose_high_since is None else self.pose_high_since
             if t - self.pose_high_since >= 300 and "brazo caído" not in self.pause_reasons:
