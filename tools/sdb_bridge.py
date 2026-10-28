@@ -76,7 +76,9 @@ INPUT_LABELS = {"bezel": "", "back": "atrás", "home": "inicio"}  # prefixes in 
 INPUT_READY_S = 3.0  # no READY marker within this -> error status
 INPUT_READY_MAX = 4096  # bytes of chatter tolerated before READY
 INPUT_LIST_CMD = 'for d in /sys/class/input/event*; do echo "$d $(cat $d/device/name 2>/dev/null)"; done'
-CLEANUP_CMD = "pkill sensorctl; pkill awk; pkill dlogutil; pkill -f 'cat /dev/inpu[t]'"  # not every *cat* process
+# SIGINT first: a sensorctl killed outright leaves its listener registered in sensord ("Listener is already
+# added"), after which no client gets samples until the watch reboots.
+CLEANUP_CMD = "pkill -INT sensorctl; sleep 0.5; pkill sensorctl; pkill awk; pkill dlogutil; pkill -f 'cat /dev/inpu[t]'"
 
 
 def decode_input_events(buf):
@@ -477,7 +479,13 @@ async def main():
         port = int(port or 26101)
     print(f"conectando a {host}:{port}")
 
-    conn = await SdbConnection(host, port).connect(timeout=600)  # time to accept the prompt on the watch
+    while True:  # the watch's sdbd drops or refuses connections while its radio wakes up: keep trying
+        try:
+            conn = await SdbConnection(host, port).connect(timeout=600)  # time to accept the prompt on the watch
+            break
+        except (OSError, asyncio.TimeoutError) as e:
+            print(f"el reloj no responde ({e.__class__.__name__}: {e}); reintento en 3 s (Ctrl+C para salir)")
+            await asyncio.sleep(3)
     await conn.run(CLEANUP_CMD)  # leftovers from a previous session
     try:
         await Bridge(conn, args.interval, args.flush_ms, sensors, args.batch,

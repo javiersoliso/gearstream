@@ -6,7 +6,7 @@ import zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FILES = [
     "server/server.py", "server/web/index.html", "server/web/app.js", "server/web/style.css",
-    "server/web/calibrate.html", "server/web/calibrate.js",
+    "server/web/calibrate.html", "server/web/calibrate.js", "server/web/avatar.html", "server/web/avatar.js",
     "tools/sdb_client.py", "tools/sdb_bridge.py", "tools/batch_test.py",
     "phone/start.sh", "requirements.txt",
 ]
