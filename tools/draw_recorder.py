@@ -3,6 +3,7 @@
     python tools/draw_recorder.py                     # usa la IP del reloj guardada por el lanzador
     python tools/draw_recorder.py --device 192.168.0.XX
     python tools/draw_recorder.py --no-watch          # solo el trackpad
+    python tools/draw_recorder.py --teacher mouse     # el ratón como maestro (clic izquierdo = lápiz)
 
 Lee el trackpad de precisión directo (cada dedo: posición, si toca, Scan Time; ver touchpad.py) y el
 reloj directo por sdb, sin el puente: acelerómetro y giroscopio a 5 ms (200 muestras/s, unas 120 lecturas
@@ -11,6 +12,10 @@ nuevas) y gravedad a 10 ms. El puente tiene que estar cerrado: el reloj acepta u
 En la ventana escribes qué vas a dibujar, pulsas Empezar y dibujas con el dedo índice de la mano del reloj.
 Enter pasa al siguiente dibujo (otra etiqueta), Esc termina y guarda. Mientras se graba, el cursor queda
 encerrado en el lienzo para que un toque no haga clic en otra ventana.
+
+Con --teacher mouse el maestro es el ratón leído crudo (rawmouse.py: cuentas del sensor sin la aceleración
+del puntero, a la tasa del ratón) y el lápiz es el botón izquierdo mantenido; guarda mouse.csv en vez de
+touch.csv.
 
 Guarda en recordings/dibujo-AAAAMMDD-HHMMSS/: touch.csv, ACCELERATION.csv, GYROSCOPE.csv, GRAVITY.csv
 (t_ms en el reloj de esta laptop, común a todo), labels.jsonl (qué se dibujó y cuándo) y meta.json.
@@ -33,6 +38,7 @@ TOOLS = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(TOOLS)
 sys.path.insert(0, TOOLS)
 from touchpad import TouchpadReader  # noqa: E402
+from rawmouse import MouseReader  # noqa: E402
 
 STREAMS = (("ACCELERATION", "accelerometer", 5), ("GYROSCOPE", "gyroscope", 5), ("GRAVITY", "gravity", 10))
 COLORS = ["#58c4dd", "#f0997b", "#5dcaa5", "#ffd166", "#b39ddb", "#f4a6b8", "#9ccc65", "#90caf9"]
@@ -156,10 +162,16 @@ class App:
         root.bind("<Escape>", lambda e: self.finish())
         root.protocol("WM_DELETE_WINDOW", self.finish)
 
-        self.pad = TouchpadReader(self.q.put)
+        self.mouse = args.teacher == "mouse"
+        self.mpos = [0.0, 0.0]            # posición acumulada del ratón (cuentas)
+        self.manchor = [0.0, 0.0]         # dónde estaba al limpiar el lienzo (centro del dibujo)
+        self.mdown = False
+        self.pad = MouseReader(self.q.put) if self.mouse else TouchpadReader(self.q.put)
         ok = self.pad.start()
         if not ok:
-            self.status.set(f"trackpad: {self.pad.error}")
+            self.status.set(f"{'ratón' if self.mouse else 'trackpad'}: {self.pad.error}")
+        if self.mouse:
+            self.hint.configure(text="Escribe con el ratón manteniendo el clic izquierdo. Enter: siguiente dibujo · Esc: terminar y guardar.")
         self.watch = None
         if not args.no_watch:
             self.watch = WatchReader(args.device, STREAMS)
@@ -178,6 +190,13 @@ class App:
     def clear(self):
         self.canvas.delete("all")
         self.last_pt.clear()
+        if getattr(self, "mouse", False):
+            self.manchor = list(self.mpos)
+
+    def mouse_to_canvas(self):
+        w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+        s = 0.35                                            # píxeles del lienzo por cuenta del ratón
+        return w / 2 + s * (self.mpos[0] - self.manchor[0]), h / 2 + s * (self.mpos[1] - self.manchor[1])
 
     def color(self):
         return COLORS[len(self.segments) % len(COLORS)]
@@ -239,16 +258,23 @@ class App:
     def save(self):
         out = os.path.join(ROOT, "recordings", f"dibujo-{time.strftime('%Y%m%d-%H%M%S')}")
         os.makedirs(out, exist_ok=True)
-        ext = self.pad.extents or {}
+        ext = {} if self.mouse else (self.pad.extents or {})
         mmx = (ext["x"][2] / (ext["x"][1] - ext["x"][0])) if ext.get("x") and ext["x"][2] else None
         mmy = (ext["y"][2] / (ext["y"][1] - ext["y"][0])) if ext.get("y") and ext["y"][2] else None
-        with open(os.path.join(out, "touch.csv"), "w", newline="") as f:
-            w = csv.writer(f)
-            w.writerow(["t_ms", "scan_100us", "contact_count", "contact_id", "tip", "x", "y", "x_mm", "y_mm"])
-            for ev in self.touch:
-                for cid, tip, x, y in ev["fingers"]:
-                    w.writerow([round(ev["t_ms"], 3), ev["scan"], ev["count"], cid, int(tip), x, y,
-                                round(x * mmx, 4) if mmx else "", round(y * mmy, 4) if mmy else ""])
+        if self.mouse:
+            with open(os.path.join(out, "mouse.csv"), "w", newline="") as f:
+                w = csv.writer(f)
+                w.writerow(["t_ms", "dev", "dx", "dy", "x", "y", "left", "flags"])
+                for ev in self.touch:
+                    w.writerow([round(ev["t_ms"], 3), ev["dev"], ev["dx"], ev["dy"], ev["x"], ev["y"], int(ev["left"]), ev["flags"]])
+        else:
+            with open(os.path.join(out, "touch.csv"), "w", newline="") as f:
+                w = csv.writer(f)
+                w.writerow(["t_ms", "scan_100us", "contact_count", "contact_id", "tip", "x", "y", "x_mm", "y_mm"])
+                for ev in self.touch:
+                    for cid, tip, x, y in ev["fingers"]:
+                        w.writerow([round(ev["t_ms"], 3), ev["scan"], ev["count"], cid, int(tip), x, y,
+                                    round(x * mmx, 4) if mmx else "", round(y * mmy, 4) if mmy else ""])
         rates, offset = {}, None
         if self.watch:
             rows, offset = self.watch.mapped()
@@ -261,12 +287,12 @@ class App:
                 rates[name] = {"muestras": len(rs), "por_segundo": len(rs) / span if span else 0,
                                "lecturas_nuevas_por_segundo": len(set(r[2:] for r in rs)) / span if span else 0}
         tspan = (self.touch[-1]["t_ms"] - self.touch[0]["t_ms"]) / 1000 if len(self.touch) > 1 else 0
-        rates["TOUCHPAD"] = {"informes": len(self.touch), "por_segundo": len(self.touch) / tspan if tspan else 0}
+        rates["MOUSE" if self.mouse else "TOUCHPAD"] = {"informes": len(self.touch), "por_segundo": len(self.touch) / tspan if tspan else 0}
         with open(os.path.join(out, "labels.jsonl"), "w", encoding="utf-8") as f:
             for s in self.segments:
                 f.write(json.dumps(s, ensure_ascii=False) + "\n")
         with open(os.path.join(out, "meta.json"), "w", encoding="utf-8") as f:
-            json.dump({"touchpad_extents": ext, "mm_per_unit": [mmx, mmy], "watch": None if not self.watch else self.args.device,
+            json.dump({"teacher": "mouse" if self.mouse else "trackpad", "touchpad_extents": ext, "mm_per_unit": [mmx, mmy], "watch": None if not self.watch else self.args.device,
                        "watch_offset_ms": offset, "streams": [list(s) for s in STREAMS], "rates": rates}, f, ensure_ascii=False, indent=1)
         print(f"guardado en {out}")
         for k, v in rates.items():
@@ -278,6 +304,22 @@ class App:
             while True:
                 ev = self.q.get_nowait()
                 self.touch_count += 1
+                if self.mouse:
+                    self.mpos[0] += ev["dx"]; self.mpos[1] += ev["dy"]
+                    if ev["down"] is not None:
+                        self.mdown = ev["down"]
+                    ev["x"], ev["y"], ev["left"] = self.mpos[0], self.mpos[1], self.mdown
+                    if self.recording:
+                        self.touch.append(ev)
+                    p = self.mouse_to_canvas()
+                    q = self.last_pt.get("m")
+                    if self.mdown:
+                        if q:
+                            self.canvas.create_line(*q, *p, fill=self.color() if self.recording else "#5a6475", width=3, capstyle="round")
+                        self.last_pt["m"] = p
+                    else:
+                        self.last_pt.pop("m", None)
+                    continue
                 if self.recording:
                     self.touch.append(ev)
                 seen = set()
@@ -309,7 +351,7 @@ class App:
             w = "" if not self.watch else (f"reloj: {self.watch.state}" + ("" if not self.rate_watch else
                  " · " + " · ".join(f"{k[:4].lower()} {v:.0f}/s" for k, v in self.rate_watch.items())))
             err = f" · {self.pad.error}" if self.pad.error else ""
-            self.status.set(f"{rec} · trackpad {self.rate_touch:.0f} informes/s · {w}{err}")
+            self.status.set(f"{rec} · {'ratón' if self.mouse else 'trackpad'} {self.rate_touch:.0f} informes/s · {w}{err}")
         self.root.after(15, self.poll)
 
 
@@ -322,7 +364,8 @@ def main():
     except (OSError, ValueError):
         pass
     ap.add_argument("--device", default=saved.get("watch_ip"), help="IP del reloj (por defecto, la del lanzador)")
-    ap.add_argument("--no-watch", action="store_true", help="grabar solo el trackpad")
+    ap.add_argument("--no-watch", action="store_true", help="grabar solo el trackpad (o el ratón)")
+    ap.add_argument("--teacher", choices=("trackpad", "mouse"), default="trackpad", help="qué da la verdad del trazo")
     ap.add_argument("--selftest", action="store_true", help="abrir, comprobar y cerrar a los 6 s sin grabar")
     args = ap.parse_args()
     if not args.no_watch and not args.device:
@@ -332,7 +375,7 @@ def main():
     if args.selftest:
         def done():
             print("estado:", app.status.get())
-            print("extensión del trackpad:", app.pad.extents)
+            print("extensión del trackpad:", getattr(app.pad, "extents", "(modo ratón)"), "· informes del maestro:", app.pad.reports)
             app.finish()
         root.after(6000, done)
     root.mainloop()
