@@ -9,6 +9,9 @@ normal, un umbral lo detecta. Señales, sobre el acelerómetro (m/s²):
   · golpe: magnitud de la aceleración menos su media de los últimos 40 ms (lo que cambia de golpe)
   · tirón: magnitud de la diferencia entre muestras seguidas (la derivada, sin escalar por el tiempo,
     porque a 200 Hz las marcas de tiempo del reloj llegan en ráfagas)
+  · golpe sin brazo: golpe / (cambio de la aceleración lenta alrededor + 0.5). Un pellizco es un golpe
+    con el brazo quieto; dejar caer el brazo o cerrar el puño también golpean, pero mueven lo lento.
+    Fue la mejor de las tres con la primera captura (12/20 pellizcos sin ninguna falsa alarma).
 """
 import csv
 import json
@@ -28,18 +31,23 @@ def load(folder):
     return rows, cues
 
 
-def features(rows, win=8):
-    """golpe y tirón por muestra."""
-    hit, jerk = [0.0] * len(rows), [0.0] * len(rows)
-    for i in range(len(rows)):
-        lo = max(0, i - win)
-        n = i - lo
-        if n:
-            m = [sum(rows[k][c] for k in range(lo, i)) / n for c in (1, 2, 3)]
-            hit[i] = sum((rows[i][c + 1] - m[c]) ** 2 for c in range(3)) ** 0.5
-        if i:
-            jerk[i] = sum((rows[i][c] - rows[i - 1][c]) ** 2 for c in (1, 2, 3)) ** 0.5
-    return {"golpe": hit, "tirón": jerk}
+def features(rows, win=8, slow=30):
+    """golpe, tirón y golpe sin brazo por muestra (ventanas en muestras: 8 = 40 ms, 30 = 150 ms a 200 Hz)."""
+    n = len(rows)
+    pre = [[0.0] * (n + 1) for _ in range(3)]
+    for i, r in enumerate(rows):
+        for c in range(3):
+            pre[c][i + 1] = pre[c][i] + r[c + 1]
+    mean = lambda a, b: [(pre[c][b] - pre[c][a]) / max(1, b - a) for c in range(3)]
+    dist = lambda u, v: sum((u[c] - v[c]) ** 2 for c in range(3)) ** 0.5
+    hit, jerk, clean = [0.0] * n, [0.0] * n, [0.0] * n
+    for i in range(1, n):
+        hit[i] = dist(rows[i][1:], mean(max(0, i - win), i))
+        jerk[i] = dist(rows[i][1:], rows[i - 1][1:])
+        if slow <= i < n - slow:
+            moved = dist(mean(i - slow, i - win), mean(i + win, i + slow))
+            clean[i] = hit[i] / (moved + 0.5)
+    return {"golpe": hit, "tirón": jerk, "golpe sin brazo": clean}
 
 
 def window_peak(ts, values, t0, t1):
