@@ -34,7 +34,7 @@ from sdb_client import find_watch, local_ipv4s  # noqa: E402
 
 SETTINGS = os.path.join(os.path.expanduser("~"), ".gearstream", "launcher.json")
 WIN = sys.platform == "win32"
-PAGES = {"Sismógrafo": "sismo.html", "Dibuja": "dibuja.html", "Juego": "game.html", "Tornillo": "tempo.html", "Dataset": "dataset.html", "Avatar": "avatar.html", "Dashboard": "", "Calibración": "calibrate.html"}
+PAGES = {"Mocap": "mocap.html", "Sismógrafo": "sismo.html", "Dibuja": "dibuja.html", "Juego": "game.html", "Tornillo": "tempo.html", "Dataset": "dataset.html", "Avatar": "avatar.html", "Dashboard": "", "Calibración": "calibrate.html"}
 
 
 def load_settings():

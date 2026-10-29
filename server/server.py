@@ -5,9 +5,11 @@
   http://<ip>:8765/     -> dashboard (server/web)
   http://<ip>:8765/dibujos/          -> lista de los dibujos guardados (JSON)
   http://<ip>:8765/dibujos/<nombre>  -> un dibujo (JSON Lines, ver server/web/trazos.js)
+  http://<ip>:8765/grabaciones/index.json, /grabaciones/<id>.json -> tomas para el mocap (tools/export_mocap.py)
 """
 import argparse
 import asyncio
+import base64
 import csv
 import json
 import logging
@@ -27,6 +29,10 @@ WEB_DIR = ROOT / "web"
 DRAW_DIR = ROOT.parent / "recordings" / "dibujos"   # main() lo cambia con --out
 DRAW_ID = re.compile(r"^\d{8}-\d{6}$")
 DRAW_NAME = re.compile(r"^dibujo-\d{8}-\d{6}\.jsonl$")
+TAKE_DIR = ROOT.parent / "recordings" / "mocap"        # main() lo cambia con --out
+TAKE_NAME = re.compile(r"^[A-Za-z0-9_-]+\.json$")
+CAPT_DIR = ROOT.parent / "recordings" / "capturas"    # cuadros que una página manda para armar un GIF o video
+CAPT_NAME = re.compile(r"^[a-z0-9-]{1,40}$")
 CONTENT_TYPES = {
     ".html": "text/html; charset=utf-8",
     ".js": "text/javascript; charset=utf-8",
@@ -220,6 +226,14 @@ class Hub:
                     msg = json.loads(raw)
                 except ValueError:
                     continue
+                if isinstance(msg, dict) and msg.get("type") == "captura" and len(raw) < 6 * 2**20:
+                    name, seq = msg.get("nombre"), msg.get("seq")
+                    if isinstance(name, str) and CAPT_NAME.match(name) and isinstance(seq, int) and 0 <= seq < 100000:
+                        folder = CAPT_DIR / name
+                        folder.mkdir(parents=True, exist_ok=True)
+                        (folder / f"{seq:05d}.jpg").write_bytes(base64.b64decode(msg.get("jpg", "")))
+                        await ws.send(json.dumps({"type": "captura_ack", "seq": seq}))
+                    continue
                 if isinstance(msg, dict) and msg.get("type") == "dibujo" and len(raw) < 4 * 2**20:
                     if self.drawings.append(msg):
                         await ws.send(json.dumps({"type": "dibujo_ack", "id": msg["id"], "seq": msg["seq"]}))
@@ -256,6 +270,11 @@ def serve_static(connection, request):
         body = json.dumps([{"name": f.name, "bytes": f.stat().st_size, "mtime": round(f.stat().st_mtime * 1000)}
                            for f in files]).encode()
         ctype = CONTENT_TYPES[".json"]
+    elif path.startswith("/grabaciones/"):
+        name = path[len("/grabaciones/"):]
+        if not TAKE_NAME.match(name) or not (TAKE_DIR / name).is_file():
+            return connection.respond(404, "Not found\n")
+        body, ctype = (TAKE_DIR / name).read_bytes(), CONTENT_TYPES[".json"]
     elif path.startswith("/dibujos/"):
         name = path[len("/dibujos/"):]
         if not DRAW_NAME.match(name) or not (DRAW_DIR / name).is_file():
@@ -302,8 +321,10 @@ async def main():
     parser.add_argument("--no-record", action="store_true", help="no guardar CSV")
     args = parser.parse_args()
 
-    global DRAW_DIR
+    global DRAW_DIR, TAKE_DIR, CAPT_DIR
     DRAW_DIR = Path(args.out) / "dibujos"      # los dibujos se guardan aunque no se graben los CSV
+    TAKE_DIR = Path(args.out) / "mocap"
+    CAPT_DIR = Path(args.out) / "capturas"
     recorder = Recorder(None if args.no_record else Path(args.out))
     watch_urls = [f"ws://{ip}:{args.port}/watch" for ip in lan_ips()]
     hub = Hub(recorder, watch_urls)

@@ -127,6 +127,18 @@ python tools/launcher.py
 
 Una ventana que muestra tu Wi-Fi y la IP de la laptop, busca el reloj en la red (o escribes su IP: en el hotspot del teléfono la búsqueda a veces no lo ve), arranca el servidor y el puente, y abre con un botón el juego, el avatar, el dashboard, la calibración o el ratón aéreo. Mide la red con ping y agrupa muestras solo si hace falta. Para el puente y el ratón con Ctrl+Break, para que limpien el reloj al salir.
 
+## Mocap con un reloj
+
+![Un stickman apunta con el reloj a una pantalla virtual: clic con un giro de muñeca y un círculo dibujado en el aire](docs/media/mocap-apuntar.gif)
+
+`http://localhost:8765/mocap.html` (o el botón Mocap del lanzador). El botón **Comercial** (F) lo filma como un anuncio: planos con cortes, frases y música; así salió el GIF de arriba. Un stickman camina, usa una tablet (la mano del reloj toca la pantalla, la otra la sostiene) o **apunta**: levanta el brazo del reloj, su rayo pega en una pantalla virtual, visita cuatro íconos con un clic de muñeca y dibuja un círculo. En la pantalla hay dos cursores: el cian es donde pega el rayo de verdad y el coral es el del reloj, calculado como el ratón aéreo (x = −∫yaw, y = ∫pitch, a D·π/180 metros por grado). Sin ruido van a menos de 1 cm de mediana y 3.4 cm como máximo; esos centímetros son la diferencia entre D·θ y D·tan θ en los íconos lejanos. Con el ruido de un giroscopio real el del reloj se va unos 12 cm en 10 s. De su movimiento se sintetiza lo que leería el reloj: giroscopio, acelerómetro y gravedad, con el ruido y el sesgo de un sensor real si quieres. Solo con esas lecturas se reconstruye el antebrazo (en coral) encima del de verdad (en cian), y abajo corren las gráficas de cada sensor como en un programa de captura. La cuenta está en `server/web/mocapmath.js` y la prueba en `tools/test_mocap.js`.
+
+Hay dos formas de reconstruir, y se pueden comparar con el botón Fusión/Proyección:
+- **Fusión**, la de los trajes de mocap con IMU: se integra la orientación completa con el giroscopio, q ← q ⊗ exp(ω dt/2), y la gravedad corrige la inclinación (filtro de Mahony). Sin ruido el antebrazo reconstruido queda a menos de 1° del real en las tres animaciones; con ruido solo se desvía el rumbo, porque el giro alrededor de la vertical la gravedad no lo ve.
+- **Proyección**, la de las páginas que apuntan (`wrist.js`): rumbo = ∫ yaw dt y el resto de la gravedad. Funciona con el antebrazo apuntando (tablet, apuntar), pero caminando, con el brazo colgando, el rumbo de un vector casi vertical no existe y se pierde (16° de mediana, hasta 79°). Para apuntar no importa, porque nadie apunta con el brazo colgando.
+
+**Tus grabaciones**: `python tools/export_mocap.py` corta tus sesiones en tomas (una por etiqueta del dataset de gestos o de los dibujos, o los tramos de 30 s con más movimiento) y las deja en `recordings/mocap/`, que no se sube. En la página aparecen en "Tus grabaciones": el antebrazo del reloj lo mueven tus datos y el resto del cuerpo queda de pie.
+
 ## Sismógrafo: sigue la línea
 
 `http://localhost:8765/sismo.html` (o el botón Sismógrafo del lanzador). Una línea amarilla viene corriendo por el papel y tu muñeca mueve la aguja: mantenla encima durante 20 segundos. Botón atrás del reloj (o Espacio) para empezar, el bisel cambia el nivel (tranquilo, normal, sismo), E el giro que mueve la aguja (inclinar, girar o atornillar) y V si ves venir la línea o vas a ciegas.

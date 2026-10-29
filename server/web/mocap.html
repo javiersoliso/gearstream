@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mocap con un reloj</title>
+  <style>
+    html, body { height: 100%; margin: 0; background: #0b0e14; color: #e8e6df; font-family: system-ui, sans-serif; overflow: hidden; }
+    #app { display: grid; grid-template-rows: auto minmax(0, 1fr) 230px; height: 100%; }
+    #bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 10px 14px; border-bottom: 1px solid #1e2533; background: #0f131b; }
+    #bar button, #bar select { font: inherit; font-size: 14px; padding: 5px 12px; border-radius: 8px; border: 1px solid #2a3344; background: #151b26; color: #e8e6df; cursor: pointer; white-space: nowrap; }
+    #bar button.on { border-color: #58c4dd; background: #13303a; }
+    #bar select { max-width: 260px; }
+    .sep { width: 1px; height: 22px; background: #2a3344; margin: 0 4px; }
+    #time { flex: 1; min-width: 140px; }
+    #stage { position: relative; min-height: 0; }
+    #c3 { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    #hud { position: absolute; left: 14px; top: 12px; font-size: 13px; color: #9aa3b2; line-height: 1.7; pointer-events: none; font-variant-numeric: tabular-nums; }
+    #hud b { color: #e8e6df; font-weight: 600; }
+    #label { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); font-size: 18px; color: #ffd166; pointer-events: none; text-align: center; }
+    #legend { position: absolute; left: 14px; bottom: 12px; display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: #9aa3b2; pointer-events: none; max-width: 70%; }
+    #legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+    #keys { position: absolute; right: 14px; bottom: 12px; font-size: 12px; color: #6f7888; text-align: right; line-height: 1.6; pointer-events: none; }
+    #filmui { position: absolute; inset: 0; pointer-events: none; display: none; }
+    body.film #filmui { display: block; }
+    body.film #bar, body.film #hud, body.film #legend, body.film #keys, body.film #label, body.film #graphs { display: none; }
+    body.film #app { grid-template-rows: minmax(0, 1fr); }   /* sin barra ni gráficas, el escenario es la única fila */
+    body.film #stage { background: radial-gradient(ellipse at 50% 42%, #16243a 0%, #0a0f18 55%, #040609 100%); }
+    .lb { position: absolute; left: 0; right: 0; height: 10.5%; background: #000; }
+    .lb.top { top: 0; } .lb.bot { bottom: 0; }
+    #film-cap { position: absolute; left: 0; right: 0; bottom: 16%; text-align: center; font: 300 clamp(22px, 3.2vw, 46px) system-ui, sans-serif; letter-spacing: 0.03em; color: #f4f1ea; opacity: 0; text-shadow: 0 2px 24px rgba(0, 0, 0, 0.7); }
+    #film-brand { position: absolute; right: 3.5%; bottom: 12.5%; font: 600 12px system-ui, sans-serif; letter-spacing: 0.35em; color: #8fd8ff; opacity: 0.75; }
+    #film-hint { position: absolute; left: 50%; top: 13%; transform: translateX(-50%); font-size: 13px; color: #9aa3b2; opacity: 0; transition: opacity 0.6s; }
+    #film-dip { position: absolute; inset: 0; background: #000; opacity: 0; }
+    #graphs { border-top: 1px solid #1e2533; background: #0f131b; min-height: 0; }
+    #g { width: 100%; height: 100%; display: block; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="bar">
+      <button data-src="caminar">Caminar</button>
+      <button data-src="tablet">Tablet</button>
+      <button data-src="apuntar">Apuntar</button>
+      <select id="takes" title="tus sesiones grabadas"><option value="">Tus grabaciones…</option></select>
+      <span class="sep"></span>
+      <button id="play" title="Espacio">⏸</button>
+      <button id="speed" title="velocidad">×1</button>
+      <input id="time" type="range" min="0" max="1000" step="1" value="0">
+      <span class="sep"></span>
+      <button id="noise" title="N: ruido y sesgo de un giroscopio real (solo animaciones)">Ruido</button>
+      <button id="ghost" title="G: cómo se reconstruye el antebrazo">Fusión</button>
+      <button id="hand" title="M: en qué muñeca va el reloj"></button>
+      <span class="sep"></span>
+      <button data-cam="orbita" title="C cambia de cámara">Órbita</button>
+      <button data-cam="frente">Frente</button>
+      <button data-cam="lado">Lado</button>
+      <button data-cam="muneca">Muñeca</button>
+      <span class="sep"></span>
+      <button id="film" title="F: filmado como un anuncio">Comercial</button>
+    </div>
+    <div id="stage">
+      <canvas id="c3"></canvas>
+      <div id="hud"></div>
+      <div id="label"></div>
+      <div id="legend">
+        <span><i style="background:#58c4dd"></i>esqueleto (la verdad)</span>
+        <span><i style="background:#f0997b"></i>antebrazo reconstruido con el reloj</span>
+        <span><i style="background:#ffd166"></i>gravedad (arriba)</span>
+        <span><i style="background:#9db4ff"></i>giro ω</span>
+        <span><i style="background:#5dcaa5"></i>aceleración sin gravedad</span>
+        <span class="aim-only"><i style="background:#58c4dd;border-radius:50%"></i>cursor real: donde pega el rayo</span>
+        <span class="aim-only"><i style="background:#f0997b;border-radius:50%"></i>cursor del reloj: −∫yaw, ∫pitch</span>
+      </div>
+      <div id="filmui"><div class="lb top"></div><div class="lb bot"></div><div id="film-cap"></div><div id="film-brand">GEARSTREAM</div><div id="film-hint">F o Esc para salir</div><div id="film-dip"></div></div>
+      <div id="keys">arrastra para girar · rueda para acercar<br>Espacio · 1 2 3 · M · N · G · C</div>
+    </div>
+    <div id="graphs"><canvas id="g"></canvas></div>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="wrist.js"></script>
+  <script src="mocapmath.js"></script>
+  <script src="musica.js"></script>
+  <script src="mocap.js"></script>
+  <script src="mocapfilm.js"></script>
+</body>
+</html>
