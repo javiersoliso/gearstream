@@ -84,6 +84,37 @@ def r2(Y, X):
     return 1 - (res ** 2).sum() / tot if tot > 0 else float("nan"), coef
 
 
+def interp3(a, t):
+    return np.stack([np.interp(t, a[:, 0], a[:, k]) for k in (1, 2, 3)], axis=1)
+
+
+def watch_features(s, acc, gyr, grv, step=5.0):
+    """Para un trazo del trackpad: tiempos, posición del dedo relativa al apoyo (mm) y lo que el reloj ve en
+    ese tramo: ángulos de muñeca integrados (yaw, pitch; la "sombra") y la posición integrada dos veces
+    desde la aceleración lineal con velocidad cero al apoyar y al levantar (mm). None si es muy corto."""
+    t = np.arange(s[0, 0], s[-1, 0], step)
+    if len(t) < 10:
+        return None
+    Y = np.stack([np.interp(t, s[:, 0], s[:, 4]), np.interp(t, s[:, 0], s[:, 5])], axis=1)
+    Y = Y - Y[0]
+    w = np.radians(interp3(gyr, t))
+    g = interp3(grv, t)
+    g = g / np.linalg.norm(g, axis=1, keepdims=True)
+    roll = w @ AX
+    gpf = g @ AX
+    yaw = (np.einsum("ij,ij->i", w, g) - roll * gpf) / np.maximum(1 - gpf ** 2, 0.09)
+    ph = np.cross(AX, g)
+    ph = ph / np.maximum(np.linalg.norm(ph, axis=1, keepdims=True), 1e-6)
+    pitch = np.einsum("ij,ij->i", w, ph)
+    dt = step / 1000
+    ang = np.stack([np.cumsum(yaw) * dt, np.cumsum(pitch) * dt], axis=1)
+    la = interp3(acc, t) - interp3(grv, t)
+    v = np.cumsum(la, axis=0) * dt
+    v = v - np.outer(np.linspace(0, 1, len(v)), v[-1])              # velocidad cero al apoyar y al levantar
+    pos = np.cumsum(v, axis=0) * dt * 1000                          # mm
+    return t, Y, ang, pos
+
+
 def main():
     folder = sys.argv[1]
     touch = load_touch(folder)
@@ -174,32 +205,14 @@ def main():
                          "mediana_levantada": float(np.median(ups)), "mediana_mitad": float(np.median(mids))}
 
     # 4. reconstrucción
-    def interp3(a, t):
-        return np.stack([np.interp(t, a[:, 0], a[:, k]) for k in (1, 2, 3)], axis=1)
     rot_all, acc_all, both_all, Y_all, per = [], [], [], [], []
     for s in strokes:
         if s[-1, 0] - s[0, 0] < 250:
             continue
-        t = np.arange(s[0, 0], s[-1, 0], 5.0)
-        if len(t) < 10:
+        f = watch_features(s, acc, gyr, grv)
+        if f is None:
             continue
-        Y = np.stack([np.interp(t, s[:, 0], s[:, 4]), np.interp(t, s[:, 0], s[:, 5])], axis=1)
-        Y = Y - Y[0]
-        w = np.radians(interp3(gyr, t))
-        g = interp3(grv, t)
-        g = g / np.linalg.norm(g, axis=1, keepdims=True)
-        roll = w @ AX
-        gpf = g @ AX
-        yaw = (np.einsum("ij,ij->i", w, g) - roll * gpf) / np.maximum(1 - gpf ** 2, 0.09)
-        ph = np.cross(AX, g)
-        ph = ph / np.maximum(np.linalg.norm(ph, axis=1, keepdims=True), 1e-6)
-        pitch = np.einsum("ij,ij->i", w, ph)
-        dt = 0.005
-        ang = np.stack([np.cumsum(yaw) * dt, np.cumsum(pitch) * dt], axis=1)
-        la = interp3(acc, t) - interp3(grv, t)
-        v = np.cumsum(la, axis=0) * dt
-        v = v - np.outer(np.linspace(0, 1, len(v)), v[-1])          # velocidad cero al apoyar y al levantar
-        pos = np.cumsum(v, axis=0) * dt * 1000                      # mm
+        _, Y, ang, pos = f
         rot_all.append(ang); acc_all.append(pos); both_all.append(np.hstack([ang, pos])); Y_all.append(Y)
         per.append((r2(Y, ang)[0], r2(Y, pos)[0], r2(Y, np.hstack([ang, pos]))[0]))
     Yc = np.vstack(Y_all)

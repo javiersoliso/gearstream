@@ -143,6 +143,19 @@ python tools/draw_recorder.py --device <IP-del-reloj>
 
 Lee el trackpad de precisión de Windows directo por Raw Input (`tools/touchpad.py`: cada dedo con su posición en milímetros, si toca o no y el Scan Time del propio trackpad) y el reloj directo por sdb a su máxima resolución (acelerómetro y giroscopio a 200 muestras/s, unas 120 lecturas nuevas; gravedad a 200). Escribes qué vas a dibujar, dibujas con el índice de la mano del reloj y queda todo en `recordings/dibujo-*/` con un reloj de tiempo común: el trackpad es la verdad del trazo para entrenar al reloj a reconstruirlo. Cierra el puente antes: el reloj acepta una sola conexión.
 
+## Lo que el reloj ve de tu escritura
+
+![Cada letra: el dedo en el trackpad (cian) y lo que reconstruye el reloj (coral)](docs/media/letras-forma.gif)
+
+Dos abecedarios escritos con el índice en el trackpad mientras el reloj grababa a 200 muestras/s. Cian es el trazo real (el trackpad, a 143 lecturas/s y 0.03 mm); coral es lo que reconstruye el reloj con **una sola calibración lineal** para toda la sesión: los ángulos de muñeca integrados (la "sombra" de un puntero) más la aceleración integrada dos veces con velocidad cero al apoyar y al levantar. Cada trazo coral arranca donde arranca el real (el reloj ve la forma, no dónde se apoya el dedo) y en este GIF cada letra se escala con un solo número para comparar la forma; la versión sin retoques es [letras-global.gif](docs/media/letras-global.gif). El número junto a cada letra es el parecido de forma (correlación; 1 = idéntica).
+
+- Parecido de forma mediano **0.69**; las mejores, S 0.96, v 0.90, j 0.89, x 0.87, G 0.86. Las peores salen giradas: U, N, W.
+- Lo que decide la calidad no es la velocidad ni la aceleración del dedo (correlación −0.04 y +0.01) sino **cuánto gira la muñeca** (+0.22), que crece con el tamaño del trazo. Las letras pequeñas se escriben con los dedos y el reloj, en la muñeca, casi no las ve; un círculo grande sí.
+- Apoyar y levantar el dedo casi no deja huella en el reloj (AUC 0.56 y 0.58): el "lápiz abajo" lo da el trackpad.
+- Calibración del giro en postura de escritura: 5.3 mm de trazo por grado de yaw y 6.9 por grado de pitch, con los ejes cruzados (75° entre sí): la muñeca necesita 1.3 veces más ganancia en vertical.
+
+Herramientas: `tools/draw_recorder.py` (grabar), `tools/analyze_drawing.py` (números), `tools/render_letters_gif.py` (este GIF, con `letters.json` diciendo qué trazos forman cada letra).
+
 ## Gestos nuevos
 
 `tools/dataset_capture.py` (consola) o `http://localhost:8765/dataset.html` graban un dataset guiado de 13 gestos con etiquetas; `tools/analyze_dataset.py recordings/<sesión>` dice cuáles se distinguen. `tools/guided_capture.py` graba un gesto guiado por pitidos y luego movimiento normal; `tools/analyze_gesture.py` dice si el gesto se distingue. Con `--device IP` lee el acelerómetro directo a 200 Hz (con la pantalla del reloj encendida: apagada, el reloj baja los sensores a unas 45 muestras por segundo).
