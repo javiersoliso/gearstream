@@ -17,19 +17,29 @@
 <body>
   <canvas id="c2"></canvas>
   <canvas id="c3"></canvas>
-  <div id="bar"><span id="tabs"></span><button id="play">▶ Reproducir</button><button id="speed">×2</button><span id="info"></span></div>
+  <div id="bar"><span id="tabs"></span><button id="play">▶ Reproducir</button><button id="speed">×2</button><button id="sound">♪ sonido</button><button id="rec" title="graba solo el dibujo (sin el navegador) con su sonido">● Grabar video</button><span id="info"></span></div>
   <div id="msg">cargando…</div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
   <script src="trazos.js"></script>
+  <script src="musica.js"></script>
   <script id="dibujo" type="application/x-ndjson"></script>
   <script>
   // Visor de un dibujo hecho con el reloj: lo reproduce como timelapse. Sirve igual servido por GearStream
-  // (visor.html?f=dibujo-AAAAMMDD-HHMMSS.jsonl) que exportado desde Dibuja con el dibujo dentro.
+  // (visor.html?f=dibujo-AAAAMMDD-HHMMSS.jsonl) que exportado desde Dibuja con el dibujo dentro. Suena como
+  // cuando se dibujó (musica.js) y "Grabar video" guarda solo el lienzo con su sonido, listo para publicar.
   'use strict';
   const $ = (id) => document.getElementById(id);
   const SPEEDS = [1, 2, 4, 8];
-  const V = { ops: [], mode: 3, speed: 2, ev: [], i: 0, t0: 0, on: false, fit: null };
+  const V = { ops: [], mode: 3, speed: 2, ev: [], i: 0, t0: 0, on: false, fit: null, view: [innerWidth, innerHeight], rec: null };
+  const music = new Musica();
+  function sound(op) {
+    if (op.k === 's') music.stroke(op.id, { mode: op.m, color: op.c, mu: op.mu, f0: op.f });
+    else if (op.k === 'p') for (const p of op.pts) music.point(op.id, p, V.view);
+    else if (op.k === 'e') music.end(op.id);
+    else if (op.k === 'f') music.pulse(op.f);
+  }
+  function apply(op) { D.apply(op); sound(op); }
 
   // 3D
   const c3 = $('c3'), c2 = $('c2'), g2 = c2.getContext('2d');
@@ -77,6 +87,7 @@
       orbit.target.copy(c); cam.position.set(c.x + 0.8 * r, c.y + 0.5 * r, c.z + 1.6 * r); orbit.update();
     }
     const head = V.ops.find((o) => o.k === 'h') || {};
+    if (head.view) V.view = head.view;
     const when = head.start ? new Date(head.start).toLocaleString() : '';
     $('info').textContent = [when, head.hand === 'right' ? 'muñeca derecha' : head.hand === 'left' ? 'muñeca izquierda' : '', head.rescued ? 'rescatado' : '']
       .filter(Boolean).join(' · ');
@@ -101,14 +112,36 @@
 
   function play() {
     V.ev = timeline(V.ops); V.i = 0; V.t0 = performance.now(); V.on = true;
-    D.reset(); orbit.autoRotate = true;
+    music.silence(); D.reset(); orbit.autoRotate = true;
   }
-  function step(now) {
+  function step(now, quiet) {
     const at = (now - V.t0) * V.speed;
-    while (V.i < V.ev.length && V.ev[V.i].at <= at) D.apply(V.ev[V.i++].op);
-    if (V.i >= V.ev.length) V.on = false;
+    while (V.i < V.ev.length && V.ev[V.i].at <= at) (quiet ? D.apply.bind(D) : apply)(V.ev[V.i++].op);
+    if (V.i >= V.ev.length) { V.on = false; music.silence(); if (V.rec && !V.rec.ending) { V.rec.ending = true; setTimeout(() => V.rec.stop(), 2000); } }
   }
-  $('play').addEventListener('click', () => { if (V.on) { V.t0 = -1e12; step(performance.now()); } else play(); });
+  $('play').addEventListener('click', () => { music.unlock(); if (V.on) { V.t0 = -1e12; step(performance.now(), true); } else play(); });
+  $('sound').addEventListener('click', () => { music.unlock(); music.mute(!music.muted); $('sound').textContent = music.muted ? '♪ sin sonido' : '♪ sonido'; });
+  // grabar: el lienzo (sin barra ni navegador) y el sonido, desde el principio hasta que termina
+  $('rec').addEventListener('click', () => {
+    if (V.rec) { V.rec.stop(); return; }
+    music.unlock();
+    const stream = (V.mode === 3 ? c3 : c2).captureStream(30);
+    const audio = music.stream();
+    if (audio) for (const t of audio.getAudioTracks()) stream.addTrack(t);
+    const type = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm']
+      .find((t) => window.MediaRecorder && MediaRecorder.isTypeSupported(t));
+    if (!type) { $('msg').textContent = 'este navegador no sabe grabar video'; return; }
+    const rec = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 8e6 }), chunks = [];
+    rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+    rec.onstop = () => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob(chunks, { type: type.split(';')[0] }));
+      a.download = 'dibujo.' + (type.startsWith('video/mp4') ? 'mp4' : 'webm'); a.click();
+      V.rec = null; $('rec').textContent = '● Grabar video';
+    };
+    V.rec = rec; $('rec').textContent = '■ Grabando…';
+    play(); rec.start(500);
+  });
   $('speed').addEventListener('click', () => { const k = (SPEEDS.indexOf(V.speed) + 1) % SPEEDS.length; const now = performance.now(); const at = (now - V.t0) * V.speed; V.speed = SPEEDS[k]; V.t0 = now - at / V.speed; $('speed').textContent = '×' + V.speed; });
   c3.addEventListener('pointerdown', () => { orbit.autoRotate = false; });
 

@@ -10,6 +10,9 @@
 //       (roll, como atornillar: horario aleja, antihorario acerca). Arrastra con el ratón para orbitar.
 //   Modo creativo (F, en 3D): vuelas libre como en Minecraft creativo (WASD, E sube, Q baja, arrastrar con
 //       el ratón para mirar, rueda para avanzar) y el lápiz va delante de ti, apuntado con la muñeca.
+// El lápiz suena (musica.js; N cambia el modo): en PULSOS el pulso es una frecuencia f₀ (el bisel la dobla o
+// la parte) y cada dimensión del lápiz pone una razón sobre ella, [1 ; x ; y ; z]; en ARPA la altura es la
+// nota y el color el instrumento. K cambia de color cuando el bisel está ocupado con el pulso.
 // Todo se guarda solo en el servidor mientras dibujas (recordings/dibujos/, formato en trazos.js). Abrir:
 // tus dibujos guardados. P: reproducirlo como timelapse. X: exportarlo como una página que se ve en cualquier
 // lado (visor.html con el dibujo dentro).
@@ -168,6 +171,17 @@ const D = new Drawing({
   blob: addBlob,                                                       // 3D: las bolitas, cada 2 cm del trazo
   truncate3: (n) => { blob.count = Math.min(n, MAXB); blob.instanceMatrix.needsUpdate = true; },
 });
+const music = new Musica();
+addEventListener('pointerdown', () => music.unlock());
+addEventListener('keydown', () => music.unlock());
+let replayView = null;                   // la ventana en la que se dibujó lo que se reproduce
+function sound(op) {                     // lo que suena con cada operación, al dibujar y al reproducir
+  if (op.k === 's') music.stroke(op.id, { mode: op.m, color: op.c, mu: op.mu, f0: op.f });
+  else if (op.k === 'p') for (const p of op.pts) music.point(op.id, p, replayView || [innerWidth, innerHeight]);
+  else if (op.k === 'e') music.end(op.id);
+  else if (op.k === 'f') music.pulse(op.f);
+}
+function play(op) { D.apply(op); sound(op); }
 const SAVE = { id: null, t0: 0, ops: [], queue: [], pend: null, seq: 0, outbox: [], base: null };
 let nextId = 1, curId = null;
 const pad2 = (n) => String(n).padStart(2, '0');
@@ -190,10 +204,10 @@ function beginSession() {                // la primera operación abre el archiv
 }
 function record(op) { flushPoints(); SAVE.ops.push(op); SAVE.queue.push(op); }
 function flushPoints() { if (SAVE.pend) { const p = SAVE.pend; SAVE.pend = null; SAVE.ops.push(p); SAVE.queue.push(p); } }
-function emit(op) { op.t = clock(); record(op); D.apply(op); }
+function emit(op) { op.t = clock(); record(op); play(op); }
 function emitPoint(xy) {
   const pt = [...xy, clock()];
-  D.apply({ k: 'p', id: curId, pts: [pt] });
+  play({ k: 'p', id: curId, pts: [pt] });
   if (SAVE.pend && SAVE.pend.id === curId) SAVE.pend.pts.push(pt);
   else { flushPoints(); SAVE.pend = { k: 'p', id: curId, pts: [pt] }; }
 }
@@ -219,10 +233,10 @@ const r1 = (x) => Math.round(x * 10) / 10, r3 = (x) => Math.round(x * 1000) / 10
 function startStroke() {
   if (RP.on) return;
   curId = nextId++;
-  emit({ k: 's', id: curId, m: S.mode, c: COLORS[S.color] });
+  emit({ k: 's', id: curId, m: S.mode, c: COLORS[S.color], mu: music.mode, f: +music.f0.toFixed(4) });
   if (S.mode !== 3) emitPoint(point2().map(r1));
 }
-function endStroke() { curId = null; }
+function endStroke() { if (curId !== null) emit({ k: 'e', id: curId }); curId = null; }
 function sample() {
   if (!S.pen || S.view || curId === null || RP.on) return;
   if (S.mode === 3) { const p = point3(); emitPoint([r3(p.x), r3(p.y), r3(p.z)]); }
@@ -246,15 +260,16 @@ function startReplay() {
     orbit.target.copy(c); cam.position.set(c.x + 3.5, c.y + 1.8, c.z + 4.5); orbit.update();
   }
   RP.ev = timeline(ops); RP.i = 0; RP.t0 = performance.now(); RP.on = true;
-  D.reset();
+  replayView = ops[0] && ops[0].k === 'h' && ops[0].view ? ops[0].view : null;
+  music.silence(); D.reset();
   for (const op of ops) if (op.k === 's') nextId = Math.max(nextId, op.id + 1);
 }
 function stepReplay(now) {
   const at = (now - RP.t0) * RP.speed;
-  while (RP.i < RP.ev.length && RP.ev[RP.i].at <= at) D.apply(RP.ev[RP.i++].op);
-  if (RP.i >= RP.ev.length) { RP.on = false; orbit.autoRotate = false; }
+  while (RP.i < RP.ev.length && RP.ev[RP.i].at <= at) (RP.quiet ? D.apply.bind(D) : play)(RP.ev[RP.i++].op);
+  if (RP.i >= RP.ev.length) { RP.on = false; RP.quiet = false; orbit.autoRotate = false; music.silence(); replayView = null; }
 }
-function stopReplay() { RP.t0 = -1e12; stepReplay(performance.now()); }
+function stopReplay() { RP.t0 = -1e12; RP.quiet = true; stepReplay(performance.now()); }
 
 // ---------- abrir: tus dibujos guardados, o un archivo (.jsonl, el rescate .json o una página exportada) ----------
 function openOps(ops, saveNow) {
@@ -310,16 +325,25 @@ async function exportPage() {
   const ops = currentOps();
   if (!ops.length) { flash('aún no hay nada que exportar'); return; }
   pump();
-  const [visor, lib] = await Promise.all([fetch('visor.html').then((r) => r.text()), fetch('trazos.js').then((r) => r.text())]);
+  const [visor, lib, mus] = await Promise.all(['visor.html', 'trazos.js', 'musica.js'].map((f) => fetch(f).then((r) => r.text())));
   const data = toJSONL(ops).replace(/</g, '\\u003c');
+  const inline = (code) => '<script>\n' + code.replace(/<\/script/gi, '<\\/script') + '</script>';
   const html = visor
-    .replace('<script src="trazos.js"></script>', () => '<script>\n' + lib.replace(/<\/script/gi, '<\\/script') + '</script>')
+    .replace('<script src="trazos.js"></script>', () => inline(lib))
+    .replace('<script src="musica.js"></script>', () => inline(mus))
     .replace('<script id="dibujo" type="application/x-ndjson"></script>', () => '<script id="dibujo" type="application/x-ndjson">\n' + data + '</script>');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
   a.download = `dibujo-${SAVE.id || 'abierto'}.html`; a.click();
   flash('exportado: ábrelo en cualquier navegador');
 }
+function bezel(d) {
+  if (music.mode !== 'pulsos') { nextColor(d); return; }
+  music.step(d);
+  if (curId !== null) emit({ k: 'f', f: +music.f0.toFixed(4) });   // cambiar el pulso a mitad de trazo también se guarda
+}
+function cycleMusic() { const m = music.nextMode(); flash(m === 'pulsos' ? 'pulsos: el bisel cambia el pulso' : m === 'arpa' ? 'arpa: el bisel cambia el instrumento' : 'sin sonido'); }
+$('musicbtn').addEventListener('click', cycleMusic);
 function flash(text) { const el = $('flash'); el.textContent = text; el.style.opacity = 1; clearTimeout(flash.t); flash.t = setTimeout(() => { el.style.opacity = 0; }, 2200); }
 $('replaybtn').addEventListener('click', () => (RP.on ? stopReplay() : startReplay()));
 $('exportbtn').addEventListener('click', exportPage);
@@ -345,7 +369,7 @@ function setMode(m, keepCreative) {
     2: '<b>2D</b>: mantén el botón atrás y apunta con la muñeca para dibujar. Bisel: color.',
     3: '<b>3D</b>: apunta con la muñeca; atornilla para alejar o acercar el lápiz (' + depthTxt + ', <b>I</b> invierte). Mantén el botón atrás para pintar. '
       + '<b>F</b>: modo creativo (volar). <b>O</b>: orbitar con el ratón.',
-  }[m] + '<br>Se guarda solo · P: reproducir · X: exportar · R: recentrar · C: borrar · Z: deshacer · S: imagen · M: muñeca · Espacio: lápiz sin reloj';
+  }[m] + '<br>Se guarda solo · P: reproducir · X: exportar · N: sonido · K: color · R: recentrar · C: borrar · Z: deshacer · S: imagen · M: muñeca · Espacio: lápiz sin reloj';
 }
 function nextAxis1() { axis1 = (axis1 + 1) % AXES1.length; recenter(); setMode(1); }
 document.querySelectorAll('#modes button[data-m]').forEach((b) => b.addEventListener('click', () => {
@@ -364,6 +388,8 @@ addEventListener('keydown', (e) => {
   else if (e.key === 'z' || e.key === 'Z') { if (RP.on) stopReplay(); setPen(false); emit({ k: 'z', m: S.mode }); }
   else if (e.key === 'p' || e.key === 'P') { if (RP.on) stopReplay(); else startReplay(); }
   else if (e.key === 'x' || e.key === 'X') exportPage();
+  else if (e.key === 'n' || e.key === 'N') cycleMusic();
+  else if (e.key === 'k' || e.key === 'K') nextColor(1);
   else if (e.key === 's' || e.key === 'S') save();
   else if ((e.key === 'e' || e.key === 'E') && S.mode === 1) nextAxis1();
   else if (e.key === 'm' || e.key === 'M') toggleHand();
@@ -399,7 +425,7 @@ function connect() {
           if (v.key === 'back') setPen(v.pressed === true);
           continue;
         }
-        if (name === 'BEZEL') { nextColor(v.direction === 'CW' ? 1 : -1); continue; }
+        if (name === 'BEZEL') { bezel(v.direction === 'CW' ? 1 : -1); continue; }
         if (typeof v.x !== 'number') continue;
         S.lastSample = performance.now(); S.watch = true;
         if (name === 'GRAVITY') S.grav = [v.x, v.y, v.z];
@@ -421,6 +447,16 @@ function draw2(now) {
     g2.strokeStyle = '#1c2230'; g2.lineWidth = 1;
     for (let x = Math.floor(shift / 60) * 60; x < shift + W; x += 60) { g2.beginPath(); g2.moveTo(x, 0); g2.lineTo(x, H); g2.stroke(); }
     for (let y = H / 2 % 40; y < H; y += 40) { g2.beginPath(); g2.moveTo(shift, y); g2.lineTo(shift + W, y); g2.stroke(); }
+  }
+  if (music.mode === 'pulsos') {                                     // las franjas de cada razón
+    g2.fillStyle = '#ece9e122'; g2.font = '13px system-ui';
+    const shift1 = S.mode === 1 ? Math.max(0, paperX - W * 0.8) : 0;
+    for (let k = 1; k < MAX_RATIO; k++) {
+      const y = H * (1 - k / MAX_RATIO);
+      g2.fillRect(shift1, y, W, 1); g2.fillText(String(k + 1), shift1 + 8, y - 6);
+      if (S.mode === 2) { const x = W * k / MAX_RATIO; g2.fillRect(x, 0, 1, H); g2.fillText(String(k + 1), x + 6, H - 60); }
+    }
+    g2.fillText('1', shift1 + 8, H - 6);
   }
   g2.lineCap = 'round'; g2.lineJoin = 'round';
   for (const s of D.s2) {
@@ -454,6 +490,9 @@ function frame(now) {
   $('conn').textContent = (!S.connected ? 'sin servidor: reintentando…' : !S.watch ? 'servidor sí · reloj no conectado'
     : stale ? 'el reloj no manda datos · toca su pantalla' : `reloj · ${S.hz.toFixed(0)} Hz`) + saved;
   $('replaybtn').textContent = RP.on ? '■ Parar' : '▶ Reproducir';
+  const tipP = S.mode === 3 ? (() => { const v = point3(); return [v.x, v.y, v.z]; })() : point2();
+  $('music').textContent = describeMusic(music, S.mode, tipP, [innerWidth, innerHeight])
+    + (music.mode !== 'off' && !music.ready ? ' · toca la página para oírlo' : '');
 }
 setMode(2);
 requestAnimationFrame(frame);
