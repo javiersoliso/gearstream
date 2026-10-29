@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tornillo y tempo</title>
+  <style>
+    html, body { height: 100%; margin: 0; background: #0f1218; color: #ece9e1; font-family: system-ui, sans-serif; overflow: hidden; }
+    #c { position: fixed; inset: 0; width: 100%; height: 100%; }
+    .hud { position: fixed; pointer-events: none; }
+    #conn { right: 18px; top: 14px; font-size: 13px; color: #9aa3b2; text-align: right; }
+    #title { left: 20px; top: 14px; font-size: 14px; color: #9aa3b2; line-height: 1.6; }
+    #title b { color: #ece9e1; font-weight: 600; font-size: 18px; }
+    #bpm { right: 40px; top: 70px; text-align: right; }
+    #bpm .n { font-size: 96px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+    #bpm .u { font-size: 15px; color: #9aa3b2; }
+    #bpm .s { font-size: 14px; color: #9aa3b2; margin-top: 6px; }
+    #flash { left: 50%; top: 18%; transform: translateX(-50%); font-size: 40px; font-weight: 700; opacity: 0; transition: opacity 0.35s; white-space: nowrap; }
+    #help { left: 20px; bottom: 16px; font-size: 13px; color: #6c7686; line-height: 1.7; }
+    .cw { color: #58c4dd; } .ccw { color: #f0997b; }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div class="hud" id="title"><b>Tornillo y tempo</b><br>gira la muñeca como con un destornillador</div>
+  <div class="hud" id="conn">conectando…</div>
+  <div class="hud" id="bpm"><div class="n" id="bpmN">–</div><div class="u">giros por minuto</div><div class="s" id="bpmS">gira a un ritmo constante para medirlo</div></div>
+  <div class="hud" id="flash"></div>
+  <div class="hud" id="help">
+    <span class="cw">horario = atornillar</span> · <span class="ccw">antihorario = desatornillar</span> (mirando del codo a los dedos)<br>
+    giro fuerte (más de 200 °/s): el tornillo avanza una vuelta entera · ritmo constante: el tempo<br>
+    botón atrás del reloj o Espacio: fijar el tempo y oír el metrónomo · I: invertir sentido · 0: sacar el tornillo
+  </div>
+  <script src="flick.js"></script>
+  <script src="tempo.js"></script>
+</body>
+</html>

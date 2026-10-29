@@ -131,9 +131,13 @@ Una ventana que muestra tu Wi-Fi y la IP de la laptop, busca el reloj en la red 
 
 `http://localhost:8765/game.html` (o el botón Juego del lanzador). Apuntas con la muñeca y **empujas la mano hacia la pantalla** para lanzar un dardo: la fuerza del empujón es la profundidad, suave llega a los globos cercanos y fuerte a los lejanos, que valen el triple. El empujón es la aceleración a lo largo del antebrazo (eje x del reloj, sin gravedad); la escala se adapta a tu fuerza. Botón atrás del reloj: empezar y recentrar la mira. Sin reloj se juega con el ratón y las teclas 1, 2 y 3. Apaga el ratón aéreo mientras juegas.
 
+## Tornillo y tempo
+
+`http://localhost:8765/tempo.html`. Gira la muñeca como con un destornillador: el antebrazo es el eje x del reloj, así que el giro es ω_x del giroscopio, y su signo es el sentido (mirando del codo a los dedos, horario = atornillar). Un giro fuerte, de más de 200 °/s, avanza o saca el tornillo una vuelta entera: apuntando con el ratón, los giros accidentales del dataset nunca pasaron de 117 °/s. Un ritmo constante de giros da el tempo en giros por minuto; con el botón atrás o Espacio se fija y suena un metrónomo. Detector en `server/web/flick.js`, probado con el dataset en `tools/test_flick.js`.
+
 ## Gestos nuevos
 
-`tools/guided_capture.py` graba un gesto guiado por pitidos y luego movimiento normal; `tools/analyze_gesture.py` dice si el gesto se distingue. Con `--device IP` lee el acelerómetro directo a 200 Hz (con la pantalla del reloj encendida: apagada, el reloj baja los sensores a unas 45 muestras por segundo).
+`tools/dataset_capture.py` (consola) o `http://localhost:8765/dataset.html` graban un dataset guiado de 13 gestos con etiquetas; `tools/analyze_dataset.py recordings/<sesión>` dice cuáles se distinguen. `tools/guided_capture.py` graba un gesto guiado por pitidos y luego movimiento normal; `tools/analyze_gesture.py` dice si el gesto se distingue. Con `--device IP` lee el acelerómetro directo a 200 Hz (con la pantalla del reloj encendida: apagada, el reloj baja los sensores a unas 45 muestras por segundo).
 
 ## Ratón aéreo (el reloj como cursor)
 
