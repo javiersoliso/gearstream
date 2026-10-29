@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dibuja con el reloj</title>
+  <style>
+    html, body { height: 100%; margin: 0; background: #10131a; color: #ece9e1; font-family: system-ui, sans-serif; overflow: hidden; }
+    canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+    #c3 { display: none; }
+    .hud { position: fixed; pointer-events: none; font-size: 13px; color: #9aa3b2; }
+    #top { left: 0; right: 0; top: 0; display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; pointer-events: auto; }
+    #modes { display: flex; gap: 6px; }
+    #modes button { font: inherit; font-size: 15px; padding: 6px 16px; border-radius: 10px; border: 1px solid #2c3546; background: #171c26; color: #ece9e1; cursor: pointer; }
+    #modes button.on { border-color: #58c4dd; background: #1f3440; }
+    #conn { text-align: right; }
+    #pen { left: 50%; top: 58px; transform: translateX(-50%); font-size: 15px; color: #ece9e1; }
+    #swatch { display: inline-block; width: 14px; height: 14px; border-radius: 50%; vertical-align: -2px; margin-left: 6px; border: 1px solid #fff4; }
+    #help { left: 18px; bottom: 14px; line-height: 1.7; }
+    b { color: #ece9e1; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <canvas id="c2"></canvas>
+  <canvas id="c3"></canvas>
+  <div class="hud" id="top">
+    <div id="modes"><button data-m="1">1D sismógrafo</button><button data-m="2" class="on">2D lienzo</button><button data-m="3">3D espacio</button></div>
+    <div id="conn">conectando…</div>
+  </div>
+  <div class="hud" id="pen">lápiz arriba<span id="swatch"></span></div>
+  <div class="hud" id="help"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="dibuja.js"></script>
+</body>
+</html>

@@ -127,6 +127,10 @@ python tools/launcher.py
 
 Una ventana que muestra tu Wi-Fi y la IP de la laptop, busca el reloj en la red (o escribes su IP: en el hotspot del teléfono la búsqueda a veces no lo ve), arranca el servidor y el puente, y abre con un botón el juego, el avatar, el dashboard, la calibración o el ratón aéreo. Mide la red con ping y agrupa muestras solo si hace falta. Para el puente y el ratón con Ctrl+Break, para que limpien el reloj al salir.
 
+## Dibuja en 1D, 2D y 3D
+
+`http://localhost:8765/dibuja.html`. Mantén el botón atrás del reloj para bajar el lápiz y gira el bisel para cambiar de color. **2D**: apuntas con la muñeca y dibujas en un lienzo (la "sombra" de un puntero: lo que mejor reconstruye tus trazos en los datos). **3D**: la muñeca da la dirección y girar el antebrazo como atornillando da la profundidad (horario aleja); con O orbitas el dibujo. **1D**: un sismógrafo, la muñeca mueve la aguja y el papel corre solo. R recentra, Z deshace, S guarda la imagen.
+
 ## Juego: Revienta globos
 
 `http://localhost:8765/game.html` (o el botón Juego del lanzador). Apuntas con la muñeca y **empujas la mano hacia la pantalla** para lanzar un dardo: la fuerza del empujón es la profundidad, suave llega a los globos cercanos y fuerte a los lejanos, que valen el triple. El empujón es la aceleración a lo largo del antebrazo (eje x del reloj, sin gravedad); la escala se adapta a tu fuerza. Botón atrás del reloj: empezar y recentrar la mira. Sin reloj se juega con el ratón y las teclas 1, 2 y 3. Apaga el ratón aéreo mientras juegas.
