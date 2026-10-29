@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dibujo con el reloj</title>
+  <style>
+    html, body { height: 100%; margin: 0; background: #10131a; color: #ece9e1; font-family: system-ui, sans-serif; overflow: hidden; }
+    canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+    #bar { position: fixed; left: 0; right: 0; top: 0; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; padding: 12px 16px; }
+    #bar button { font: inherit; font-size: 15px; padding: 6px 14px; border-radius: 10px; border: 1px solid #2c3546; background: #171c26; color: #ece9e1; cursor: pointer; }
+    #bar button.on { border-color: #58c4dd; background: #1f3440; }
+    #info { margin-left: auto; font-size: 13px; color: #9aa3b2; }
+    #msg { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); color: #9aa3b2; }
+  </style>
+</head>
+<body>
+  <canvas id="c2"></canvas>
+  <canvas id="c3"></canvas>
+  <div id="bar"><span id="tabs"></span><button id="play">▶ Reproducir</button><button id="speed">×2</button><span id="info"></span></div>
+  <div id="msg">cargando…</div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="trazos.js"></script>
+  <script id="dibujo" type="application/x-ndjson"></script>
+  <script>
+  // Visor de un dibujo hecho con el reloj: lo reproduce como timelapse. Sirve igual servido por GearStream
+  // (visor.html?f=dibujo-AAAAMMDD-HHMMSS.jsonl) que exportado desde Dibuja con el dibujo dentro.
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const SPEEDS = [1, 2, 4, 8];
+  const V = { ops: [], mode: 3, speed: 2, ev: [], i: 0, t0: 0, on: false, fit: null };
+
+  // 3D
+  const c3 = $('c3'), c2 = $('c2'), g2 = c2.getContext('2d');
+  const R = new THREE.WebGLRenderer({ canvas: c3, antialias: true, preserveDrawingBuffer: true });
+  R.setPixelRatio(Math.min(devicePixelRatio, 2));
+  const scene = new THREE.Scene(); scene.background = new THREE.Color(0x10131a); scene.fog = new THREE.Fog(0x10131a, 10, 30);
+  scene.add(new THREE.HemisphereLight(0xfff4e6, 0x6a5a8a, 0.9));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.6); sun.position.set(3, 6, 4); scene.add(sun);
+  const grid = new THREE.GridHelper(20, 20, 0x2c3546, 0x1c2230); grid.position.y = -1.4; scene.add(grid);
+  const cam = new THREE.PerspectiveCamera(60, 1, 0.05, 100);
+  const orbit = new THREE.OrbitControls(cam, c3); orbit.autoRotate = true; orbit.autoRotateSpeed = 1.2; orbit.enableDamping = true;
+  let blob = null;
+  const _m = new THREE.Matrix4(), _c = new THREE.Color();
+  const D = new Drawing({
+    blob: (q, color) => {
+      if (!blob || blob.count >= blob.instanceMatrix.count) return;
+      _m.makeTranslation(q[0], q[1], q[2]); blob.setMatrixAt(blob.count, _m); blob.setColorAt(blob.count, _c.set(color)); blob.count++;
+      blob.instanceMatrix.needsUpdate = true; blob.instanceColor.needsUpdate = true;
+    },
+    truncate3: (n) => { if (blob) { blob.count = n; blob.instanceMatrix.needsUpdate = true; } },
+  });
+
+  function resize() {
+    const d = Math.min(devicePixelRatio, 2);
+    c2.width = innerWidth * d; c2.height = innerHeight * d; g2.setTransform(d, 0, 0, d, 0, 0);
+    R.setSize(innerWidth, innerHeight, false); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix();
+  }
+  addEventListener('resize', resize);
+
+  function load(text) {
+    V.ops = parseDrawing(text);
+    const modes = modesOf(V.ops);
+    if (!modes.length) { $('msg').textContent = 'este dibujo está vacío'; return; }
+    $('msg').textContent = '';
+    // lo más grande que llega a ser el dibujo 3D (para reservar las bolitas) y dónde está
+    let n = 0, most = 0;
+    const box = new THREE.Box3();
+    const dry = new Drawing({ blob: (q) => { n++; most = Math.max(most, n); box.expandByPoint(new THREE.Vector3(q[0], q[1], q[2])); }, truncate3: (k) => { n = k; } });
+    for (const op of V.ops) dry.apply(op);
+    if (most) {
+      blob = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.035, 0), new THREE.MeshStandardMaterial({ flatShading: true, roughness: 0.6 }), most);
+      blob.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(most * 3), 3);
+      blob.count = 0; scene.add(blob);
+      const c = box.getCenter(new THREE.Vector3()), r = Math.max(1, box.getSize(new THREE.Vector3()).length() / 2);
+      orbit.target.copy(c); cam.position.set(c.x + 0.8 * r, c.y + 0.5 * r, c.z + 1.6 * r); orbit.update();
+    }
+    const head = V.ops.find((o) => o.k === 'h') || {};
+    const when = head.start ? new Date(head.start).toLocaleString() : '';
+    $('info').textContent = [when, head.hand === 'right' ? 'muñeca derecha' : head.hand === 'left' ? 'muñeca izquierda' : '', head.rescued ? 'rescatado' : '']
+      .filter(Boolean).join(' · ');
+    const names = { 1: '1D', 2: '2D', 3: '3D' };
+    $('tabs').innerHTML = modes.length > 1 ? modes.map((m) => `<button data-m="${m}">${names[m]}</button>`).join(' ') : '';
+    $('tabs').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => setMode(Number(b.dataset.m))));
+    setMode(modes.includes(3) ? 3 : modes[modes.length - 1]);
+    play();
+  }
+
+  function setMode(m) {
+    V.mode = m;
+    $('tabs').querySelectorAll('button').forEach((b) => b.classList.toggle('on', Number(b.dataset.m) === m));
+    c3.style.display = m === 3 ? 'block' : 'none'; c2.style.display = m === 3 ? 'none' : 'block';
+    // 2D y 1D: el dibujo entero cabe en la pantalla
+    const dry = new Drawing();
+    for (const op of V.ops) dry.apply(op);
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const s of dry.s2) if (s.mode === m) for (const [x, y] of s.pts) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+    V.fit = isFinite(x0) ? { x0, y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) } : null;
+  }
+
+  function play() {
+    V.ev = timeline(V.ops); V.i = 0; V.t0 = performance.now(); V.on = true;
+    D.reset(); orbit.autoRotate = true;
+  }
+  function step(now) {
+    const at = (now - V.t0) * V.speed;
+    while (V.i < V.ev.length && V.ev[V.i].at <= at) D.apply(V.ev[V.i++].op);
+    if (V.i >= V.ev.length) V.on = false;
+  }
+  $('play').addEventListener('click', () => { if (V.on) { V.t0 = -1e12; step(performance.now()); } else play(); });
+  $('speed').addEventListener('click', () => { const k = (SPEEDS.indexOf(V.speed) + 1) % SPEEDS.length; const now = performance.now(); const at = (now - V.t0) * V.speed; V.speed = SPEEDS[k]; V.t0 = now - at / V.speed; $('speed').textContent = '×' + V.speed; });
+  c3.addEventListener('pointerdown', () => { orbit.autoRotate = false; });
+
+  function draw2() {
+    const W = innerWidth, H = innerHeight;
+    g2.fillStyle = '#10131a'; g2.fillRect(0, 0, W, H);
+    if (!V.fit) return;
+    const pad = 60, top = 70, k = Math.min((W - 2 * pad) / V.fit.w, (H - top - pad) / V.fit.h, 3);
+    const ox = (W - k * V.fit.w) / 2 - k * V.fit.x0, oy = top + (H - top - pad - k * V.fit.h) / 2 - k * V.fit.y0;
+    g2.lineCap = 'round'; g2.lineJoin = 'round'; g2.lineWidth = Math.max(2, 4 * Math.min(k, 1.5));
+    for (const s of D.s2) {
+      if (s.mode !== V.mode || s.pts.length < 2) continue;
+      g2.strokeStyle = s.color; g2.beginPath(); g2.moveTo(ox + k * s.pts[0][0], oy + k * s.pts[0][1]);
+      for (const [x, y] of s.pts) g2.lineTo(ox + k * x, oy + k * y);
+      g2.stroke();
+    }
+  }
+  function frame(now) {
+    requestAnimationFrame(frame);
+    if (V.on) step(now);
+    $('play').textContent = V.on ? '■ Parar' : '▶ Reproducir';
+    if (V.mode === 3) { orbit.update(); R.render(scene, cam); } else draw2();
+  }
+
+  resize();
+  requestAnimationFrame(frame);
+  const embedded = $('dibujo').textContent.trim();
+  const f = new URLSearchParams(location.search).get('f');
+  if (embedded) load(embedded);
+  else if (f) fetch('/dibujos/' + encodeURIComponent(f)).then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); }).then(load)
+    .catch(() => { $('msg').textContent = 'no encontré ese dibujo'; });
+  else $('msg').textContent = 'abre un dibujo desde Dibuja (botón Abrir → visor)';
+  </script>
+</body>
+</html>

@@ -10,6 +10,9 @@
 //       (roll, como atornillar: horario aleja, antihorario acerca). Arrastra con el ratón para orbitar.
 //   Modo creativo (F, en 3D): vuelas libre como en Minecraft creativo (WASD, E sube, Q baja, arrastrar con
 //       el ratón para mirar, rueda para avanzar) y el lápiz va delante de ti, apuntado con la muñeca.
+// Todo se guarda solo en el servidor mientras dibujas (recordings/dibujos/, formato en trazos.js). Abrir:
+// tus dibujos guardados. P: reproducirlo como timelapse. X: exportarlo como una página que se ve en cualquier
+// lado (visor.html con el dibujo dentro).
 //   (El botón de inicio del reloj es también el de encendido: mantenerlo abre el asistente o el menú de
 //   apagado y puede reiniciar el reloj, así que la página no lo usa.)
 'use strict';
@@ -52,6 +55,7 @@ function toggleHand() { wrist.toggleHand(); recenter(); showHand(); }
 showHand();
 $('hand').addEventListener('click', toggleHand);
 function setPen(down) {
+  if (down && RP.on) { stopReplay(); return; }
   if (down === S.pen) return;
   S.pen = down;
   if (down) startStroke(); else endStroke();
@@ -65,7 +69,6 @@ nextColor(0);
 
 // ---------- 2D y 1D: lienzo ----------
 const c2 = $('c2'), g2 = c2.getContext('2d');
-const strokes2 = [];                    // {mode, color, pts:[[x,y]]}
 let paperX = 0;                         // 1D: cuánto ha corrido el papel
 function resize2() { const d = Math.min(devicePixelRatio, 2); c2.width = innerWidth * d; c2.height = innerHeight * d; g2.setTransform(d, 0, 0, d, 0, 0); }
 addEventListener('resize', resize2); resize2();
@@ -94,7 +97,8 @@ const cam = new THREE.PerspectiveCamera(60, 1, 0.05, 100); cam.position.set(0, 0
 const orbit = new THREE.OrbitControls(cam, c3); orbit.target.set(0, 0, -3); orbit.enabled = false;
 const MAXB = 40000;
 const blob = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.035, 0), new THREE.MeshStandardMaterial({ flatShading: true, roughness: 0.6 }), MAXB);
-blob.count = 0; blob.instanceMatrix.setUsage(THREE.DynamicDrawUsage); scene.add(blob);
+blob.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAXB * 3), 3);   // con su tamaño: si nace con count 0 queda vacío
+blob.count = 0; blob.instanceMatrix.setUsage(THREE.DynamicDrawUsage); blob.instanceColor.setUsage(THREE.DynamicDrawUsage); scene.add(blob);
 const tip = new THREE.Mesh(new THREE.IcosahedronGeometry(0.06, 0), new THREE.MeshStandardMaterial({ color: 0xffffff, flatShading: true, emissive: 0x222222 }));
 scene.add(tip);
 const ray = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), new THREE.LineBasicMaterial({ color: 0x3a4658 }));
@@ -152,32 +156,173 @@ c3.addEventListener('wheel', (e) => {
   e.preventDefault();
   cam.position.addScaledVector(new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion), -e.deltaY * 0.004);
 }, { passive: false });
-let last3 = null;
-function addBlob(pos) {
+function addBlob(q, color) {
   if (blob.count >= MAXB) return;
-  _m.makeTranslation(pos.x, pos.y, pos.z); blob.setMatrixAt(blob.count, _m);
-  blob.setColorAt(blob.count, _c.set(COLORS[S.color])); blob.count++;
-  blob.instanceMatrix.needsUpdate = true; if (blob.instanceColor) blob.instanceColor.needsUpdate = true;
+  _m.makeTranslation(q[0], q[1], q[2]); blob.setMatrixAt(blob.count, _m);
+  blob.setColorAt(blob.count, _c.set(color)); blob.count++;
+  blob.instanceMatrix.needsUpdate = true; blob.instanceColor.needsUpdate = true;
 }
 
+// ---------- el dibujo: operaciones que se aplican, se guardan y se reproducen (trazos.js) ----------
+const D = new Drawing({
+  blob: addBlob,                                                       // 3D: las bolitas, cada 2 cm del trazo
+  truncate3: (n) => { blob.count = Math.min(n, MAXB); blob.instanceMatrix.needsUpdate = true; },
+});
+const SAVE = { id: null, t0: 0, ops: [], queue: [], pend: null, seq: 0, outbox: [], base: null };
+let nextId = 1, curId = null;
+const pad2 = (n) => String(n).padStart(2, '0');
+function newSessionId() {
+  const d = new Date();
+  return `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}-${pad2(d.getHours())}${pad2(d.getMinutes())}${pad2(d.getSeconds())}`;
+}
+function clock() { if (!SAVE.id) beginSession(); return Math.round(performance.now() - SAVE.t0); }
+function beginSession() {                // la primera operación abre el archivo; si abriste un dibujo, va entero delante
+  let base = SAVE.base || [];
+  SAVE.base = null;
+  SAVE.id = newSessionId(); SAVE.ops = []; SAVE.seq = 0;
+  let lastT = 0;
+  for (const op of base) for (const t of op.k === 'p' ? op.pts.map((p) => p[p.length - 1]) : [op.t]) if (t > lastT) lastT = t;
+  SAVE.t0 = performance.now() - (base.length ? lastT + 1000 : 0);
+  const head = { k: 'h', v: 1, start: new Date().toISOString(), hand: wrist.hand, view: [innerWidth, innerHeight] };
+  if (base.length && base[0].k === 'h') { if (base[0].start) head.from = base[0].start; base = base.slice(1); }
+  record(head);
+  for (const op of base) record(op);
+}
+function record(op) { flushPoints(); SAVE.ops.push(op); SAVE.queue.push(op); }
+function flushPoints() { if (SAVE.pend) { const p = SAVE.pend; SAVE.pend = null; SAVE.ops.push(p); SAVE.queue.push(p); } }
+function emit(op) { op.t = clock(); record(op); D.apply(op); }
+function emitPoint(xy) {
+  const pt = [...xy, clock()];
+  D.apply({ k: 'p', id: curId, pts: [pt] });
+  if (SAVE.pend && SAVE.pend.id === curId) SAVE.pend.pts.push(pt);
+  else { flushPoints(); SAVE.pend = { k: 'p', id: curId, pts: [pt] }; }
+}
+function batch() {                       // lo pendiente pasa a un lote numerado para el servidor
+  flushPoints();
+  if (SAVE.queue.length) SAVE.outbox.push({ id: SAVE.id, seq: SAVE.seq++, lines: SAVE.queue.splice(0), sent: false });
+}
+function pump() {
+  batch();
+  const b = SAVE.outbox[0];
+  if (b && !b.sent && S.ws && S.ws.readyState === WebSocket.OPEN) {
+    S.ws.send(JSON.stringify({ type: 'dibujo', id: b.id, seq: b.seq, lines: b.lines }));
+    b.sent = true;
+  }
+}
+setInterval(pump, 1000);
+addEventListener('pagehide', pump);
+addEventListener('beforeunload', (e) => { batch(); if (SAVE.outbox.length) { pump(); e.preventDefault(); e.returnValue = ''; } });
+const currentOps = () => { flushPoints(); return SAVE.id ? SAVE.ops : (SAVE.base || []); };
+
 // ---------- trazos ----------
-let cur = null;
+const r1 = (x) => Math.round(x * 10) / 10, r3 = (x) => Math.round(x * 1000) / 1000;
 function startStroke() {
-  if (S.mode === 3) { last3 = null; return; }
-  cur = { mode: S.mode, color: COLORS[S.color], pts: [point2()] };
-  strokes2.push(cur);
+  if (RP.on) return;
+  curId = nextId++;
+  emit({ k: 's', id: curId, m: S.mode, c: COLORS[S.color] });
+  if (S.mode !== 3) emitPoint(point2().map(r1));
 }
-function endStroke() { cur = null; last3 = null; }
+function endStroke() { curId = null; }
 function sample() {
-  if (!S.pen || S.view) return;
-  if (S.mode === 3) {
-    const p = point3();
-    if (!last3) { addBlob(p); last3 = p; return; }
-    const d = p.distanceTo(last3), n = Math.min(40, Math.ceil(d / 0.02));     // rellenar huecos: trazo continuo
-    for (let k = 1; k <= n; k++) addBlob(last3.clone().lerp(p, k / n));
-    last3 = p;
-  } else if (cur) cur.pts.push(point2());
+  if (!S.pen || S.view || curId === null || RP.on) return;
+  if (S.mode === 3) { const p = point3(); emitPoint([r3(p.x), r3(p.y), r3(p.z)]); }
+  else emitPoint(point2().map(r1));
 }
+
+// ---------- reproducir: el dibujo vuelve a pasar como timelapse ----------
+const RP = { on: false, ev: [], i: 0, t0: 0, speed: 2 };
+function startReplay() {
+  const ops = currentOps();
+  if (!ops.length) { flash('aún no hay nada que reproducir'); return; }
+  setPen(false);
+  const modes = modesOf(ops);
+  if (modes.length && !modes.includes(S.mode)) setMode(modes.includes(3) ? 3 : modes[modes.length - 1]);
+  if (S.mode === 3) {                    // vista en órbita alrededor del dibujo, girando sola
+    if (S.creative) setCreative(false);
+    const c = new THREE.Vector3(); let n = 0;
+    for (const s of D.s3) for (let i = 0; i < s.pts.length; i += 5) { c.x += s.pts[i][0]; c.y += s.pts[i][1]; c.z += s.pts[i][2]; n++; }
+    if (n) c.divideScalar(n); else c.set(0, 0, -3);
+    orbit.enabled = true; orbit.autoRotate = true; orbit.autoRotateSpeed = 1.2;
+    orbit.target.copy(c); cam.position.set(c.x + 3.5, c.y + 1.8, c.z + 4.5); orbit.update();
+  }
+  RP.ev = timeline(ops); RP.i = 0; RP.t0 = performance.now(); RP.on = true;
+  D.reset();
+  for (const op of ops) if (op.k === 's') nextId = Math.max(nextId, op.id + 1);
+}
+function stepReplay(now) {
+  const at = (now - RP.t0) * RP.speed;
+  while (RP.i < RP.ev.length && RP.ev[RP.i].at <= at) D.apply(RP.ev[RP.i++].op);
+  if (RP.i >= RP.ev.length) { RP.on = false; orbit.autoRotate = false; }
+}
+function stopReplay() { RP.t0 = -1e12; stepReplay(performance.now()); }
+
+// ---------- abrir: tus dibujos guardados, o un archivo (.jsonl, el rescate .json o una página exportada) ----------
+function openOps(ops, saveNow) {
+  if (RP.on) stopReplay();
+  setPen(false);
+  batch();                               // lo que quedaba del dibujo anterior sale con su propio nombre
+  D.reset(); paperX = 0;
+  const modeOf = new Map();
+  for (const op of ops) {
+    if (op.k === 'h') continue;
+    D.apply(op);
+    if (op.k === 's') { nextId = Math.max(nextId, op.id + 1); modeOf.set(op.id, op.m); }
+    if (op.k === 'p' && modeOf.get(op.id) === 1) for (const p of op.pts) paperX = Math.max(paperX, p[0]);   // 1D: el papel sigue donde iba
+  }
+  SAVE.id = null; SAVE.ops = []; SAVE.base = ops;
+  if (saveNow) clock();                  // vino de fuera: se guarda ya como dibujo nuevo
+  $('open').style.display = 'none';
+  startReplay();
+}
+async function showOpen() {
+  const box = $('open');
+  if (box.style.display === 'block') { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  const list = $('openlist');
+  list.textContent = 'buscando…';
+  let files = [];
+  try { files = await (await fetch('/dibujos/')).json(); } catch { list.textContent = 'el servidor no respondió'; return; }
+  list.textContent = files.length ? '' : 'todavía no hay dibujos guardados';
+  for (const f of files) {
+    const m = f.name.match(/(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})/);
+    const row = document.createElement('div'); row.className = 'row';
+    const go = document.createElement('button');
+    go.textContent = m ? `${m[3]}/${m[2]} ${m[4]}:${m[5]}` : f.name;
+    go.title = `${f.name} · ${(f.bytes / 1024).toFixed(0)} KB`;
+    go.addEventListener('click', async () => { openOps(parseDrawing(await (await fetch('/dibujos/' + f.name)).text()), false); });
+    const size = document.createElement('span'); size.textContent = `${(f.bytes / 1024).toFixed(0)} KB`;
+    const view = document.createElement('a'); view.href = 'visor.html?f=' + encodeURIComponent(f.name); view.target = '_blank'; view.textContent = 'visor';
+    row.append(go, size, view); list.append(row);
+  }
+}
+$('openbtn').addEventListener('click', showOpen);
+$('openfile').addEventListener('change', async (e) => {
+  const file = e.target.files[0]; e.target.value = '';
+  if (!file) return;
+  let text = await file.text();
+  const emb = text.match(/<script id="dibujo" type="application\/x-ndjson">([\s\S]*?)<\/script>/);
+  if (emb) text = emb[1];
+  try { openOps(parseDrawing(text), true); } catch (err) { flash('no entendí ese archivo'); }
+});
+
+// ---------- exportar: una página con el dibujo dentro, que se reproduce en cualquier navegador ----------
+async function exportPage() {
+  const ops = currentOps();
+  if (!ops.length) { flash('aún no hay nada que exportar'); return; }
+  pump();
+  const [visor, lib] = await Promise.all([fetch('visor.html').then((r) => r.text()), fetch('trazos.js').then((r) => r.text())]);
+  const data = toJSONL(ops).replace(/</g, '\\u003c');
+  const html = visor
+    .replace('<script src="trazos.js"></script>', () => '<script>\n' + lib.replace(/<\/script/gi, '<\\/script') + '</script>')
+    .replace('<script id="dibujo" type="application/x-ndjson"></script>', () => '<script id="dibujo" type="application/x-ndjson">\n' + data + '</script>');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+  a.download = `dibujo-${SAVE.id || 'abierto'}.html`; a.click();
+  flash('exportado: ábrelo en cualquier navegador');
+}
+function flash(text) { const el = $('flash'); el.textContent = text; el.style.opacity = 1; clearTimeout(flash.t); flash.t = setTimeout(() => { el.style.opacity = 0; }, 2200); }
+$('replaybtn').addEventListener('click', () => (RP.on ? stopReplay() : startReplay()));
+$('exportbtn').addEventListener('click', exportPage);
 
 // ---------- modos, teclado y ratón ----------
 function setMode(m, keepCreative) {
@@ -193,14 +338,14 @@ function setMode(m, keepCreative) {
     ? '<b>Creativo</b>: vuela con <b>W A S D</b>, <b>E</b> sube, <b>Q</b> baja (Mayús: rápido), arrastra para mirar, rueda para avanzar. '
       + 'El lápiz va delante de ti: apúntalo con la muñeca, '
       + 'atornilla para alejarlo (' + depthTxt + ', <b>I</b> invierte) y mantén el botón atrás para pintar. <b>F</b>: salir'
-      + '<br>R: recentrar · C: borrar · Z: deshacer · Espacio: lápiz sin reloj'
+      + '<br>R: recentrar · C: borrar · Z: deshacer · P: reproducir · X: exportar · Espacio: lápiz sin reloj'
     : {
     1: '<b>1D · ' + AXES1[axis1].name + '</b>: mantén el botón atrás y ' + AXES1[axis1].how + ': la aguja escribe y el papel corre solo. '
       + '<b>E</b> o el botón 1D otra vez: cambiar de eje.',
     2: '<b>2D</b>: mantén el botón atrás y apunta con la muñeca para dibujar. Bisel: color.',
     3: '<b>3D</b>: apunta con la muñeca; atornilla para alejar o acercar el lápiz (' + depthTxt + ', <b>I</b> invierte). Mantén el botón atrás para pintar. '
       + '<b>F</b>: modo creativo (volar). <b>O</b>: orbitar con el ratón.',
-  }[m] + '<br>R: recentrar · C: borrar · Z: deshacer · S: guardar imagen · M: muñeca izquierda o derecha · Espacio: lápiz sin reloj';
+  }[m] + '<br>Se guarda solo · P: reproducir · X: exportar · R: recentrar · C: borrar · Z: deshacer · S: imagen · M: muñeca · Espacio: lápiz sin reloj';
 }
 function nextAxis1() { axis1 = (axis1 + 1) % AXES1.length; recenter(); setMode(1); }
 document.querySelectorAll('#modes button[data-m]').forEach((b) => b.addEventListener('click', () => {
@@ -215,8 +360,10 @@ addEventListener('keydown', (e) => {
   if (e.key === 'i' || e.key === 'I') { S.depthSign = -S.depthSign; setMode(S.mode, true); return; }
   if (e.code === 'Space') { e.preventDefault(); setPen(true); }
   else if (e.key === 'r' || e.key === 'R') recenter();
-  else if (e.key === 'c' || e.key === 'C') { strokes2.length = 0; blob.count = 0; blob.instanceMatrix.needsUpdate = true; }
-  else if (e.key === 'z' || e.key === 'Z') { if (S.mode === 3) { blob.count = Math.max(0, blob.count - 300); blob.instanceMatrix.needsUpdate = true; } else strokes2.pop(); }
+  else if (e.key === 'c' || e.key === 'C') { if (RP.on) stopReplay(); setPen(false); emit({ k: 'c' }); }
+  else if (e.key === 'z' || e.key === 'Z') { if (RP.on) stopReplay(); setPen(false); emit({ k: 'z', m: S.mode }); }
+  else if (e.key === 'p' || e.key === 'P') { if (RP.on) stopReplay(); else startReplay(); }
+  else if (e.key === 'x' || e.key === 'X') exportPage();
   else if (e.key === 's' || e.key === 'S') save();
   else if ((e.key === 'e' || e.key === 'E') && S.mode === 1) nextAxis1();
   else if (e.key === 'm' || e.key === 'M') toggleHand();
@@ -234,13 +381,17 @@ function save() {
 // ---------- datos del reloj ----------
 function connect() {
   const ws = new WebSocket(`ws://${location.host}/ui`);
-  ws.onopen = () => { S.connected = true; };
+  S.ws = ws;
+  ws.onopen = () => { S.connected = true; if (SAVE.outbox[0]) SAVE.outbox[0].sent = false; pump(); };   // reenviar lo no confirmado
   ws.onclose = () => { S.connected = false; S.watch = false; setTimeout(connect, 1500); };
   ws.onmessage = (ev) => {
     let msg; try { msg = JSON.parse(ev.data); } catch { return; }
     if (msg.type === 'watch') S.watch = !!msg.connected;
     else if (msg.type === 'hello') { S.watch = true; S.lastT = null; }
-    else if (msg.type === 'data' && Array.isArray(msg.samples)) {
+    else if (msg.type === 'dibujo_ack') {
+      const b = SAVE.outbox[0];
+      if (b && b.id === msg.id && b.seq === msg.seq) { SAVE.outbox.shift(); pump(); }
+    } else if (msg.type === 'data' && Array.isArray(msg.samples)) {
       for (const s of msg.samples) {
         if (!Array.isArray(s) || s.length < 3 || !s[2] || typeof s[2] !== 'object') continue;
         const [name, t, v] = s;
@@ -272,7 +423,7 @@ function draw2(now) {
     for (let y = H / 2 % 40; y < H; y += 40) { g2.beginPath(); g2.moveTo(shift, y); g2.lineTo(shift + W, y); g2.stroke(); }
   }
   g2.lineCap = 'round'; g2.lineJoin = 'round';
-  for (const s of strokes2) {
+  for (const s of D.s2) {
     if (s.mode !== S.mode || s.pts.length < 2) continue;
     g2.strokeStyle = s.color; g2.lineWidth = 4; g2.beginPath(); g2.moveTo(...s.pts[0]);
     for (const p of s.pts) g2.lineTo(...p);
@@ -286,7 +437,8 @@ function draw2(now) {
 function frame(now) {
   requestAnimationFrame(frame);
   if (now - S.hzT >= 1000) { S.hz = S.hzCount * 1000 / (now - S.hzT); S.hzCount = 0; S.hzT = now; }
-  if (S.mode === 1 && S.pen && cur) cur.pts.push(point2());         // en 1D el papel corre aunque la muñeca no se mueva
+  if (RP.on) stepReplay(now);
+  if (S.mode === 1 && S.pen && curId !== null && !RP.on) emitPoint(point2().map(r1));   // en 1D el papel corre aunque la muñeca no se mueva
   const dt = Math.min(0.05, (now - (frame.last || now)) / 1000); frame.last = now;
   if (S.mode === 3) {
     if (S.creative) creativeStep(dt);
@@ -298,8 +450,10 @@ function frame(now) {
     R.render(scene, cam);
   } else draw2(now);
   const stale = now - S.lastSample > 600;
-  $('conn').textContent = !S.connected ? 'sin servidor: reintentando…' : !S.watch ? 'servidor sí · reloj no conectado'
-    : stale ? 'el reloj no manda datos · toca su pantalla' : `reloj · ${S.hz.toFixed(0)} Hz`;
+  const saved = !SAVE.id ? '' : (SAVE.outbox.length || SAVE.queue.length || SAVE.pend) ? ' · guardando…' : ' · guardado';
+  $('conn').textContent = (!S.connected ? 'sin servidor: reintentando…' : !S.watch ? 'servidor sí · reloj no conectado'
+    : stale ? 'el reloj no manda datos · toca su pantalla' : `reloj · ${S.hz.toFixed(0)} Hz`) + saved;
+  $('replaybtn').textContent = RP.on ? '■ Parar' : '▶ Reproducir';
 }
 setMode(2);
 requestAnimationFrame(frame);

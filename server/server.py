@@ -3,6 +3,8 @@
   ws://<ip>:8765/watch  <- the watch (or tools/fake_watch.py) connects here
   ws://<ip>:8765/ui     <- the dashboard connects here
   http://<ip>:8765/     -> dashboard (server/web)
+  http://<ip>:8765/dibujos/          -> lista de los dibujos guardados (JSON)
+  http://<ip>:8765/dibujos/<nombre>  -> un dibujo (JSON Lines, ver server/web/trazos.js)
 """
 import argparse
 import asyncio
@@ -22,6 +24,9 @@ from websockets.http11 import Response
 
 ROOT = Path(__file__).resolve().parent
 WEB_DIR = ROOT / "web"
+DRAW_DIR = ROOT.parent / "recordings" / "dibujos"   # main() lo cambia con --out
+DRAW_ID = re.compile(r"^\d{8}-\d{6}$")
+DRAW_NAME = re.compile(r"^dibujo-\d{8}-\d{6}\.jsonl$")
 CONTENT_TYPES = {
     ".html": "text/html; charset=utf-8",
     ".js": "text/javascript; charset=utf-8",
@@ -118,9 +123,32 @@ class Recorder:
             self.labels_file.close()
 
 
+class Drawings:
+    """Los dibujos de Dibuja: cada página manda sus operaciones en lotes numerados y aquí se añaden a
+    recordings/dibujos/dibujo-<id>.jsonl. El número de lote evita duplicados si un lote se reenvía."""
+
+    def __init__(self):
+        self.seq = {}
+
+    def append(self, msg):
+        did, seq, lines = msg.get("id"), msg.get("seq"), msg.get("lines")
+        if not (isinstance(did, str) and DRAW_ID.match(did) and isinstance(seq, int) and isinstance(lines, list)):
+            return False
+        if seq <= self.seq.get(did, -1):
+            return True                     # ya escrito: solo confirmar
+        DRAW_DIR.mkdir(parents=True, exist_ok=True)
+        with open(DRAW_DIR / f"dibujo-{did}.jsonl", "a", encoding="utf-8") as f:
+            for line in lines:
+                if isinstance(line, dict):
+                    f.write(json.dumps(line, ensure_ascii=False, separators=(",", ":")) + "\n")
+        self.seq[did] = seq
+        return True
+
+
 class Hub:
     def __init__(self, recorder, watch_urls):
         self.recorder = recorder
+        self.drawings = Drawings()
         self.watch_urls = watch_urls
         self.watches = set()
         self.uis = set()
@@ -187,10 +215,14 @@ class Hub:
                 await ws.send(json.dumps(self.hello))
             for st in list(self.status.values()):
                 await ws.send(json.dumps(st))
-            async for raw in ws:          # la página del dataset manda etiquetas; el resto solo escucha
+            async for raw in ws:          # el dataset manda etiquetas y Dibuja sus trazos; el resto solo escucha
                 try:
                     msg = json.loads(raw)
                 except ValueError:
+                    continue
+                if isinstance(msg, dict) and msg.get("type") == "dibujo" and len(raw) < 4 * 2**20:
+                    if self.drawings.append(msg):
+                        await ws.send(json.dumps({"type": "dibujo_ack", "id": msg["id"], "seq": msg["seq"]}))
                     continue
                 if isinstance(msg, dict) and msg.get("type") == "label" and len(raw) < 65536:
                     msg["t_server_ms"] = round(time.time() * 1000)
@@ -218,12 +250,25 @@ def serve_static(connection, request):
     path = request.path.split("?", 1)[0]
     if path == "/":
         path = "/index.html"
-    file = (WEB_DIR / path.lstrip("/")).resolve()
-    if WEB_DIR not in file.parents or not file.is_file():
-        return connection.respond(404, "Not found\n")
-    body = file.read_bytes()
+    ctype = None
+    if path == "/dibujos/":
+        files = sorted(DRAW_DIR.glob("dibujo-*.jsonl"), reverse=True) if DRAW_DIR.is_dir() else []
+        body = json.dumps([{"name": f.name, "bytes": f.stat().st_size, "mtime": round(f.stat().st_mtime * 1000)}
+                           for f in files]).encode()
+        ctype = CONTENT_TYPES[".json"]
+    elif path.startswith("/dibujos/"):
+        name = path[len("/dibujos/"):]
+        if not DRAW_NAME.match(name) or not (DRAW_DIR / name).is_file():
+            return connection.respond(404, "Not found\n")
+        body, ctype = (DRAW_DIR / name).read_bytes(), "application/x-ndjson; charset=utf-8"
+    else:
+        file = (WEB_DIR / path.lstrip("/")).resolve()
+        if WEB_DIR not in file.parents or not file.is_file():
+            return connection.respond(404, "Not found\n")
+        body = file.read_bytes()
+        ctype = CONTENT_TYPES.get(file.suffix, "application/octet-stream")
     headers = Headers([
-        ("Content-Type", CONTENT_TYPES.get(file.suffix, "application/octet-stream")),
+        ("Content-Type", ctype),
         ("Content-Length", str(len(body))),
         ("Cache-Control", "no-store"),
         ("Connection", "close"),
@@ -257,6 +302,8 @@ async def main():
     parser.add_argument("--no-record", action="store_true", help="no guardar CSV")
     args = parser.parse_args()
 
+    global DRAW_DIR
+    DRAW_DIR = Path(args.out) / "dibujos"      # los dibujos se guardan aunque no se graben los CSV
     recorder = Recorder(None if args.no_record else Path(args.out))
     watch_urls = [f"ws://{ip}:{args.port}/watch" for ip in lan_ips()]
     hub = Hub(recorder, watch_urls)

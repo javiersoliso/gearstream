@@ -10,11 +10,20 @@
     #c3 { display: none; }
     .hud { position: fixed; pointer-events: none; font-size: 13px; color: #9aa3b2; }
     #top { left: 0; right: 0; top: 0; display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; pointer-events: auto; }
-    #modes { display: flex; gap: 6px; }
-    #modes button { font: inherit; font-size: 15px; padding: 6px 16px; border-radius: 10px; border: 1px solid #2c3546; background: #171c26; color: #ece9e1; cursor: pointer; }
+    #modes { display: flex; gap: 6px; flex-wrap: wrap; }
+    #modes button { font: inherit; font-size: 15px; padding: 6px 16px; border-radius: 10px; border: 1px solid #2c3546; background: #171c26; color: #ece9e1; cursor: pointer; white-space: nowrap; }
     #modes button.on { border-color: #58c4dd; background: #1f3440; }
     #creative.on { border-color: #ffd166; background: #3a3220; }
     #conn { text-align: right; }
+    #open { right: 18px; top: 58px; width: min(300px, calc(100vw - 36px)); max-height: 60vh; overflow-y: auto; overflow-x: hidden; box-sizing: border-box; background: #171c26f2; border: 1px solid #2c3546; border-radius: 12px;
+            padding: 10px 12px; display: none; pointer-events: auto; }
+    #open .row { display: flex; align-items: center; gap: 10px; padding: 3px 0; }
+    #open .row button { font: inherit; color: #ece9e1; background: #10131a; border: 1px solid #2c3546; border-radius: 8px; padding: 4px 10px; cursor: pointer; }
+    #open .row span { flex: 1; }
+    #open a { color: #58c4dd; }
+    #open label { display: block; margin-top: 10px; color: #ece9e1; }
+    #open input { max-width: 100%; }
+    #flash { left: 50%; top: 96px; transform: translateX(-50%); font-size: 15px; color: #ffd166; opacity: 0; transition: opacity 0.4s; }
     #pen { left: 50%; top: 58px; transform: translateX(-50%); font-size: 15px; color: #ece9e1; }
     #swatch { display: inline-block; width: 14px; height: 14px; border-radius: 50%; vertical-align: -2px; margin-left: 6px; border: 1px solid #fff4; }
     #help { left: 18px; bottom: 14px; line-height: 1.7; }
@@ -25,14 +34,17 @@
   <canvas id="c2"></canvas>
   <canvas id="c3"></canvas>
   <div class="hud" id="top">
-    <div id="modes"><button data-m="1">1D sismógrafo</button><button data-m="2" class="on">2D lienzo</button><button data-m="3">3D espacio</button><button id="creative" style="display:none" title="F">Creativo (F)</button><button id="hand" title="M: en qué muñeca llevas el reloj"></button></div>
+    <div id="modes"><button data-m="1">1D sismógrafo</button><button data-m="2" class="on">2D lienzo</button><button data-m="3">3D espacio</button><button id="creative" style="display:none" title="F">Creativo (F)</button><button id="hand" title="M: en qué muñeca llevas el reloj"></button><button id="openbtn" title="tus dibujos guardados">Abrir</button><button id="replaybtn" title="P">▶ Reproducir</button><button id="exportbtn" title="X: una página con el dibujo que se ve en cualquier navegador">Exportar</button></div>
     <div id="conn">conectando…</div>
   </div>
+  <div class="hud" id="open"><div id="openlist"></div><label>o un archivo: <input type="file" id="openfile" accept=".jsonl,.json,.html"></label></div>
+  <div class="hud" id="flash"></div>
   <div class="hud" id="pen">lápiz arriba<span id="swatch"></span></div>
   <div class="hud" id="help"></div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
   <script src="wrist.js"></script>
+  <script src="trazos.js"></script>
   <script src="dibuja.js"></script>
 </body>
 </html>

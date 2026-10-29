@@ -30,6 +30,7 @@ import sys
 import time
 
 from websockets.asyncio.client import connect
+from websockets.exceptions import WebSocketException
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # python -I drops the script dir
 from sdb_client import SdbConnection, find_watch  # noqa: E402
@@ -495,7 +496,7 @@ async def main():
             await conn.run(CLEANUP_CMD)  # leftovers from a previous session
             await Bridge(conn, args.interval, args.flush_ms, sensors, args.batch,
                          inputs=inputs, bezel_positive=args.bezel_positive).run(args.url)
-        except (OSError, asyncio.TimeoutError, ConnectionError) as e:
+        except (OSError, asyncio.TimeoutError, ConnectionError, WebSocketException) as e:  # también si se reinicia el servidor
             print(f"se perdió el reloj ({e.__class__.__name__})")
         finally:
             try:
