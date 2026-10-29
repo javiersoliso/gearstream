@@ -119,6 +119,22 @@ Usa `--no-record` para no grabar y `--out <carpeta>` para grabar en otra parte.
 
 Las grabaciones son datos personales (pulso, movimiento) y **nunca salen de tu máquina**: `recordings/` está en `.gitignore`. Las llaves tampoco viven en el repositorio: la llave sdb está en `~/.tizen/sdbkey` o `~/.gearstream/sdbkey.json`, y el perfil del ratón aéreo en `~/.gearstream/airmouse.json`. Si quieres compartir una grabación de ejemplo, cópiala a otra carpeta a propósito.
 
+## Lanzador (sin comandos)
+
+```bash
+python tools/launcher.py
+```
+
+Una ventana que muestra tu Wi-Fi y la IP de la laptop, busca el reloj en la red (o escribes su IP: en el hotspot del teléfono la búsqueda a veces no lo ve), arranca el servidor y el puente, y abre con un botón el juego, el avatar, el dashboard, la calibración o el ratón aéreo. Mide la red con ping y agrupa muestras solo si hace falta. Para el puente y el ratón con Ctrl+Break, para que limpien el reloj al salir.
+
+## Juego: Revienta globos
+
+`http://localhost:8765/game.html` (o el botón Juego del lanzador). Apuntas con la muñeca y **empujas la mano hacia la pantalla** para lanzar un dardo: la fuerza del empujón es la profundidad, suave llega a los globos cercanos y fuerte a los lejanos, que valen el triple. El empujón es la aceleración a lo largo del antebrazo (eje x del reloj, sin gravedad); la escala se adapta a tu fuerza. Botón atrás del reloj: empezar y recentrar la mira. Sin reloj se juega con el ratón y las teclas 1, 2 y 3. Apaga el ratón aéreo mientras juegas.
+
+## Gestos nuevos
+
+`tools/guided_capture.py` graba un gesto guiado por pitidos y luego movimiento normal; `tools/analyze_gesture.py` dice si el gesto se distingue. Con `--device IP` lee el acelerómetro directo a 200 Hz (con la pantalla del reloj encendida: apagada, el reloj baja los sensores a unas 45 muestras por segundo).
+
 ## Ratón aéreo (el reloj como cursor)
 
 `tools/air_mouse.py` mueve el cursor de Windows con el giroscopio (apuntas con la muñeca), con clic y scroll desde el propio reloj:
@@ -168,4 +184,6 @@ server/web/calibrate.html  página de calibración del ratón aéreo
 server/web/avatar.html     avatar 3D del brazo (orbital, POV y plano del brazo) a partir de gravedad + giroscopio
 server/web/armfilter.js    filtro de partículas del codo: aceleración del reloj + límites del brazo (prueba: node tools/test_armfilter.js)
 phone/start.sh      arranque en Termux (servidor + puente en el teléfono)
+tools/launcher.py   ventana para conectar el reloj y abrir cada modo
+server/web/game.html  juego Revienta globos (apuntar con la muñeca, empujar hacia la pantalla)
 ```

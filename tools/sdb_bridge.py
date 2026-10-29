@@ -24,6 +24,7 @@ import asyncio
 import json
 import os
 import re
+import signal
 import struct
 import sys
 import time
@@ -432,6 +433,9 @@ class Bridge:
 
 
 async def main():
+    if hasattr(signal, "SIGBREAK"):   # el lanzador pide parar con Ctrl+Break: limpiar el reloj igual que con Ctrl+C
+        task, loop = asyncio.current_task(), asyncio.get_running_loop()
+        signal.signal(signal.SIGBREAK, lambda *_: loop.call_soon_threadsafe(task.cancel))
     parser = argparse.ArgumentParser(description="Puente reloj -> GearStream (sin instalar app)")
     parser.add_argument("--device", default="auto",
                         help="IP del reloj (puerto 26101); 'auto' lo busca en la red local")
@@ -501,5 +505,5 @@ async def main():
 if __name__ == "__main__":
     try:
         asyncio.run(main())
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, asyncio.CancelledError):
         pass

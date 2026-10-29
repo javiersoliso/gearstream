@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Revienta globos</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    html, body { height: 100%; margin: 0; overflow: hidden; background: #10141c; }
+    #gl { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+    .hud { position: fixed; color: #f4f3ef; font: 500 15px/1.4 system-ui, sans-serif; text-shadow: 0 1px 2px #0008; pointer-events: none; }
+    #score { left: 18px; top: 14px; font-size: 22px; }
+    #score small { display: block; font-size: 13px; font-weight: 400; opacity: 0.8; }
+    #conn { right: 18px; top: 14px; font-size: 13px; text-align: right; opacity: 0.9; }
+    #reticle { width: 44px; height: 44px; margin: -22px 0 0 -22px; border: 2px solid #f4f3ef; border-radius: 50%; box-shadow: 0 0 0 1px #0006; }
+    #reticle::after { content: ''; position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: #f4f3ef; }
+    #meter { left: 18px; bottom: 18px; width: 30px; height: 220px; border: 1px solid #f4f3ef88; border-radius: 8px; overflow: hidden; background: #0006; }
+    #meter .band { position: absolute; left: 0; right: 0; opacity: 0.35; }
+    #meter .live { position: absolute; left: 0; right: 0; bottom: 0; background: #f4f3ef; opacity: 0.7; }
+    #meter .last { position: absolute; left: -2px; right: -2px; height: 3px; background: #ffd166; }
+    #meterLabel { left: 56px; bottom: 18px; font-size: 12px; opacity: 0.85; line-height: 1.6; }
+    .panel { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(520px, calc(100% - 32px)); background: #1b2230ee; color: #f4f3ef; border-radius: 16px; padding: 22px 26px; font: 400 15px/1.6 system-ui, sans-serif; box-shadow: 0 10px 40px #0008; }
+    .panel h1 { margin: 0 0 6px; font-size: 26px; font-weight: 600; }
+    .panel ol { padding-left: 20px; margin: 10px 0; }
+    .panel .go { margin-top: 12px; font-weight: 600; color: #ffd166; }
+    .panel .keys { font-size: 12px; opacity: 0.7; margin-top: 8px; }
+    .lane-near { color: #5dcaa5; } .lane-mid { color: #ffd166; } .lane-far { color: #f0997b; }
+    #toast { left: 50%; top: 22%; transform: translateX(-50%); font-size: 28px; font-weight: 700; opacity: 0; transition: opacity 0.4s; }
+  </style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div class="hud" id="score">0 <small id="time">60 s · récord 0</small></div>
+  <div class="hud" id="conn">conectando…</div>
+  <div class="hud" id="reticle"></div>
+  <div class="hud" id="meter"><div class="band" style="bottom:0;height:33%;background:#5dcaa5"></div><div class="band" style="bottom:33%;height:34%;background:#ffd166"></div><div class="band" style="bottom:67%;height:33%;background:#f0997b"></div><div class="live" id="live"></div><div class="last" id="last" style="bottom:-5px"></div></div>
+  <div class="hud" id="meterLabel"><span class="lane-far">fuerte · lejos ×3</span><br><span class="lane-mid">medio ×2</span><br><span class="lane-near">suave · cerca ×1</span></div>
+  <div class="hud" id="toast"></div>
+  <div class="panel" id="panel">
+    <h1>Revienta globos</h1>
+    <ol>
+      <li>Levanta la mano del reloj y <b>apunta</b> con la muñeca: el círculo te sigue.</li>
+      <li><b>Empuja</b> la mano hacia la pantalla para lanzar un dardo.</li>
+      <li>Empujón <span class="lane-near">suave</span> = globos cercanos, <span class="lane-mid">medio</span> = medianos, <span class="lane-far">fuerte</span> = lejanos (valen el triple).</li>
+    </ol>
+    <div>Tienes 60 segundos. La barra de la izquierda muestra la fuerza de cada empujón: practica un poco antes de empezar.</div>
+    <div class="go" id="go">Pulsa el botón atrás del reloj (o Espacio) para empezar. El botón atrás también recentra la mira.</div>
+    <div class="keys">Sin reloj: apunta con el ratón y pulsa 1, 2 o 3 para lanzar cerca, medio o lejos.</div>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
