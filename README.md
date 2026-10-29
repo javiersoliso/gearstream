@@ -135,6 +135,14 @@ Una ventana que muestra tu Wi-Fi y la IP de la laptop, busca el reloj en la red 
 
 `http://localhost:8765/tempo.html`. Gira la muñeca como con un destornillador: el antebrazo es el eje x del reloj, así que el giro es ω_x del giroscopio, y su signo es el sentido (mirando del codo a los dedos, horario = atornillar). Un giro fuerte, de más de 200 °/s, avanza o saca el tornillo una vuelta entera: apuntando con el ratón, los giros accidentales del dataset nunca pasaron de 117 °/s. Un ritmo constante de giros da el tempo en giros por minuto; con el botón atrás o Espacio se fija y suena un metrónomo. Detector en `server/web/flick.js`, probado con el dataset en `tools/test_flick.js`.
 
+## Dibujar con el trackpad (el dedo como esfero)
+
+```bash
+python tools/draw_recorder.py --device <IP-del-reloj>
+```
+
+Lee el trackpad de precisión de Windows directo por Raw Input (`tools/touchpad.py`: cada dedo con su posición en milímetros, si toca o no y el Scan Time del propio trackpad) y el reloj directo por sdb a su máxima resolución (acelerómetro y giroscopio a 200 muestras/s, unas 120 lecturas nuevas; gravedad a 200). Escribes qué vas a dibujar, dibujas con el índice de la mano del reloj y queda todo en `recordings/dibujo-*/` con un reloj de tiempo común: el trackpad es la verdad del trazo para entrenar al reloj a reconstruirlo. Cierra el puente antes: el reloj acepta una sola conexión.
+
 ## Gestos nuevos
 
 `tools/dataset_capture.py` (consola) o `http://localhost:8765/dataset.html` graban un dataset guiado de 13 gestos con etiquetas; `tools/analyze_dataset.py recordings/<sesión>` dice cuáles se distinguen. `tools/guided_capture.py` graba un gesto guiado por pitidos y luego movimiento normal; `tools/analyze_gesture.py` dice si el gesto se distingue. Con `--device IP` lee el acelerómetro directo a 200 Hz (con la pantalla del reloj encendida: apagada, el reloj baja los sensores a unas 45 muestras por segundo).
