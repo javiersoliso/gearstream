@@ -30,13 +30,15 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("folder")
     ap.add_argument("--modo", choices=("global", "forma"), default="forma")
+    ap.add_argument("--fuente", choices=("calibracion", "aprendido"), default="calibracion",
+                    help="aprendido: las reconstrucciones fuera de muestra de reconstruct_drawing.py")
     ap.add_argument("--out")
     ap.add_argument("--frames", type=int, default=48)
     ap.add_argument("--hold", type=int, default=18)
     ap.add_argument("--fps", type=int, default=14)
     ap.add_argument("--cols", type=int, default=9)
     args = ap.parse_args()
-    out = args.out or os.path.join(ROOT, "docs", "media", f"letras-{args.modo}.gif")
+    out = args.out or os.path.join(ROOT, "docs", "media", f"letras-{args.modo}{'-aprendido' if args.fuente == 'aprendido' else ''}.gif")
 
     touch = load_touch(args.folder)
     acc, gyr, grv = (load_sensor(args.folder, n) for n in ("ACCELERATION", "GYROSCOPE", "GRAVITY"))
@@ -55,6 +57,18 @@ def main():
         pred = np.hstack([ang, pos, np.ones((len(t), 1))]) @ coef
         true = np.stack([np.interp(t, s[:, 0], s[:, 4]), np.interp(t, s[:, 0], s[:, 5])], axis=1)
         return true, pred - pred[0], t
+
+    if args.fuente == "aprendido":               # el modelo entrenado con el OTRO abecedario: nunca vio estas letras
+        import json as _j
+        best = _j.load(open(os.path.join(args.folder, "reconstruccion.json"), encoding="utf-8"))["mejor"]
+        npz = np.load(os.path.join(args.folder, "reconstruccion.npz"))
+
+        def stroke_pair(i):  # noqa: F811
+            kt, kp = f"{best}_{i}_true", f"{best}_{i}_pred"
+            if kt not in npz:
+                return strokes[i][:, 4:6], None, strokes[i][:, 0]
+            true = npz[kt]
+            return true, npz[kp], np.arange(len(true)) * 10.0
 
     letters = json.load(open(os.path.join(args.folder, "letters.json"), encoding="utf-8"))
     items = []
@@ -82,8 +96,9 @@ def main():
     rows = int(np.ceil(n / cols))
     fig, axes = plt.subplots(rows, cols, figsize=(1.3 * cols, 1.42 * rows + 0.6), facecolor=BG)
     axes = np.atleast_1d(axes).ravel()
-    title = ("cian: tu dedo en el trackpad  ·  coral: el reloj (una calibración; tamaño igualado por letra)" if args.modo == "forma"
-             else "cian: tu dedo en el trackpad  ·  coral: el reloj (una sola calibración, sin retoques)")
+    quien = ("el reloj con un modelo entrenado con el OTRO abecedario (nunca vio estas letras)" if args.fuente == "aprendido"
+             else "el reloj con una sola calibración")
+    title = f"cian: tu dedo en el trackpad  ·  coral: {quien}" + ("; tamaño igualado por letra" if args.modo == "forma" else "")
     fig.suptitle(title, color=FG, fontsize=8.5, y=0.99)
     panels = []
     for i, ax in enumerate(axes):

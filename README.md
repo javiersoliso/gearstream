@@ -154,6 +154,20 @@ Dos abecedarios escritos con el índice en el trackpad mientras el reloj grababa
 - Apoyar y levantar el dedo casi no deja huella en el reloj (AUC 0.56 y 0.58): el "lápiz abajo" lo da el trackpad.
 - Calibración del giro en postura de escritura: 5.3 mm de trazo por grado de yaw y 6.9 por grado de pitch, con los ejes cruzados (75° entre sí): la muñeca necesita 1.3 veces más ganancia en vertical.
 
+### Redibujar con el reloj, letras que el modelo nunca vio
+
+![Letras redibujadas por un modelo entrenado con el otro abecedario](docs/media/letras-forma-aprendido.gif)
+
+En vez de una sola calibración, un modelo aprende a traducir lo que siente el reloj en cada instante (giros de muñeca, giro crudo, aceleración lineal y postura, en una ventana de ±240 ms) a la **velocidad** del dedo, y la integra para redibujar el trazo. Prueba justa: las mayúsculas las redibuja un modelo entrenado sin mayúsculas, y las minúsculas uno entrenado sin minúsculas. Se le da cuándo apoya y levanta el dedo (el reloj no lo ve) y dónde empieza cada trazo; la forma la pone el reloj.
+
+| método (letras nunca vistas) | parecido de forma mediano | letras por encima de 0.8 | largo reconstruido / real |
+|---|---|---|---|
+| una calibración lineal de posición | 0.60 | 12 / 53 | 0.36 |
+| regresión ridge sobre la velocidad | **0.74** | **19 / 53** | 0.58 |
+| red neuronal pequeña (numpy) | 0.60 | 14 / 53 | 0.70 |
+
+Todo con numpy: la regresión es un sistema lineal, (XᵀX + λI)·W = XᵀV, y la red es una capa oculta tanh entrenada con Adam a mano. Variantes probadas (±80 / ±160 / ±240 ms, ridge sola o junto a la red) quedan entre 0.67 y 0.75: con 53 letras de una sola sesión, esas diferencias son ruido. Para avanzar de verdad hacen falta más datos, no un modelo más grande. `tools/reconstruct_drawing.py` entrena y evalúa; `render_letters_gif.py --fuente aprendido` dibuja el GIF.
+
 Herramientas: `tools/draw_recorder.py` (grabar), `tools/analyze_drawing.py` (números), `tools/render_letters_gif.py` (este GIF, con `letters.json` diciendo qué trazos forman cada letra).
 
 ## Gestos nuevos
