@@ -18,6 +18,7 @@ const LANES = [                        // profundidad (m), puntos, color
 ];
 const PUSH_ON = 4.0;                   // m/s² a lo largo del antebrazo para empezar un empujón
 const AIM_LIMIT = { yaw: 30, pitch: 18 };
+const LATE_MS = 400;                   // muestras más viejas vienen de una ráfaga tras una pausa del reloj
 
 // ---------- estado ----------
 const S = {
@@ -150,9 +151,9 @@ function hud(now) {
   const left = S.playing ? Math.max(0, (S.tEnd - now) / 1000) : ROUND_S;
   $('score').firstChild.nodeValue = `${S.score} `;
   $('time').textContent = `${left.toFixed(0)} s · récord ${S.best}`;
-  const stale = now - S.lastSample > 1500;
+  const stale = now - S.lastSample > 500;
   $('conn').textContent = !S.connected ? 'sin servidor: reintentando…' : !S.watch ? 'servidor sí · reloj no conectado'
-    : stale ? 'reloj conectado · sin muestras (toca la pantalla del reloj)' : `reloj · ${S.hz.toFixed(0)} Hz`;
+    : stale ? 'el reloj no manda datos · toca su pantalla (apagada, el reloj frena el Wi-Fi)' : `reloj · ${S.hz.toFixed(0)} Hz`;
   const live = Math.max(0, Math.min(1, (S.live - PUSH_ON) / Math.max(1, S.pmax - PUSH_ON)));
   $('live').style.height = `${(100 * live).toFixed(1)}%`;
   const p = new THREE.Vector3().copy(camera.position).addScaledVector(aimDir(S.yaw, S.pitch), 5).project(camera);
@@ -210,7 +211,7 @@ function onAccel(t, v) {
   S.live = Math.max(af, S.live * 0.9);
   const now = performance.now();
   if (!S.push) {
-    if (af > PUSH_ON && now > S.refractoryUntil) S.push = { t0: t, peak: af };
+    if (af > PUSH_ON && now > S.refractoryUntil && Date.now() - t < LATE_MS) S.push = { t0: t, peak: af };   // un empujón atrasado no lanza
     return;
   }
   S.push.peak = Math.max(S.push.peak, af);

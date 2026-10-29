@@ -40,7 +40,9 @@
     }
 
     // t en ms, w = [ωx, ωy, ωz] en °/s ya sin sesgo. Devuelve un giro {t, dir: +1|−1, peak} al terminar uno.
-    update(t, w) {
+    // live = false para muestras atrasadas (una ráfaga tras una pausa del Wi-Fi del reloj): cuentan para el
+    // ángulo, pero no dan giros ni tempo, que llegarían tarde.
+    update(t, w, live = true) {
       const wx = this.o.sign * w[0];
       if (this.lastT !== null) {
         const dt = Math.min(0.1, Math.max(0, (t - this.lastT) / 1000));
@@ -58,6 +60,7 @@
         const c = this.cur;
         this.cur = null;
         if (c.peak < this.o.dominance * c.other) return null;          // se movió todo el brazo, no fue la muñeca
+        if (!live) return null;
         this.last = c.tPeak;
         this.peaks.push(c.peak); if (this.peaks.length > 12) this.peaks.shift();
         if (this.beats.length && c.tPeak - this.beats[this.beats.length - 1] > this.o.tempoReset) this.beats = [];

@@ -7,6 +7,8 @@
 const COMMAND_DPS = 200;              // °/s: un giro así es intencional (apuntando con el ratón nunca pasaste de 117)
 const PITCH_PX = 14;                  // px que avanza el tornillo por vuelta (en el dibujo)
 const MAX_TURNS = 9;                  // vueltas hasta quedar entero dentro
+const LATE_MS = 400;                  // una muestra más vieja que esto viene de una ráfaga atrasada
+const STALL_MS = 500;                 // sin muestras este tiempo: el reloj está en pausa
 
 const det = new FlickDetector();
 const S = { bias: [0, 0, 0], depthTurns: 0, flashes: [], dots: [], connected: false, watch: false, lastSample: 0,
@@ -31,7 +33,9 @@ function onGyro(t, v) {
   const raw = [v.x, v.y, v.z];
   const w = raw.map((x, i) => x - S.bias[i]);
   if (Math.hypot(...w) < 2) for (let i = 0; i < 3; i++) S.bias[i] += 0.003 * (raw[i] - S.bias[i]);
-  const f = det.update(t, w);
+  const live = Date.now() - t < LATE_MS;
+  if (!live) S.lateCount = (S.lateCount || 0) + 1;
+  const f = det.update(t, w, live);
   const turned = (det.angle - lastAngle) / 360; lastAngle = det.angle;
   S.depthTurns = Math.max(0, Math.min(MAX_TURNS, S.depthTurns + turned));
   if (f) {
@@ -157,8 +161,9 @@ function frame(now) {
     $('bpmN').textContent = bpm ? bpm.toFixed(0) : '–';
     $('bpmS').textContent = bpm ? `≈ ${(bpm / 2).toFixed(0)} ciclos por minuto (ida y vuelta) · Espacio para fijarlo` : 'gira a un ritmo constante para medirlo';
   }
-  const stale = now - S.lastSample > 1500;
+  const stale = now - S.lastSample > STALL_MS;
+  document.body.style.opacity = stale && S.watch ? 0.55 : 1;           // en pausa se ve apagado, no congelado
   $('conn').textContent = !S.connected ? 'sin servidor: reintentando…' : !S.watch ? 'servidor sí · reloj no conectado'
-    : stale ? 'reloj conectado · sin muestras (toca la pantalla del reloj)' : `reloj · ${S.hz.toFixed(0)} Hz${det.o.sign < 0 ? ' · sentido invertido' : ''}`;
+    : stale ? 'el reloj no manda datos · toca su pantalla (apagada, el reloj frena el Wi-Fi)' : `reloj · ${S.hz.toFixed(0)} Hz${det.o.sign < 0 ? ' · sentido invertido' : ''}`;
 }
 requestAnimationFrame(frame);
