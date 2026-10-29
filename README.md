@@ -129,7 +129,7 @@ Una ventana que muestra tu Wi-Fi y la IP de la laptop, busca el reloj en la red 
 
 ## Dibuja en 1D, 2D y 3D
 
-`http://localhost:8765/dibuja.html`. Mantén el botón atrás del reloj para bajar el lápiz y gira el bisel para cambiar de color. **2D**: apuntas con la muñeca y dibujas en un lienzo (la "sombra" de un puntero: lo que mejor reconstruye tus trazos en los datos). **3D**: la muñeca da la dirección y girar el antebrazo como atornillando da la profundidad (horario aleja); con O orbitas el dibujo. **Modo creativo** (F): vuelas libre como en Minecraft creativo (WASD, E/Q sube y baja, ratón para mirar) y el lápiz va delante de ti; mantén el **botón de inicio** del reloj y gira la muñeca para girar la vista, suéltalo para volver a dibujar. I invierte el sentido de la profundidad. **1D**: un sismógrafo, la muñeca mueve la aguja y el papel corre solo. R recentra, Z deshace, S guarda la imagen.
+`http://localhost:8765/dibuja.html`. Mantén el botón atrás del reloj para bajar el lápiz y gira el bisel para cambiar de color. **2D**: apuntas con la muñeca y dibujas en un lienzo (la "sombra" de un puntero: lo que mejor reconstruye tus trazos en los datos). **3D**: la muñeca da la dirección y girar el antebrazo como atornillando da la profundidad (horario aleja); con O orbitas el dibujo. **Modo creativo** (F): vuelas libre como en Minecraft creativo (WASD, E/Q sube y baja, ratón para mirar) y el lápiz va delante de ti. I invierte el sentido de la profundidad. **1D**: un sismógrafo, la muñeca mueve la aguja y el papel corre solo. R recentra, Z deshace, S guarda la imagen.
 
 ## Juego: Revienta globos
 

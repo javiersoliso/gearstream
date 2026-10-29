@@ -10,8 +10,8 @@
 //       (roll, como atornillar: horario aleja, antihorario acerca). Arrastra con el ratón para orbitar.
 //   Modo creativo (F, en 3D): vuelas libre como en Minecraft creativo (WASD, E sube, Q baja, arrastrar con
 //       el ratón para mirar, rueda para avanzar) y el lápiz va delante de ti, apuntado con la muñeca.
-//   Botón de inicio mantenido (3D): modo cámara. La muñeca gira la vista en vez de mover el lápiz; al
-//       soltarlo vuelves a dibujar. Todo desde el reloj, sin teclado.
+//   (El botón de inicio del reloj es también el de encendido: mantenerlo abre el asistente o el menú de
+//   apagado y puede reiniciar el reloj, así que la página no lo usa.)
 'use strict';
 
 const AX = [1, 0, 0];                   // antebrazo = x del reloj
@@ -189,14 +189,14 @@ function setMode(m, keepCreative) {
   const depthTxt = S.depthSign > 0 ? 'horario aleja' : 'horario acerca';
   $('help').innerHTML = (S.creative && m === 3)
     ? '<b>Creativo</b>: vuela con <b>W A S D</b>, <b>E</b> sube, <b>Q</b> baja (Mayús: rápido), arrastra para mirar, rueda para avanzar. '
-      + 'Mantén el <b>botón de inicio</b> del reloj y gira la muñeca para girar la vista. El lápiz va delante de ti: apúntalo con la muñeca, '
+      + 'El lápiz va delante de ti: apúntalo con la muñeca, '
       + 'atornilla para alejarlo (' + depthTxt + ', <b>I</b> invierte) y mantén el botón atrás para pintar. <b>F</b>: salir'
       + '<br>R: recentrar · C: borrar · Z: deshacer · Espacio: lápiz sin reloj'
     : {
     1: '<b>1D</b>: mantén el botón atrás y sube y baja la muñeca: la aguja escribe y el papel corre solo.',
     2: '<b>2D</b>: mantén el botón atrás y apunta con la muñeca para dibujar. Bisel: color.',
     3: '<b>3D</b>: apunta con la muñeca; atornilla para alejar o acercar el lápiz (' + depthTxt + ', <b>I</b> invierte). Mantén el botón atrás para pintar. '
-      + '<b>Botón de inicio</b> mantenido: girar la vista con la muñeca. <b>F</b>: modo creativo (volar). <b>O</b>: orbitar con el ratón.',
+      + '<b>F</b>: modo creativo (volar). <b>O</b>: orbitar con el ratón.',
   }[m] + '<br>R: recentrar · C: borrar · Z: deshacer · S: guardar imagen · Espacio: lápiz sin reloj';
 }
 document.querySelectorAll('#modes button[data-m]').forEach((b) => b.addEventListener('click', () => setMode(Number(b.dataset.m))));
@@ -237,7 +237,6 @@ function connect() {
         const [name, t, v] = s;
         if (name === 'BUTTON') {
           if (v.key === 'back') setPen(v.pressed === true);
-          else if (v.key === 'home') setView(v.pressed === true);
           continue;
         }
         if (name === 'BEZEL') { nextColor(v.direction === 'CW' ? 1 : -1); continue; }

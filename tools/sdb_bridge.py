@@ -483,23 +483,28 @@ async def main():
         port = int(port or 26101)
     print(f"conectando a {host}:{port}")
 
-    while True:  # the watch's sdbd drops or refuses connections while its radio wakes up: keep trying
+    while True:  # si el reloj se cae (reinicio, Wi-Fi dormido) se vuelve a conectar solo; Ctrl+C sale
+        while True:  # the watch's sdbd drops or refuses connections while its radio wakes up: keep trying
+            try:
+                conn = await SdbConnection(host, port).connect(timeout=600)  # time to accept the prompt on the watch
+                break
+            except (OSError, asyncio.TimeoutError) as e:
+                print(f"el reloj no responde ({e.__class__.__name__}: {e}); reintento en 3 s (Ctrl+C para salir)")
+                await asyncio.sleep(3)
         try:
-            conn = await SdbConnection(host, port).connect(timeout=600)  # time to accept the prompt on the watch
-            break
-        except (OSError, asyncio.TimeoutError) as e:
-            print(f"el reloj no responde ({e.__class__.__name__}: {e}); reintento en 3 s (Ctrl+C para salir)")
-            await asyncio.sleep(3)
-    await conn.run(CLEANUP_CMD)  # leftovers from a previous session
-    try:
-        await Bridge(conn, args.interval, args.flush_ms, sensors, args.batch,
-                     inputs=inputs, bezel_positive=args.bezel_positive).run(args.url)
-    finally:
-        try:
-            await asyncio.wait_for(conn.run(CLEANUP_CMD), 5)
-        except Exception:
-            pass
-        conn.close()
+            await conn.run(CLEANUP_CMD)  # leftovers from a previous session
+            await Bridge(conn, args.interval, args.flush_ms, sensors, args.batch,
+                         inputs=inputs, bezel_positive=args.bezel_positive).run(args.url)
+        except (OSError, asyncio.TimeoutError, ConnectionError) as e:
+            print(f"se perdió el reloj ({e.__class__.__name__})")
+        finally:
+            try:
+                await asyncio.wait_for(conn.run(CLEANUP_CMD), 5)
+            except Exception:
+                pass
+            conn.close()
+        print("vuelvo a conectar con el reloj en 3 s (Ctrl+C para salir)")
+        await asyncio.sleep(3)
 
 
 if __name__ == "__main__":
