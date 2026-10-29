@@ -8,6 +8,10 @@
 //   2D: lienzo. Yaw → x, pitch → y.
 //   3D: la dirección (yaw, pitch) es un rayo desde tus ojos y la profundidad sale de girar el antebrazo
 //       (roll, como atornillar: horario aleja, antihorario acerca). Arrastra con el ratón para orbitar.
+//   Modo creativo (F, en 3D): vuelas libre como en Minecraft creativo (WASD, E sube, Q baja, arrastrar con
+//       el ratón para mirar, rueda para avanzar) y el lápiz va delante de ti, apuntado con la muñeca.
+//   Botón de inicio mantenido (3D): modo cámara. La muñeca gira la vista en vez de mover el lápiz; al
+//       soltarlo vuelves a dibujar. Todo desde el reloj, sin teclado.
 'use strict';
 
 const AX = [1, 0, 0];                   // antebrazo = x del reloj
@@ -17,6 +21,7 @@ const DEPTH_PER_DEG = 0.02;             // 3D: metros por grado de giro del ante
 const S = {
   mode: 2, grav: null, bias: [0, 0, 0], lastT: null,
   yaw: 0, pitch: 0, roll: 0, pen: false, color: 0,
+  creative: false, view: false, depthSign: 1, camYaw: 0, camPitch: 0, keys: new Set(),
   connected: false, watch: false, lastSample: 0, hzCount: 0, hz: 0, hzT: performance.now(),
 };
 const $ = (id) => document.getElementById(id);
@@ -38,6 +43,13 @@ function onGyro(t, v) {
   const c = cross(AX, g), cn = norm(c);
   let pitch = cn > 0.3 ? dot(w, c.map((x) => x / cn)) : 0;
   if (Math.hypot(yaw, pitch) < 0.6) { yaw = 0; pitch = 0; }
+  if (S.view && S.mode === 3) {           // botón de inicio mantenido: la muñeca mueve la cámara
+    S.camYaw += 1.5 * yaw * dt * Math.PI / 180;
+    S.camPitch = Math.max(-1.4, Math.min(1.4, S.camPitch + 1.5 * pitch * dt * Math.PI / 180));
+    setCamRotation();
+    S.hzCount++;
+    return;
+  }
   S.yaw -= yaw * dt;                    // derecha positiva
   S.pitch += pitch * dt;                // arriba positiva
   if (Math.abs(roll) > 1) S.roll += roll * dt;
@@ -91,9 +103,54 @@ function resize3() { R.setSize(innerWidth, innerHeight, false); cam.aspect = inn
 addEventListener('resize', resize3); resize3();
 function point3() {
   const y = S.yaw * Math.PI / 180, p = S.pitch * Math.PI / 180;
-  const depth = Math.max(0.8, Math.min(9, 3 + S.roll * DEPTH_PER_DEG));    // atornillar (horario) aleja
-  return new THREE.Vector3(Math.sin(y) * Math.cos(p), Math.sin(p), -Math.cos(y) * Math.cos(p)).multiplyScalar(depth);
+  const depth = Math.max(0.8, Math.min(9, 3 + S.depthSign * S.roll * DEPTH_PER_DEG));   // atornillar aleja; I lo invierte
+  const local = new THREE.Vector3(Math.sin(y) * Math.cos(p), Math.sin(p), -Math.cos(y) * Math.cos(p)).multiplyScalar(depth);
+  if (!S.creative) return local;
+  return local.applyQuaternion(cam.quaternion).add(cam.position);    // creativo: el lápiz va delante de la cámara
 }
+
+// ---------- modo creativo: vuelo libre ----------
+function setCamRotation() { cam.rotation.set(S.camPitch, S.camYaw, 0, 'YXZ'); }
+function creativeStep(dt) {
+  const k = S.keys, speed = (k.has('ShiftLeft') || k.has('ShiftRight') ? 6 : 2.5) * dt;
+  const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion); fwd.y = 0; fwd.normalize();
+  const right = new THREE.Vector3(1, 0, 0).applyQuaternion(cam.quaternion); right.y = 0; right.normalize();
+  if (k.has('KeyW')) cam.position.addScaledVector(fwd, speed);
+  if (k.has('KeyS')) cam.position.addScaledVector(fwd, -speed);
+  if (k.has('KeyD')) cam.position.addScaledVector(right, speed);
+  if (k.has('KeyA')) cam.position.addScaledVector(right, -speed);
+  if (k.has('KeyE')) cam.position.y += speed;
+  if (k.has('KeyQ')) cam.position.y -= speed;
+  if (S.pen && k.size) sample();                                       // volar con el lápiz abajo también traza
+}
+function setCreative(on) {
+  S.creative = on && S.mode === 3;
+  orbit.enabled = false;
+  cam.position.set(0, 0, 0); S.camYaw = 0; S.camPitch = 0; setCamRotation();
+  $('creative').classList.toggle('on', S.creative);
+  setMode(S.mode, true);
+}
+function setView(on) {                   // botón de inicio: modo cámara (activa el creativo si hace falta)
+  if (S.mode !== 3) return;
+  if (on && !S.creative) setCreative(true);
+  S.view = on;
+  if (on) endStroke();
+  $('pen').firstChild.nodeValue = on ? 'cámara: la muñeca gira la vista ' : (S.pen ? 'lápiz abajo ' : 'lápiz arriba ');
+}
+let drag = null;
+c3.addEventListener('pointerdown', (e) => { if (S.creative) { drag = [e.clientX, e.clientY]; c3.setPointerCapture(e.pointerId); } });
+c3.addEventListener('pointermove', (e) => {
+  if (!S.creative || !drag) return;
+  S.camYaw -= (e.clientX - drag[0]) * 0.004;
+  S.camPitch = Math.max(-1.4, Math.min(1.4, S.camPitch - (e.clientY - drag[1]) * 0.004));
+  drag = [e.clientX, e.clientY]; setCamRotation();
+});
+c3.addEventListener('pointerup', () => { drag = null; });
+c3.addEventListener('wheel', (e) => {
+  if (!S.creative) return;
+  e.preventDefault();
+  cam.position.addScaledVector(new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion), -e.deltaY * 0.004);
+}, { passive: false });
 let last3 = null;
 function addBlob(pos) {
   if (blob.count >= MAXB) return;
@@ -111,7 +168,7 @@ function startStroke() {
 }
 function endStroke() { cur = null; last3 = null; }
 function sample() {
-  if (!S.pen) return;
+  if (!S.pen || S.view) return;
   if (S.mode === 3) {
     const p = point3();
     if (!last3) { addBlob(p); last3 = p; return; }
@@ -122,29 +179,43 @@ function sample() {
 }
 
 // ---------- modos, teclado y ratón ----------
-function setMode(m) {
+function setMode(m, keepCreative) {
   endStroke(); S.mode = m;
-  document.querySelectorAll('#modes button').forEach((b) => b.classList.toggle('on', Number(b.dataset.m) === m));
+  if (!keepCreative && S.creative && m !== 3) { S.creative = false; S.view = false; $('creative').classList.remove('on'); }
+  $('creative').style.display = m === 3 ? '' : 'none';
+  document.querySelectorAll('#modes button[data-m]').forEach((b) => b.classList.toggle('on', Number(b.dataset.m) === m));
   c3.style.display = m === 3 ? 'block' : 'none'; c2.style.display = m === 3 ? 'none' : 'block';
-  orbit.enabled = false; cam.position.set(0, 0, 0); cam.lookAt(0, 0, -1);
-  $('help').innerHTML = {
+  if (!S.creative) { orbit.enabled = false; cam.position.set(0, 0, 0); cam.lookAt(0, 0, -1); }
+  const depthTxt = S.depthSign > 0 ? 'horario aleja' : 'horario acerca';
+  $('help').innerHTML = (S.creative && m === 3)
+    ? '<b>Creativo</b>: vuela con <b>W A S D</b>, <b>E</b> sube, <b>Q</b> baja (Mayús: rápido), arrastra para mirar, rueda para avanzar. '
+      + 'Mantén el <b>botón de inicio</b> del reloj y gira la muñeca para girar la vista. El lápiz va delante de ti: apúntalo con la muñeca, '
+      + 'atornilla para alejarlo (' + depthTxt + ', <b>I</b> invierte) y mantén el botón atrás para pintar. <b>F</b>: salir'
+      + '<br>R: recentrar · C: borrar · Z: deshacer · Espacio: lápiz sin reloj'
+    : {
     1: '<b>1D</b>: mantén el botón atrás y sube y baja la muñeca: la aguja escribe y el papel corre solo.',
     2: '<b>2D</b>: mantén el botón atrás y apunta con la muñeca para dibujar. Bisel: color.',
-    3: '<b>3D</b>: apunta con la muñeca; gira el antebrazo como atornillando para alejar (horario) o acercar el lápiz. Mantén el botón atrás para pintar. <b>O</b>: orbitar el dibujo con el ratón.',
+    3: '<b>3D</b>: apunta con la muñeca; atornilla para alejar o acercar el lápiz (' + depthTxt + ', <b>I</b> invierte). Mantén el botón atrás para pintar. '
+      + '<b>Botón de inicio</b> mantenido: girar la vista con la muñeca. <b>F</b>: modo creativo (volar). <b>O</b>: orbitar con el ratón.',
   }[m] + '<br>R: recentrar · C: borrar · Z: deshacer · S: guardar imagen · Espacio: lápiz sin reloj';
 }
-document.querySelectorAll('#modes button').forEach((b) => b.addEventListener('click', () => setMode(Number(b.dataset.m))));
+document.querySelectorAll('#modes button[data-m]').forEach((b) => b.addEventListener('click', () => setMode(Number(b.dataset.m))));
+$('creative').addEventListener('click', () => setCreative(!S.creative));
 addEventListener('keydown', (e) => {
+  if (S.creative && ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyE', 'KeyQ', 'ShiftLeft', 'ShiftRight'].includes(e.code)) { S.keys.add(e.code); return; }
   if (e.repeat) return;
+  if (e.key === 'f' || e.key === 'F') { if (S.mode === 3) setCreative(!S.creative); return; }
+  if (e.key === 'i' || e.key === 'I') { S.depthSign = -S.depthSign; setMode(S.mode, true); return; }
   if (e.code === 'Space') { e.preventDefault(); setPen(true); }
   else if (e.key === 'r' || e.key === 'R') recenter();
   else if (e.key === 'c' || e.key === 'C') { strokes2.length = 0; blob.count = 0; blob.instanceMatrix.needsUpdate = true; }
   else if (e.key === 'z' || e.key === 'Z') { if (S.mode === 3) { blob.count = Math.max(0, blob.count - 300); blob.instanceMatrix.needsUpdate = true; } else strokes2.pop(); }
   else if (e.key === 's' || e.key === 'S') save();
-  else if (e.key === 'o' || e.key === 'O') { if (S.mode === 3) { orbit.enabled = !orbit.enabled; if (orbit.enabled) { cam.position.set(4, 2.5, 3); orbit.target.set(0, 0, -3); orbit.update(); } else { cam.position.set(0, 0, 0); cam.lookAt(0, 0, -1); } } }
+  else if (e.key === 'o' || e.key === 'O') { if (S.mode === 3 && !S.creative) { orbit.enabled = !orbit.enabled; if (orbit.enabled) { cam.position.set(4, 2.5, 3); orbit.target.set(0, 0, -3); orbit.update(); } else { cam.position.set(0, 0, 0); cam.lookAt(0, 0, -1); } } }
   else if (['1', '2', '3'].includes(e.key)) setMode(Number(e.key));
 });
-addEventListener('keyup', (e) => { if (e.code === 'Space') setPen(false); });
+addEventListener('keyup', (e) => { S.keys.delete(e.code); if (e.code === 'Space') setPen(false); });
+addEventListener('blur', () => S.keys.clear());
 function save() {
   const a = document.createElement('a');
   if (S.mode === 3) { R.render(scene, cam); a.href = c3.toDataURL('image/png'); } else a.href = c2.toDataURL('image/png');
@@ -164,7 +235,11 @@ function connect() {
       for (const s of msg.samples) {
         if (!Array.isArray(s) || s.length < 3 || !s[2] || typeof s[2] !== 'object') continue;
         const [name, t, v] = s;
-        if (name === 'BUTTON') { if (v.key === 'back') setPen(v.pressed === true); continue; }
+        if (name === 'BUTTON') {
+          if (v.key === 'back') setPen(v.pressed === true);
+          else if (v.key === 'home') setView(v.pressed === true);
+          continue;
+        }
         if (name === 'BEZEL') { nextColor(v.direction === 'CW' ? 1 : -1); continue; }
         if (typeof v.x !== 'number') continue;
         S.lastSample = performance.now(); S.watch = true;
@@ -204,9 +279,13 @@ function frame(now) {
   requestAnimationFrame(frame);
   if (now - S.hzT >= 1000) { S.hz = S.hzCount * 1000 / (now - S.hzT); S.hzCount = 0; S.hzT = now; }
   if (S.mode === 1 && S.pen && cur) cur.pts.push(point2());         // en 1D el papel corre aunque la muñeca no se mueva
+  const dt = Math.min(0.05, (now - (frame.last || now)) / 1000); frame.last = now;
   if (S.mode === 3) {
+    if (S.creative) creativeStep(dt);
     const p = point3(); tip.position.copy(p); tip.material.color.set(COLORS[S.color]);
-    ray.geometry.setFromPoints([new THREE.Vector3(0, -0.25, 0), p]);
+    const hand = new THREE.Vector3(0.15, -0.25, -0.1).applyQuaternion(cam.quaternion).add(cam.position);
+    ray.geometry.setFromPoints([S.creative ? hand : new THREE.Vector3(0, -0.25, 0), p]);
+    tip.visible = !S.view;
     if (orbit.enabled) orbit.update();
     R.render(scene, cam);
   } else draw2(now);
