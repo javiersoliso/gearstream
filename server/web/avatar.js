@@ -287,7 +287,7 @@ document.getElementById('showAxes').addEventListener('change', (e) => { axes.vis
 document.getElementById('filterOn').addEventListener('change', (e) => { S.filterOn = e.target.checked; AF.reset(); });
 document.getElementById('showCloud').addEventListener('change', (e) => { S.showCloud = e.target.checked; });
 
-setAxis('+x');
+{ const h = loadHand() === 'right' ? '-x' : '+x'; document.getElementById('forearmAxis').value = h; setAxis(h); }
 
 // ---------- datos ----------
 const estado = document.getElementById('estado');

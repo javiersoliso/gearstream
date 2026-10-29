@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sismógrafo</title>
+  <style>
+    html, body { height: 100%; margin: 0; background: #10131a; color: #ece9e1; font-family: system-ui, sans-serif; overflow: hidden; }
+    canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+    .hud { position: fixed; font-size: 13px; color: #9aa3b2; }
+    #top { left: 0; right: 0; top: 0; display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; gap: 12px; flex-wrap: wrap; }
+    #opts { display: flex; gap: 6px; flex-wrap: wrap; }
+    #opts button { font: inherit; font-size: 15px; padding: 6px 14px; border-radius: 10px; border: 1px solid #2c3546; background: #171c26; color: #ece9e1; cursor: pointer; }
+    #opts button:disabled { opacity: 0.45; cursor: default; }
+    #opts small { color: #9aa3b2; font-size: 12px; margin-right: 4px; }
+    #conn { text-align: right; }
+    #score { left: 50%; top: 64px; transform: translateX(-50%); font-size: 40px; font-weight: 600; color: #ece9e1; pointer-events: none; font-variant-numeric: tabular-nums; }
+    #big { left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 120px; font-weight: 700; color: #ffd166; pointer-events: none; text-shadow: 0 0 40px #ffd16655; }
+    #help { left: 18px; bottom: 14px; line-height: 1.7; pointer-events: none; }
+    #card { left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(560px, calc(100vw - 32px)); background: #171c26f2; border: 1px solid #2c3546;
+            border-radius: 16px; padding: 22px 24px; display: none; box-shadow: 0 20px 60px #0008; }
+    #card h1 { margin: 0 0 4px; font-size: 22px; color: #ece9e1; font-weight: 600; }
+    #card .sub { color: #9aa3b2; font-size: 13px; margin-bottom: 14px; }
+    #nums { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+    #nums div { background: #10131a; border-radius: 10px; padding: 10px; }
+    #nums b { display: block; font-size: 24px; color: #ece9e1; font-variant-numeric: tabular-nums; }
+    #nums span { font-size: 12px; color: #9aa3b2; }
+    #chart { position: static; width: 100%; height: 190px; }
+    #card p { font-size: 13px; line-height: 1.55; color: #9aa3b2; margin: 10px 0 0; }
+    b { color: #ece9e1; font-weight: 600; }
+    @media (max-width: 560px) { #nums { grid-template-columns: repeat(2, 1fr); } #big { font-size: 80px; } }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div class="hud" id="top">
+    <div id="opts">
+      <button id="axis" title="E: qué giro mueve la aguja"></button>
+      <button id="level" title="1 2 3, o el bisel del reloj"></button>
+      <button id="preview" title="V: ver la línea que viene, o a ciegas"></button>
+      <button id="hand" title="M: en qué muñeca llevas el reloj"></button>
+    </div>
+    <div id="conn">conectando…</div>
+  </div>
+  <div class="hud" id="score"></div>
+  <div class="hud" id="big"></div>
+  <div class="hud" id="card">
+    <h1 id="verdict"></h1>
+    <div class="sub" id="cardsub"></div>
+    <div id="nums"></div>
+    <canvas id="chart"></canvas>
+    <p id="explain"></p>
+    <p><b>Botón atrás</b> del reloj o <b>Espacio</b>: otra vez</p>
+  </div>
+  <div class="hud" id="help"></div>
+  <script src="wrist.js"></script>
+  <script src="sismomath.js"></script>
+  <script src="sismo.js"></script>
+</body>
+</html>

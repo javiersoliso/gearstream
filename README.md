@@ -127,9 +127,19 @@ python tools/launcher.py
 
 Una ventana que muestra tu Wi-Fi y la IP de la laptop, busca el reloj en la red (o escribes su IP: en el hotspot del teléfono la búsqueda a veces no lo ve), arranca el servidor y el puente, y abre con un botón el juego, el avatar, el dashboard, la calibración o el ratón aéreo. Mide la red con ping y agrupa muestras solo si hace falta. Para el puente y el ratón con Ctrl+Break, para que limpien el reloj al salir.
 
+## Sismógrafo: sigue la línea
+
+`http://localhost:8765/sismo.html` (o el botón Sismógrafo del lanzador). Una línea amarilla viene corriendo por el papel y tu muñeca mueve la aguja: mantenla encima durante 20 segundos. Botón atrás del reloj (o Espacio) para empezar, el bisel cambia el nivel (tranquilo, normal, sismo), E el giro que mueve la aguja (inclinar, girar o atornillar) y V si ves venir la línea o vas a ciegas.
+
+Es una tarea de seguimiento como las que McRuer usaba en los años 60 para medir pilotos. La línea es una suma de senos r(t) = Σ a_k sin(2π k t / T + φ_k) con fases al azar: parece imprevisible, pero cada seno da un número entero de vueltas en T = 20 s, así que al final la transformada de Fourier separa tu respuesta onda por onda. Para cada frecuencia, H = Y/R dice cuánto de esa onda seguiste (|H|), con cuánto retraso (−∠H / 2πf) y cuánto error te quedó (|1 − H|). Si solo te fallara el tiempo de reacción τ, ese error sería 2·|sin(π f τ)|, y la tarjeta del final dibuja esa curva junto a tus barras. También da tu retraso global (la correlación de tu aguja con la línea desplazada) y tu "ruido": lo que moviste que no estaba en ninguna onda. Matemática en `server/web/sismomath.js`, probada en `tools/test_sismo.js`.
+
+## Muñeca izquierda o derecha
+
+En la muñeca izquierda el antebrazo es el +x del reloj; en la derecha, con el reloj puesto igual (botones hacia el codo), es −x, y sin avisar arriba sale abajo y atornillar sale desatornillar. Dibuja y el Sismógrafo tienen un botón (o la tecla M) para elegir la muñeca; la elección se guarda en el navegador y la usan también los globos, el tornillo y el avatar (`server/web/wrist.js`). Para el ratón aéreo: `--forearm -x`.
+
 ## Dibuja en 1D, 2D y 3D
 
-`http://localhost:8765/dibuja.html`. Mantén el botón atrás del reloj para bajar el lápiz y gira el bisel para cambiar de color. **2D**: apuntas con la muñeca y dibujas en un lienzo (la "sombra" de un puntero: lo que mejor reconstruye tus trazos en los datos). **3D**: la muñeca da la dirección y girar el antebrazo como atornillando da la profundidad (horario aleja); con O orbitas el dibujo. **Modo creativo** (F): vuelas libre como en Minecraft creativo (WASD, E/Q sube y baja, ratón para mirar) y el lápiz va delante de ti. I invierte el sentido de la profundidad. **1D**: un sismógrafo, la muñeca mueve la aguja y el papel corre solo. R recentra, Z deshace, S guarda la imagen.
+`http://localhost:8765/dibuja.html`. Mantén el botón atrás del reloj para bajar el lápiz y gira el bisel para cambiar de color. **2D**: apuntas con la muñeca y dibujas en un lienzo (la "sombra" de un puntero: lo que mejor reconstruye tus trazos en los datos). **3D**: la muñeca da la dirección y girar el antebrazo como atornillando da la profundidad (horario aleja); con O orbitas el dibujo. **Modo creativo** (F): vuelas libre como en Minecraft creativo (WASD, E/Q sube y baja, ratón para mirar) y el lápiz va delante de ti. I invierte el sentido de la profundidad. **1D**: un sismógrafo, la muñeca mueve la aguja y el papel corre solo; E elige el giro (inclinar, girar o atornillar). M: muñeca izquierda o derecha. R recentra, Z deshace, S guarda la imagen.
 
 ## Juego: Revienta globos
 

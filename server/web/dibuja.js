@@ -14,35 +14,24 @@
 //   apagado y puede reiniciar el reloj, así que la página no lo usa.)
 'use strict';
 
-const AX = [1, 0, 0];                   // antebrazo = x del reloj
+const wrist = new Wrist();               // muñeca izquierda o derecha (M), compartida con las otras páginas
 const COLORS = ['#58c4dd', '#f0997b', '#5dcaa5', '#ffd166', '#c39bf0', '#f4a6b8', '#ece9e1', '#ff6b6b'];
 const PX_PER_DEG = 16;                  // 2D: píxeles por grado de muñeca
 const DEPTH_PER_DEG = 0.02;             // 3D: metros por grado de giro del antebrazo
 const S = {
-  mode: 2, grav: null, bias: [0, 0, 0], lastT: null,
+  mode: 2, grav: null, lastT: null,
   yaw: 0, pitch: 0, roll: 0, pen: false, color: 0,
   creative: false, view: false, depthSign: 1, camYaw: 0, camPitch: 0, keys: new Set(),
   connected: false, watch: false, lastSample: 0, hzCount: 0, hz: 0, hzT: performance.now(),
 };
 const $ = (id) => document.getElementById(id);
-const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-const norm = (a) => Math.hypot(a[0], a[1], a[2]);
 
 // ---------- orientación ----------
 function onGyro(t, v) {
   if (S.lastT === null || !S.grav) { S.lastT = t; return; }
   let dt = (t - S.lastT) / 1000; S.lastT = t;
   if (!(dt > 0) || dt > 0.1) dt = 0.01;
-  const raw = [v.x, v.y, v.z];
-  const w = raw.map((x, i) => x - S.bias[i]);
-  if (norm(w) < 2) for (let i = 0; i < 3; i++) S.bias[i] += 0.002 * (raw[i] - S.bias[i]);
-  const gn = norm(S.grav), g = S.grav.map((x) => x / gn);
-  const roll = dot(w, AX), gpf = dot(g, AX);
-  let yaw = (dot(w, g) - roll * gpf) / Math.max(1 - gpf * gpf, 0.09);
-  const c = cross(AX, g), cn = norm(c);
-  let pitch = cn > 0.3 ? dot(w, c.map((x) => x / cn)) : 0;
-  if (Math.hypot(yaw, pitch) < 0.6) { yaw = 0; pitch = 0; }
+  const { yaw, pitch, roll } = wrist.rates([v.x, v.y, v.z], S.grav);
   if (S.view && S.mode === 3) {           // botón de inicio mantenido: la muñeca mueve la cámara
     S.camYaw += 1.5 * yaw * dt * Math.PI / 180;
     S.camPitch = Math.max(-1.4, Math.min(1.4, S.camPitch + 1.5 * pitch * dt * Math.PI / 180));
@@ -58,6 +47,10 @@ function onGyro(t, v) {
 }
 
 function recenter() { S.yaw = 0; S.pitch = 0; S.roll = 0; }
+function showHand() { $('hand').textContent = handName(wrist.hand); }
+function toggleHand() { wrist.toggleHand(); recenter(); showHand(); }
+showHand();
+$('hand').addEventListener('click', toggleHand);
 function setPen(down) {
   if (down === S.pen) return;
   S.pen = down;
@@ -207,7 +200,7 @@ function setMode(m, keepCreative) {
     2: '<b>2D</b>: mantén el botón atrás y apunta con la muñeca para dibujar. Bisel: color.',
     3: '<b>3D</b>: apunta con la muñeca; atornilla para alejar o acercar el lápiz (' + depthTxt + ', <b>I</b> invierte). Mantén el botón atrás para pintar. '
       + '<b>F</b>: modo creativo (volar). <b>O</b>: orbitar con el ratón.',
-  }[m] + '<br>R: recentrar · C: borrar · Z: deshacer · S: guardar imagen · Espacio: lápiz sin reloj';
+  }[m] + '<br>R: recentrar · C: borrar · Z: deshacer · S: guardar imagen · M: muñeca izquierda o derecha · Espacio: lápiz sin reloj';
 }
 function nextAxis1() { axis1 = (axis1 + 1) % AXES1.length; recenter(); setMode(1); }
 document.querySelectorAll('#modes button[data-m]').forEach((b) => b.addEventListener('click', () => {
@@ -226,6 +219,7 @@ addEventListener('keydown', (e) => {
   else if (e.key === 'z' || e.key === 'Z') { if (S.mode === 3) { blob.count = Math.max(0, blob.count - 300); blob.instanceMatrix.needsUpdate = true; } else strokes2.pop(); }
   else if (e.key === 's' || e.key === 'S') save();
   else if ((e.key === 'e' || e.key === 'E') && S.mode === 1) nextAxis1();
+  else if (e.key === 'm' || e.key === 'M') toggleHand();
   else if (e.key === 'o' || e.key === 'O') { if (S.mode === 3 && !S.creative) { orbit.enabled = !orbit.enabled; if (orbit.enabled) { cam.position.set(4, 2.5, 3); orbit.target.set(0, 0, -3); orbit.update(); } else { cam.position.set(0, 0, 0); cam.lookAt(0, 0, -1); } } }
   else if (['1', '2', '3'].includes(e.key)) setMode(Number(e.key));
 });

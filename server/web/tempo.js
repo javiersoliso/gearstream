@@ -10,7 +10,7 @@ const MAX_TURNS = 9;                  // vueltas hasta quedar entero dentro
 const LATE_MS = 400;                  // una muestra más vieja que esto viene de una ráfaga atrasada
 const STALL_MS = 500;                 // sin muestras este tiempo: el reloj está en pausa
 
-const det = new FlickDetector();
+const det = new FlickDetector({ sign: forearmOf(loadHand())[0] });   // muñeca derecha: ω_x al revés
 const S = { bias: [0, 0, 0], depthTurns: 0, flashes: [], dots: [], connected: false, watch: false, lastSample: 0,
             hzCount: 0, hz: 0, hzT: performance.now(), locked: null, metroNext: 0 };
 const $ = (id) => document.getElementById(id);

@@ -9,7 +9,7 @@
 'use strict';
 
 const DEG = Math.PI / 180;
-const AXIS = [1, 0, 0];               // antebrazo hacia la mano, en el marco del reloj
+const AXIS = forearmOf(loadHand());   // antebrazo hacia la mano, en el marco del reloj (wrist.js: izquierda +x, derecha −x)
 const ROUND_S = 60;
 const LANES = [                        // profundidad (m), puntos, color
   { d: 3.5, pts: 100, color: 0x5dcaa5, name: 'cerca' },
