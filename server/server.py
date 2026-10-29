@@ -26,6 +26,7 @@ CONTENT_TYPES = {
     ".html": "text/html; charset=utf-8",
     ".js": "text/javascript; charset=utf-8",
     ".css": "text/css; charset=utf-8",
+    ".json": "application/json; charset=utf-8",
     ".svg": "image/svg+xml",
     ".png": "image/png",
 }
@@ -60,6 +61,7 @@ class Recorder:
         self.dir = None
         self.files = {}
         self.meta_file = None
+        self.labels_file = None
 
     def _ensure_dir(self):
         if self.dir is None:
@@ -73,6 +75,17 @@ class Recorder:
             return
         self._ensure_dir()
         self.meta_file.write(json.dumps(msg, ensure_ascii=False) + "\n")
+
+    def label(self, msg):
+        """Una etiqueta del tutorial de dataset (qué gesto, de cuándo a cuándo) junto a los datos de la sesión."""
+        if self.root is None:
+            return None
+        self._ensure_dir()
+        if self.labels_file is None:
+            self.labels_file = open(self.dir / "labels.jsonl", "a", encoding="utf-8")
+        self.labels_file.write(json.dumps(msg, ensure_ascii=False) + "\n")
+        self.labels_file.flush()
+        return str(self.dir)
 
     def sample(self, source, t_watch, t_recv, values):
         if self.root is None:
@@ -101,6 +114,8 @@ class Recorder:
             fh.close()
         if self.meta_file:
             self.meta_file.close()
+        if self.labels_file:
+            self.labels_file.close()
 
 
 class Hub:
@@ -172,7 +187,17 @@ class Hub:
                 await ws.send(json.dumps(self.hello))
             for st in list(self.status.values()):
                 await ws.send(json.dumps(st))
-            await ws.wait_closed()
+            async for raw in ws:          # la página del dataset manda etiquetas; el resto solo escucha
+                try:
+                    msg = json.loads(raw)
+                except ValueError:
+                    continue
+                if isinstance(msg, dict) and msg.get("type") == "label" and len(raw) < 65536:
+                    msg["t_server_ms"] = round(time.time() * 1000)
+                    where = self.recorder.label(msg)
+                    await ws.send(json.dumps({"type": "label_ack", "id": msg.get("id"), "dir": where}))
+        except ConnectionClosed:
+            pass
         finally:
             self.uis.discard(ws)
 

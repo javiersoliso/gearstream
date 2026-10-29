@@ -1,0 +1,19 @@
+{
+  "protocol": "gestos-v1",
+  "prep_s": 3,
+  "steps": [
+    { "id": "reposo", "line": "Mano levantada como si apuntaras. Quieta.", "secs": 8 },
+    { "id": "raton", "line": "Mueve la mano como usando el ratón: apunta suave a cosas.", "secs": 25 },
+    { "id": "pinza2", "line": "Apuntando suave, con cada pitido: pulgar + índice.", "cues": { "n": 12, "period": 2 } },
+    { "id": "pinza2_doble", "line": "Con cada pitido: DOS pellizcos rápidos, pulgar + índice.", "cues": { "n": 10, "period": 2.5 } },
+    { "id": "pinza3", "line": "Con cada pitido: pulgar + índice + corazón.", "cues": { "n": 10, "period": 2 } },
+    { "id": "pinza4", "line": "Con cada pitido: pulgar + índice + corazón + anular.", "cues": { "n": 10, "period": 2 } },
+    { "id": "pinza5", "line": "Con cada pitido: los cinco dedos juntos.", "cues": { "n": 10, "period": 2 } },
+    { "id": "puno", "line": "Con cada pitido: cierra el puño fuerte y ábrelo.", "cues": { "n": 10, "period": 2 } },
+    { "id": "muneca_lenta", "line": "Sube y baja la mano desde la muñeca, lento, al ritmo de los pitidos.", "secs": 16, "metronome": 0.5 },
+    { "id": "muneca_rapida", "line": "Ahora rápido: arriba y abajo con la muñeca, al ritmo de los pitidos.", "secs": 10, "metronome": 2 },
+    { "id": "teclear", "line": "Teclea con la mano del reloj, lo que sea.", "secs": 20 },
+    { "id": "brazo", "line": "Con cada pitido: deja caer el brazo y vuelve a levantarlo.", "cues": { "n": 6, "period": 3 } },
+    { "id": "raton2", "line": "Otra vez ratón normal, apuntando suave. Sin pellizcos.", "secs": 30 }
+  ]
+}
