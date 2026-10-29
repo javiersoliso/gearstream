@@ -4,7 +4,7 @@
 // Apuntar: como el ratón aéreo; tasas del giroscopio referidas a la gravedad (yaw alrededor de la vertical,
 // pitch alrededor del eje horizontal perpendicular al antebrazo) integradas a ángulos. Es la "sombra" de un
 // puntero, lo que mejor reconstruye tus trazos en los datos.
-//   1D: sismógrafo. El pitch mueve la aguja arriba y abajo; el papel corre solo.
+//   1D: sismógrafo. Un solo ángulo (pitch, yaw o roll; E lo cambia) mueve la aguja arriba y abajo; el papel corre solo.
 //   2D: lienzo. Yaw → x, pitch → y.
 //   3D: la dirección (yaw, pitch) es un rayo desde tus ojos y la profundidad sale de girar el antebrazo
 //       (roll, como atornillar: horario aleja, antihorario acerca). Arrastra con el ratón para orbitar.
@@ -76,9 +76,17 @@ const strokes2 = [];                    // {mode, color, pts:[[x,y]]}
 let paperX = 0;                         // 1D: cuánto ha corrido el papel
 function resize2() { const d = Math.min(devicePixelRatio, 2); c2.width = innerWidth * d; c2.height = innerHeight * d; g2.setTransform(d, 0, 0, d, 0, 0); }
 addEventListener('resize', resize2); resize2();
+// 1D: qué ángulo escribe la aguja. Pulsa otra vez el botón 1D (o E) para cambiarlo.
+const AXES1 = [
+  { key: 'pitch', name: 'inclinar', how: 'sube y baja la muñeca', px: 16 },
+  { key: 'yaw', name: 'girar', how: 'mueve la muñeca a izquierda (abajo) y derecha (arriba)', px: 16 },
+  { key: 'roll', name: 'atornillar', how: 'gira el antebrazo como un destornillador', px: 6 },
+];
+let axis1 = 0;
 function point2() {
   if (S.mode === 2) return [innerWidth / 2 + S.yaw * PX_PER_DEG, innerHeight / 2 - S.pitch * PX_PER_DEG];
-  return [paperX, innerHeight / 2 - S.pitch * PX_PER_DEG];          // 1D: la x es el tiempo
+  const a = AXES1[axis1];
+  return [paperX, innerHeight / 2 - S[a.key] * a.px];               // 1D: la x es el tiempo
 }
 
 // ---------- 3D: espacio ----------
@@ -184,6 +192,7 @@ function setMode(m, keepCreative) {
   if (!keepCreative && S.creative && m !== 3) { S.creative = false; S.view = false; $('creative').classList.remove('on'); }
   $('creative').style.display = m === 3 ? '' : 'none';
   document.querySelectorAll('#modes button[data-m]').forEach((b) => b.classList.toggle('on', Number(b.dataset.m) === m));
+  document.querySelector('#modes button[data-m="1"]').textContent = '1D ' + AXES1[axis1].name;
   c3.style.display = m === 3 ? 'block' : 'none'; c2.style.display = m === 3 ? 'none' : 'block';
   if (!S.creative) { orbit.enabled = false; cam.position.set(0, 0, 0); cam.lookAt(0, 0, -1); }
   const depthTxt = S.depthSign > 0 ? 'horario aleja' : 'horario acerca';
@@ -193,13 +202,18 @@ function setMode(m, keepCreative) {
       + 'atornilla para alejarlo (' + depthTxt + ', <b>I</b> invierte) y mantén el botón atrás para pintar. <b>F</b>: salir'
       + '<br>R: recentrar · C: borrar · Z: deshacer · Espacio: lápiz sin reloj'
     : {
-    1: '<b>1D</b>: mantén el botón atrás y sube y baja la muñeca: la aguja escribe y el papel corre solo.',
+    1: '<b>1D · ' + AXES1[axis1].name + '</b>: mantén el botón atrás y ' + AXES1[axis1].how + ': la aguja escribe y el papel corre solo. '
+      + '<b>E</b> o el botón 1D otra vez: cambiar de eje.',
     2: '<b>2D</b>: mantén el botón atrás y apunta con la muñeca para dibujar. Bisel: color.',
     3: '<b>3D</b>: apunta con la muñeca; atornilla para alejar o acercar el lápiz (' + depthTxt + ', <b>I</b> invierte). Mantén el botón atrás para pintar. '
       + '<b>F</b>: modo creativo (volar). <b>O</b>: orbitar con el ratón.',
   }[m] + '<br>R: recentrar · C: borrar · Z: deshacer · S: guardar imagen · Espacio: lápiz sin reloj';
 }
-document.querySelectorAll('#modes button[data-m]').forEach((b) => b.addEventListener('click', () => setMode(Number(b.dataset.m))));
+function nextAxis1() { axis1 = (axis1 + 1) % AXES1.length; recenter(); setMode(1); }
+document.querySelectorAll('#modes button[data-m]').forEach((b) => b.addEventListener('click', () => {
+  const m = Number(b.dataset.m);
+  if (m === 1 && S.mode === 1) nextAxis1(); else setMode(m);
+}));
 $('creative').addEventListener('click', () => setCreative(!S.creative));
 addEventListener('keydown', (e) => {
   if (S.creative && ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyE', 'KeyQ', 'ShiftLeft', 'ShiftRight'].includes(e.code)) { S.keys.add(e.code); return; }
@@ -211,6 +225,7 @@ addEventListener('keydown', (e) => {
   else if (e.key === 'c' || e.key === 'C') { strokes2.length = 0; blob.count = 0; blob.instanceMatrix.needsUpdate = true; }
   else if (e.key === 'z' || e.key === 'Z') { if (S.mode === 3) { blob.count = Math.max(0, blob.count - 300); blob.instanceMatrix.needsUpdate = true; } else strokes2.pop(); }
   else if (e.key === 's' || e.key === 'S') save();
+  else if ((e.key === 'e' || e.key === 'E') && S.mode === 1) nextAxis1();
   else if (e.key === 'o' || e.key === 'O') { if (S.mode === 3 && !S.creative) { orbit.enabled = !orbit.enabled; if (orbit.enabled) { cam.position.set(4, 2.5, 3); orbit.target.set(0, 0, -3); orbit.update(); } else { cam.position.set(0, 0, 0); cam.lookAt(0, 0, -1); } } }
   else if (['1', '2', '3'].includes(e.key)) setMode(Number(e.key));
 });
