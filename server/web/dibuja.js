@@ -5,7 +5,8 @@
 // pitch alrededor del eje horizontal perpendicular al antebrazo) integradas a ángulos. Es la "sombra" de un
 // puntero, lo que mejor reconstruye tus trazos en los datos.
 //   1D: sismógrafo. Un solo ángulo (pitch, yaw o roll; E lo cambia) mueve la aguja arriba y abajo; el papel corre solo.
-//   2D: lienzo. Yaw → x, pitch → y.
+//   2D: lienzo. Yaw → x, pitch → y, con una ganancia por eje (calibra.js; B: barre las cuatro esquinas de tu
+//       pantalla y ese barrido pasa a llenar la ventana; sin calibrar, 16 px por grado).
 //   3D: la dirección (yaw, pitch) es un rayo desde tus ojos y la profundidad sale de girar el antebrazo
 //       (roll, como atornillar: horario aleja, antihorario acerca). Arrastra con el ratón para orbitar.
 //   Modo creativo (F, en 3D): vuelas libre como en Minecraft creativo (WASD, E sube, Q baja, arrastrar con
@@ -22,8 +23,14 @@
 
 const wrist = new Wrist();               // muñeca izquierda o derecha (M), compartida con las otras páginas
 const COLORS = ['#58c4dd', '#f0997b', '#5dcaa5', '#ffd166', '#c39bf0', '#f4a6b8', '#ece9e1', '#ff6b6b'];
-const PX_PER_DEG = 16;                  // 2D: píxeles por grado de muñeca
 const DEPTH_PER_DEG = 0.02;             // 3D: metros por grado de giro del antebrazo
+const CAL_KEY = 'gearstream.lienzo', CAL_SECS = 8;
+let CAL = (() => {                      // 2D: la última calibración, en fracción de la ventana por grado
+  try { const c = JSON.parse(localStorage.getItem(CAL_KEY)); if (c && c.fx > 0 && c.fy > 0) return c; } catch { /* sin almacenamiento */ }
+  return null;
+})();
+// px por grado en x e y: así la calibración sigue llenando la ventana si cambia de tamaño (pantalla completa)
+const gain = () => (CAL ? { kx: CAL.fx * innerWidth, ky: CAL.fy * innerHeight } : DEFAULT_GAIN);
 const S = {
   mode: 2, grav: null, lastT: null,
   yaw: 0, pitch: 0, roll: 0, pen: false, color: 0,
@@ -48,17 +55,40 @@ function onGyro(t, v) {
   S.yaw -= yaw * dt;                    // derecha positiva
   S.pitch += pitch * dt;                // arriba positiva
   if (Math.abs(roll) > 1) S.roll += roll * dt;
+  if (S.cal) S.cal.pts.push([S.yaw, S.pitch]);
+  else if (S.mode === 2) {               // en el borde la punta se queda, como un ratón: volver la mueve enseguida
+    const g = gain(), mx = innerWidth / 2 / g.kx, my = innerHeight / 2 / g.ky;
+    S.yaw = Math.max(-mx, Math.min(mx, S.yaw)); S.pitch = Math.max(-my, Math.min(my, S.pitch));
+  }
   S.hzCount++;
   sample();
 }
 
 function recenter() { S.yaw = 0; S.pitch = 0; S.roll = 0; }
+
+// ---------- calibrar el lienzo 2D ----------
+function startCal() {
+  if (S.cal) { S.cal = null; flash('calibración cancelada'); return; }
+  if (S.mode !== 2) setMode(2);
+  setPen(false);
+  S.cal = { start: performance.now(), pts: [] };
+}
+function finishCal() {
+  const r = calibrate(S.cal.pts, innerWidth, innerHeight);
+  S.cal = null;
+  if (!r) { flash('casi no te moviste: barre más grande, de esquina a esquina (B)'); return; }
+  CAL = { fx: r.kx / innerWidth, fy: r.ky / innerHeight };
+  try { localStorage.setItem(CAL_KEY, JSON.stringify(CAL)); } catch { /* solo dura esta visita */ }
+  S.yaw -= r.cx; S.pitch -= r.cy;       // el centro de tu barrido es el centro de la ventana
+  flash(`listo: ${r.span[0].toFixed(0)}° × ${r.span[1].toFixed(0)}° de brazo llenan la ventana (${r.kx.toFixed(0)} y ${r.ky.toFixed(0)} px por grado)`);
+}
 function showHand() { $('hand').textContent = handName(wrist.hand); }
 function toggleHand() { wrist.toggleHand(); recenter(); showHand(); }
 showHand();
 $('hand').addEventListener('click', toggleHand);
 function setPen(down) {
   if (down && RP.on) { stopReplay(); return; }
+  if (down && S.cal) return;            // calibrando no se pinta
   if (down === S.pen) return;
   S.pen = down;
   if (down) startStroke(); else endStroke();
@@ -83,7 +113,7 @@ const AXES1 = [
 ];
 let axis1 = 0;
 function point2() {
-  if (S.mode === 2) return [innerWidth / 2 + S.yaw * PX_PER_DEG, innerHeight / 2 - S.pitch * PX_PER_DEG];
+  if (S.mode === 2) return toScreen(S.yaw, S.pitch, gain(), innerWidth, innerHeight);
   const a = AXES1[axis1];
   return [paperX, innerHeight / 2 - S[a.key] * a.px];               // 1D: la x es el tiempo
 }
@@ -347,6 +377,7 @@ $('musicbtn').addEventListener('click', cycleMusic);
 function flash(text) { const el = $('flash'); el.textContent = text; el.style.opacity = 1; clearTimeout(flash.t); flash.t = setTimeout(() => { el.style.opacity = 0; }, 2200); }
 $('replaybtn').addEventListener('click', () => (RP.on ? stopReplay() : startReplay()));
 $('exportbtn').addEventListener('click', exportPage);
+$('calbtn').addEventListener('click', (e) => { e.currentTarget.blur(); startCal(); });
 
 // ---------- modos, teclado y ratón ----------
 function setMode(m, keepCreative) {
@@ -366,7 +397,8 @@ function setMode(m, keepCreative) {
     : {
     1: '<b>1D · ' + AXES1[axis1].name + '</b>: mantén el botón atrás y ' + AXES1[axis1].how + ': la aguja escribe y el papel corre solo. '
       + '<b>E</b> o el botón 1D otra vez: cambiar de eje.',
-    2: '<b>2D</b>: mantén el botón atrás y apunta con la muñeca para dibujar. Bisel: color.',
+    2: '<b>2D</b>: mantén el botón atrás y apunta con la muñeca para dibujar. Bisel: color. '
+      + '<b>B</b>: calibrar (barre las cuatro esquinas de tu pantalla).',
     3: '<b>3D</b>: apunta con la muñeca; atornilla para alejar o acercar el lápiz (' + depthTxt + ', <b>I</b> invierte). Mantén el botón atrás para pintar. '
       + '<b>F</b>: modo creativo (volar). <b>O</b>: orbitar con el ratón.',
   }[m] + '<br>Se guarda solo · P: reproducir · X: exportar · N: sonido · K: color · R: recentrar · C: borrar · Z: deshacer · S: imagen · M: muñeca · Espacio: lápiz sin reloj';
@@ -393,6 +425,7 @@ addEventListener('keydown', (e) => {
   else if (e.key === 's' || e.key === 'S') save();
   else if ((e.key === 'e' || e.key === 'E') && S.mode === 1) nextAxis1();
   else if (e.key === 'm' || e.key === 'M') toggleHand();
+  else if (e.key === 'b' || e.key === 'B') startCal();
   else if (e.key === 'o' || e.key === 'O') { if (S.mode === 3 && !S.creative) { orbit.enabled = !orbit.enabled; if (orbit.enabled) { cam.position.set(4, 2.5, 3); orbit.target.set(0, 0, -3); orbit.update(); } else { cam.position.set(0, 0, 0); cam.lookAt(0, 0, -1); } } }
   else if (['1', '2', '3'].includes(e.key)) setMode(Number(e.key));
 });
@@ -468,6 +501,25 @@ function draw2(now) {
   const [x, y] = point2();                                           // la punta del lápiz
   g2.fillStyle = S.pen ? COLORS[S.color] : 'transparent'; g2.strokeStyle = COLORS[S.color]; g2.lineWidth = 2;
   g2.beginPath(); g2.arc(x, y, S.pen ? 6 : 9, 0, 2 * Math.PI); S.pen ? g2.fill() : g2.stroke();
+  g2.restore();
+  if (S.cal) drawCal(W, H);
+}
+// calibrando: el borde a recorrer, lo que llevas del barrido (con la ganancia de antes) y los segundos que faltan
+function drawCal(W, H) {
+  const left = CAL_SECS - (performance.now() - S.cal.start) / 1000;
+  if (left <= 0) { finishCal(); return; }
+  g2.save();
+  g2.strokeStyle = '#ffd166'; g2.lineWidth = 3; g2.setLineDash([14, 10]);
+  g2.strokeRect(W * 0.06, H * 0.06, W * 0.88, H * 0.88);
+  g2.setLineDash([]); g2.strokeStyle = '#ffd16688'; g2.lineWidth = 2; g2.beginPath();
+  const g = gain();
+  S.cal.pts.forEach(([yw, p], i) => { const [px, py] = toScreen(yw, p, g, W, H); if (i) g2.lineTo(px, py); else g2.moveTo(px, py); });
+  g2.stroke();
+  const fs = Math.min(26, W / 34);
+  g2.fillStyle = '#ffd166'; g2.textAlign = 'center'; g2.font = `500 ${fs}px system-ui`;
+  g2.fillText('Barre las cuatro esquinas de tu pantalla, como si pintaras su borde', W / 2, H / 2 - 12);
+  g2.font = `${fs * 0.7}px system-ui`; g2.fillStyle = '#ece9e1';
+  g2.fillText(`${Math.ceil(left)} s · con el brazo, cómodo · B cancela`, W / 2, H / 2 + 24);
   g2.restore();
 }
 function frame(now) {

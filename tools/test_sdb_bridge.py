@@ -404,5 +404,50 @@ class SdbBridgeTests(unittest.TestCase):
         self.assertEqual([m["source"] for m in sent[1:]], ["HRM"] + list(sdb_bridge.UNAVAILABLE))
 
 
+class ConnectRetryTests(unittest.TestCase):
+    """The watch accepting the TCP connection and closing it before answering must not kill the bridge."""
+
+    def test_watch_closing_mid_handshake_is_retryable_and_closes_the_socket(self):
+        import sdb_client
+
+        async def scenario():
+            async def slam(reader, writer):        # a watch that reads our CNXN and hangs up without a word
+                await reader.read(64)
+                writer.close()
+            server = await asyncio.start_server(slam, "127.0.0.1", 0)
+            port = server.sockets[0].getsockname()[1]
+            conn = sdb_client.SdbConnection("127.0.0.1", port)
+            with mock.patch.object(sdb_client, "load_or_create_key", lambda: None):
+                with self.assertRaises(sdb_bridge.RETRYABLE) as caught:
+                    await conn.connect(timeout=5)
+            server.close()
+            await server.wait_closed()
+            return caught.exception, conn.writer.is_closing()
+
+        err, closed = asyncio.run(scenario())
+        self.assertIsInstance(err, EOFError)       # IncompleteReadError: what crashed the .exe before
+        self.assertTrue(closed)
+
+    def test_connect_watch_retries_and_explains_after_three_hang_ups(self):
+        attempts = []
+
+        class Flaky:
+            def __init__(self, host, port):
+                pass
+
+            async def connect(self, timeout):
+                attempts.append(timeout)
+                if len(attempts) <= 3:
+                    raise asyncio.IncompleteReadError(b"", 24)
+                return "conectado"
+
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            got = asyncio.run(sdb_bridge.connect_watch("10.0.0.2", 26101, connection=Flaky, wait=0))
+        self.assertEqual(got, "conectado")
+        self.assertEqual(len(attempts), 4)
+        self.assertEqual(out.getvalue().count("cierra la conexión sin contestar"), 1)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

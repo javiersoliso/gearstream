@@ -1,11 +1,15 @@
 # GearStream
 
+![Escribiendo "¡hola!" en el aire con el reloj en Dibuja 3D: la muñeca da la dirección, atornillar da la profundidad, y al final la cámara gira y se ve el trazo en 3D](docs/media/dibuja-hola-3d.gif)
+
 Streaming en tiempo real de **todos los sensores** de un Samsung Galaxy Watch (1ª gen, 46 mm, Tizen) a la laptop, con dashboard en vivo y grabación a CSV.
 
 ```
 Galaxy Watch (app Tizen web)  --WebSocket/Wi-Fi-->  laptop: server/server.py  --->  dashboard en el navegador
   watch-app/                    ws://IP:8765/watch     graba recordings/<sesión>/*.csv    http://localhost:8765
 ```
+
+**¿Solo quieres usarlo?** Descarga `GearStream-<versión>-windows.zip` de *Releases*, descomprímelo y abre `GearStream.exe`: ver [La app](#la-app-gearstreamexe).
 
 ## Qué se transmite
 
@@ -119,13 +123,25 @@ Usa `--no-record` para no grabar y `--out <carpeta>` para grabar en otra parte.
 
 Las grabaciones son datos personales (pulso, movimiento) y **nunca salen de tu máquina**: `recordings/` está en `.gitignore`. Las llaves tampoco viven en el repositorio: la llave sdb está en `~/.tizen/sdbkey` o `~/.gearstream/sdbkey.json`, y el perfil del ratón aéreo en `~/.gearstream/airmouse.json`. Si quieres compartir una grabación de ejemplo, cópiala a otra carpeta a propósito.
 
-## Lanzador (sin comandos)
+## La app: GearStream.exe
+
+1. Descarga `GearStream-<versión>-windows.zip` de **Releases** y descomprímelo donde quieras.
+2. Abre `GearStream.exe`. Windows avisa con SmartScreen porque el ejecutable no está firmado: *Más información → Ejecutar de todos modos*.
+3. La primera vez se abre un **paso a paso**: misma Wi-Fi, modo desarrollador y depuración en el reloj, buscar su IP, conectar y aceptar en el reloj. **Probar sin reloj** arranca un reloj simulado para explorar todo sin reloj.
+
+Una ventana (y un ícono en la bandeja) con tu Wi-Fi y la IP de la laptop, la IP del reloj (la busca en la red o la escribes), el estado del servidor y del reloj con sus Hz, un botón por página y el ratón aéreo. En **Ajustes**: la muñeca del reloj (el ratón aéreo y las páginas se ajustan solos), las muestras por paquete (*auto* mide la red y agrupa en el hotspot del teléfono), el puerto, la carpeta de tus datos (por defecto *Documentos/GearStream*, nunca la carpeta de la app) y qué página abrir al conectar. Se guarda en `~/.gearstream/config.json`.
+
+Por dentro, el .exe se llama a sí mismo para cada pieza (`GearStream.exe servidor`, `puente`, `raton`, `reloj-simulado`), cada una en su proceso, y las para con Ctrl+Break para que el reloj quede limpio. `GearStream.exe prueba` es una prueba de punta a punta sin ventana: servidor + reloj simulado + páginas.
+
+**Desde el código** (cualquier sistema; el ratón aéreo es solo Windows):
 
 ```bash
-python tools/launcher.py
+pip install -r app/requirements.txt
+python app/gearstream.py              # la app (python tools/launcher.py hace lo mismo)
+python tools/build_app.py --zip       # arma dist/GearStream/GearStream.exe en un entorno aparte y lo prueba
 ```
 
-Una ventana que muestra tu Wi-Fi y la IP de la laptop, busca el reloj en la red (o escribes su IP: en el hotspot del teléfono la búsqueda a veces no lo ve), arranca el servidor y el puente, y abre con un botón el juego, el avatar, el dashboard, la calibración o el ratón aéreo. Mide la red con ping y agrupa muestras solo si hace falta. Para el puente y el ratón con Ctrl+Break, para que limpien el reloj al salir.
+En GitHub, el flujo `.github/workflows/app.yml` corre las pruebas y arma y prueba el .exe en Windows en cada pull request; con una etiqueta `v*` lo publica en Releases.
 
 ## Mocap con un reloj
 
@@ -216,7 +232,8 @@ python tools/air_mouse.py
 ```
 
 - Arranca con el brazo relajado unos segundos (calibra el reposo) y luego levanta la mano y apunta.
-- **Clic:** botón *atrás* del reloj (mantenerlo arrastra). Alternativa: un toque seco en la esfera (`--click tap`).
+- **Clic:** botón *atrás* del reloj (mantenerlo arrastra). Alternativas: un toque seco en la esfera (`--click tap`) o **un giro rápido de muñeca y de vuelta** (`--click flick`, o `button+flick` para tener los dos). El giro es un pico en un solo eje (el roll alrededor del antebrazo), que además casi no mueve el cursor, y el cursor vuelve a donde empezó el giro para que el clic caiga donde apuntabas.
+- **Calibrar el clic por giro:** en `calibrate.html` → *Calibrar clic*: apuntas normal 10 s y haces el giro una vez por pitido (8 pitidos). El mismo detector del ratón mide cada giro y de ahí salen tus umbrales (pico, duración, ángulo, cuánto se puede mover el cursor, pausa previa y sentido), con una gráfica de tus giros contra el fondo y la cuenta de cuántos pasarían y cuántos clics falsos habría. La cuenta está en `server/web/clickcal.js` (prueba: `node tools/test_clickcal.js`).
 - **Scroll:** el bisel, muesca a muesca (`--scroll roll` usa el giro del antebrazo si el puente no manda el bisel).
 - **Seguridad:** mover el ratón físico pausa el aéreo; la tecla Pausa lo pausa/reanuda; dejar el cursor 1.5 s en la esquina superior izquierda lo apaga.
 - **Calibración:** abre `http://localhost:8765/calibrate.html` con el ratón corriendo. Ajusta sensibilidad (incluida la vertical, `gain_y`), zona muerta y suavizado en vivo, haz la prueba de objetivos (sugiere el ajuste por eje), la de clic y la de scroll (verifica el sentido del bisel), y graba gestos de 3 s. El perfil se guarda en `~/.gearstream/airmouse.json`.
@@ -255,6 +272,7 @@ server/web/calibrate.html  página de calibración del ratón aéreo
 server/web/avatar.html     avatar 3D del brazo (orbital, POV y plano del brazo) a partir de gravedad + giroscopio
 server/web/armfilter.js    filtro de partículas del codo: aceleración del reloj + límites del brazo (prueba: node tools/test_armfilter.js)
 phone/start.sh      arranque en Termux (servidor + puente en el teléfono)
-tools/launcher.py   ventana para conectar el reloj y abrir cada modo
+app/gearstream.py   la app (GearStream.exe): conectar el reloj, abrir cada página, ratón aéreo, ajustes
+tools/build_app.py  arma GearStream.exe con PyInstaller y lo prueba
 server/web/game.html  juego Revienta globos (apuntar con la muñeca, empujar hacia la pantalla)
 ```

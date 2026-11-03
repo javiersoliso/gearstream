@@ -120,7 +120,7 @@
       <span id="amConn" class="pill"></span>
       <span id="amEstado" class="muted"></span>
       <nav class="seg" aria-label="Secciones">
-        <a href="#vivo">En vivo</a><a href="#ajustes">Ajustes</a><a href="#objetivos">Objetivos</a><a href="#clic">Clic</a><a href="#scroll">Scroll</a><a href="#gesto">Gesto</a>
+        <a href="#vivo">En vivo</a><a href="#ajustes">Ajustes</a><a href="#objetivos">Objetivos</a><a href="#clicCal">Calibrar clic</a><a href="#clic">Clic</a><a href="#scroll">Scroll</a><a href="#gesto">Gesto</a>
       </nav>
     </div>
   </header>
@@ -193,6 +193,34 @@
     </section>
 
     <!-- 4 -->
+    <section id="clicCal" class="card">
+      <header>
+        <h2>Calibrar el clic: giro de muñeca</h2>
+        <span class="sub">de tus giros salen tus umbrales</span>
+      </header>
+      <p class="hint">Palma abajo, como con el ratón. El clic es un giro rápido del antebrazo en un sentido y de vuelta, como
+        atornillar un cuarto de vuelta. Primero <b>apunta normal 10 s</b>, moviendo el cursor como siempre: así el ratón
+        aprende lo que no es un clic. Después haz <b>el giro una vez por pitido</b> (8 pitidos), siempre en el mismo sentido.</p>
+      <div class="row">
+        <button id="ccStart">Empezar</button>
+        <span id="ccPhase" class="msg"></span>
+      </div>
+      <div id="ccChart" class="chart"></div>
+      <div class="tiles">
+        <div class="tile"><span class="lab">tus giros detectados</span><span id="ccDetected" class="val num">—</span></div>
+        <div class="tile"><span class="lab">clics falsos apuntando</span><span id="ccFalse" class="val num">—</span></div>
+        <div class="tile"><span class="lab">pico mínimo °/s</span><span id="ccThr" class="val num">—</span></div>
+        <div class="tile"><span class="lab">sentido</span><span id="ccDir" class="val">—</span></div>
+        <div class="tile"><span class="lab">duración máx ms</span><span id="ccMs" class="val num">—</span></div>
+        <div class="tile"><span class="lab">ángulo °</span><span id="ccDeg" class="val num">—</span></div>
+      </div>
+      <ul id="ccWarn" class="hint"></ul>
+      <div class="row">
+        <button id="ccApply" disabled>Usar estos ajustes y guardar</button>
+        <span id="ccMsg" class="msg"></span>
+      </div>
+    </section>
+
     <section id="clic" class="card">
       <header>
         <h2>Prueba de clic</h2>
@@ -252,6 +280,7 @@
     </section>
   </main>
 
+  <script src="clickcal.js"></script>
   <script src="calibrate.js"></script>
 </body>
 </html>

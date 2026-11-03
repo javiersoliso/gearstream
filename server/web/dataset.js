@@ -4,15 +4,48 @@
 // labels.jsonl junto a los CSV. Los tiempos son del reloj de esta laptop, igual que los de las muestras.
 'use strict';
 
-// los pasos viven en gestures-protocol.json, compartidos con tools/dataset_capture.py (la versión de consola)
+// los pasos viven en gestures-protocol.json, compartidos con tools/dataset_capture.py (la versión de consola);
+// con ?protocolo=curso, en curso-protocol.json: la grabación de ejemplo del curso, con un muñeco
+// (cursodemos.js, stickdemo.js) que hace cada paso a tiempo con los pitidos y la bolita.
 let PROTOCOL = 'gestos-v1', PREP_S = 3, STEPS = [];
-fetch('gestures-protocol.json').then((r) => r.json()).then((p) => {
+const PROTO_FILE = new URLSearchParams(location.search).get('protocolo') === 'curso' ? 'curso-protocol.json' : 'gestures-protocol.json';
+fetch(PROTO_FILE).then((r) => r.json()).then((p) => {
   PROTOCOL = p.protocol; PREP_S = p.prep_s; STEPS = p.steps;
   $('line').textContent = `Unos ${Math.round(STEPS.reduce((a, st) => a + (st.secs || st.cues.n * st.cues.period) + PREP_S, 0) / 60)} minutos, ${STEPS.length} pasos. Cada paso es una línea: mientras se muestra, se graba.`;
+  if (p.titulo) { $('title').textContent = p.titulo; document.title = p.titulo; }
+  if (p.intro) $('state').textContent = `${p.intro} Reloj en la muñeca ${handName()}.`;
+  startDemo();
 });
 
 const $ = (id) => document.getElementById(id);
-const S = { i: 0, running: false, paused: false, trial: 0, ws: null, counts: {}, hz: {}, saved: 0, timers: [] };
+const S = { i: 0, running: false, paused: false, trial: 0, ws: null, counts: {}, hz: {}, saved: 0, timers: [], demoT0: performance.now() };
+
+// ---------- el muñeco que muestra el paso ----------
+const sideOf = () => {
+  const m = new URLSearchParams(location.search).get('mano');           // la app abre ?mano=derecha
+  return m ? (m === 'derecha' ? 'r' : 'l') : (typeof loadHand === 'function' && loadHand() === 'right' ? 'r' : 'l');
+};
+const handName = () => (sideOf() === 'r' ? 'derecha' : 'izquierda');
+function startDemo() {
+  if (PROTO_FILE !== 'curso-protocol.json' || typeof StickDemo === 'undefined') return;
+  const cv = $('demo'), R = new THREE.WebGLRenderer({ canvas: cv, antialias: true }), stage = StickDemo.create();
+  const cam = new THREE.PerspectiveCamera(40, 1, 0.02, 40), side = sideOf();
+  R.setPixelRatio(Math.min(devicePixelRatio, 2));
+  $('demowrap').style.display = 'block';
+  $('demowrap').append($('metro'));
+  const loop = (now) => {
+    requestAnimationFrame(loop);
+    const st = STEPS[Math.min(S.i, STEPS.length - 1)], id = st.demo || st.id;
+    if (!DEMOS[id]) return;
+    const w = cv.clientWidth, h = cv.clientHeight;
+    if (cv.width !== Math.round(w * R.getPixelRatio())) { R.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
+    let t = (now - S.demoT0) / 1000;
+    if (!S.running) t = (((t % 11) + 11) % 11) - PREP_S;   // antes de empezar o en pausa: el paso que viene, en bucle
+    stage.set(id, t, side); stage.aim(cam, null, side);
+    R.render(stage.scene, cam);
+  };
+  requestAnimationFrame(loop);
+}
 
 // ---------- conexión y velocidad de los sensores ----------
 function connect() {
@@ -73,6 +106,7 @@ function runStep() {
   $('line').textContent = st.line; $('line').className = 'prep';
   $('metro').style.display = st.metronome ? 'block' : 'none';
   $('fill').style.width = '0%';
+  S.demoT0 = performance.now() + PREP_S * 1000;          // el muñeco ya hace el paso durante el "prepárate"
   for (let k = 0; k < PREP_S; k++) later(k * 1000, () => { $('state').textContent = `prepárate… ${PREP_S - k}`; });
   later(PREP_S * 1000, () => record(st));
 }
@@ -80,6 +114,7 @@ function runStep() {
 function record(st) {
   const dur = stepDuration(st) * 1000, t0 = Date.now(), p0 = performance.now(), cues = [];
   S.trial += 1;
+  S.demoT0 = p0;                                          // mismo cero que los pitidos y la bolita
   $('line').className = '';
   $('state').innerHTML = '<span class="rec">● grabando</span>';
   beep(440, 0.2);

@@ -433,6 +433,27 @@ class Bridge:
                     task.cancel()
 
 
+# Lo que puede pasar al hablar con el reloj y se arregla reintentando. EOFError incluye IncompleteReadError:
+# el reloj acepta la conexión y la cierra sin contestar (otra conexión de sdb abierta, la depuración a medio
+# encender, la radio despertando). Sin él, ese caso tumbaba el puente.
+RETRYABLE = (OSError, asyncio.TimeoutError, EOFError, ConnectionError)
+
+
+async def connect_watch(host, port, connection=SdbConnection, wait=3):
+    """Conecta con el reloj, reintentando cada `wait` s; a la tercera vez que cierra sin contestar, dice qué revisar."""
+    closed = 0
+    while True:  # the watch's sdbd drops or refuses connections while its radio wakes up: keep trying
+        try:
+            return await connection(host, port).connect(timeout=600)  # time to accept the prompt on the watch
+        except RETRYABLE as e:
+            closed = closed + 1 if isinstance(e, EOFError) else 0
+            if closed == 3:
+                print("el reloj cierra la conexión sin contestar: ¿hay otra conexión abierta con él (otra ventana de "
+                      "GearStream, sdb, Tizen Studio)? Si sigue, apaga y vuelve a encender la Depuración en el reloj")
+            print(f"el reloj no responde ({e.__class__.__name__}: {e}); reintento en {wait} s (Ctrl+C para salir)")
+            await asyncio.sleep(wait)
+
+
 async def main():
     if hasattr(signal, "SIGBREAK"):   # el lanzador pide parar con Ctrl+Break: limpiar el reloj igual que con Ctrl+C
         task, loop = asyncio.current_task(), asyncio.get_running_loop()
@@ -485,18 +506,12 @@ async def main():
     print(f"conectando a {host}:{port}")
 
     while True:  # si el reloj se cae (reinicio, Wi-Fi dormido) se vuelve a conectar solo; Ctrl+C sale
-        while True:  # the watch's sdbd drops or refuses connections while its radio wakes up: keep trying
-            try:
-                conn = await SdbConnection(host, port).connect(timeout=600)  # time to accept the prompt on the watch
-                break
-            except (OSError, asyncio.TimeoutError) as e:
-                print(f"el reloj no responde ({e.__class__.__name__}: {e}); reintento en 3 s (Ctrl+C para salir)")
-                await asyncio.sleep(3)
+        conn = await connect_watch(host, port)
         try:
             await conn.run(CLEANUP_CMD)  # leftovers from a previous session
             await Bridge(conn, args.interval, args.flush_ms, sensors, args.batch,
                          inputs=inputs, bezel_positive=args.bezel_positive).run(args.url)
-        except (OSError, asyncio.TimeoutError, ConnectionError, WebSocketException) as e:  # también si se reinicia el servidor
+        except (*RETRYABLE, WebSocketException) as e:  # también si se reinicia el servidor
             print(f"se perdió el reloj ({e.__class__.__name__})")
         finally:
             try:

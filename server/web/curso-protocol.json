@@ -1,0 +1,31 @@
+{
+  "protocol": "curso-v1",
+  "titulo": "Grabación del curso · GearStream",
+  "intro": "De pie frente a la laptop. El reloj en la mesa, pantalla arriba, y el teléfono grabando de lado o en diagonal, que se vea el brazo entero.",
+  "prep_s": 3,
+  "steps": [
+    { "id": "mesa", "line": "El reloj quieto en la mesa, pantalla arriba. No lo toques.", "secs": 60, "caps": [0, 1, 3, 8] },
+    { "id": "_ponerse", "line": "Ponte el reloj y párate donde te vea el teléfono.", "secs": 20, "demo": "ponerse" },
+    { "id": "palmadas", "line": "Con cada pitido: una palmada fuerte (sincroniza el video).", "cues": { "n": 3, "period": 1.5 }, "caps": [3] },
+    { "id": "reposo", "line": "Mano levantada como si apuntaras. Quieta.", "secs": 8, "caps": [1, 10] },
+    { "id": "cara_arriba", "line": "Antebrazo al frente, palma abajo: la pantalla mira al techo.", "secs": 6, "caps": [4] },
+    { "id": "cara_mano", "line": "Como para dar la mano: el pulgar arriba.", "secs": 6, "caps": [4] },
+    { "id": "cara_abajo", "line": "Palma arriba: la pantalla mira al piso.", "secs": 6, "caps": [4] },
+    { "id": "cara_colgando", "line": "Brazo colgando, relajado.", "secs": 6, "caps": [4] },
+    { "id": "cara_pecho", "line": "Antebrazo cruzado delante del pecho, la pantalla de frente a ti (no hacia arriba).", "secs": 6, "caps": [4] },
+    { "id": "cara_mano_arriba", "line": "Mano arriba, como para preguntar, la palma hacia adelante.", "secs": 6, "caps": [4] },
+    { "id": "caras_despacio", "line": "Pasa despacio por las seis posturas, como el muñeco.", "secs": 20, "caps": [4, 5] },
+    { "id": "sacudir", "line": "Sacude la mano de golpe, fuerte.", "secs": 6, "caps": [4] },
+    { "id": "brazo", "line": "Con cada pitido: deja caer el brazo y vuelve a levantarlo.", "cues": { "n": 6, "period": 3 }, "caps": [5, 9, 10] },
+    { "id": "muneca_lenta", "line": "Inclinar: sube y baja la mano desde la muñeca, lento, con la bolita.", "secs": 16, "metronome": 0.5, "caps": [6, 11] },
+    { "id": "muneca_rapida", "line": "Ahora rápido: arriba y abajo con la muñeca, con la bolita.", "secs": 10, "metronome": 2, "caps": [6, 10, 11] },
+    { "id": "girar", "line": "Girar: palma abajo, la mano a tu derecha (bolita arriba) y a tu izquierda (bolita abajo).", "secs": 16, "metronome": 0.5, "caps": [6, 11] },
+    { "id": "atornillar", "line": "Atornillar: gira el antebrazo como con un destornillador (bolita arriba: aprieta).", "secs": 16, "metronome": 0.5, "caps": [6, 11] },
+    { "id": "pinza2", "line": "Apuntando suave, con cada pitido: pulgar + índice.", "cues": { "n": 12, "period": 2 }, "caps": [10] },
+    { "id": "puno", "line": "Con cada pitido: cierra el puño fuerte y ábrelo.", "cues": { "n": 10, "period": 2 }, "caps": [10] },
+    { "id": "raton", "line": "Mueve la mano como usando el ratón: apunta suave a cosas.", "secs": 25, "caps": [7, 9] },
+    { "id": "palmadas_fin", "line": "Con cada pitido: una palmada fuerte.", "cues": { "n": 3, "period": 1.5 }, "demo": "palmadas", "caps": [3] },
+    { "id": "_quitarse", "line": "Quítate el reloj y déjalo en la mesa, pantalla arriba.", "secs": 20, "demo": "ponerse" },
+    { "id": "mesa_final", "line": "El reloj quieto en la mesa otra vez, ya tibio.", "secs": 60, "demo": "mesa", "caps": [1] }
+  ]
+}

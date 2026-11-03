@@ -37,6 +37,10 @@ accelerometer norm ≈ g and steady): a steady slow rotation never becomes the b
 A "flick to click" (sharp pitch impulse) was considered and left out of v1: on the recording it is
 indistinguishable from the start of a deliberate move, so it would either fire while pointing or need
 a latency worse than the tap's 250 ms.
+A ROLL flick does not have that problem (--click flick or button+flick): the roll moves the cursor nothing,
+so a short, fast twist of the forearm out of a quiet wrist is a click, and the slow roll held past 25 deg
+stays the scroll (--scroll roll; it already rejects ramps faster than --scroll-max-rate). The return
+swing of the twist is swallowed.
 """
 import argparse
 import asyncio
@@ -685,6 +689,88 @@ class RollScroller:
         return events
 
 
+class FlickClicker:
+    """A click from a forearm-roll flick: one roll lobe (|theta_dot| above ON until it drops below OFF or
+    turns around) with a peak above --flick-thr, shorter than --flick-max-ms, --flick-deg-min..max of roll,
+    roll-dominant (the pointer rates under --flick-dom of the peak), out of a quiet wrist (>= --flick-quiet-ms
+    under OFF before it) and, with --flick-dir cw|ccw, in that direction only (cw = positive roll: clockwise
+    seen from the elbow, like screwing in). The lobe right after a click (the twist coming back) falls in
+    --flick-refractory and is swallowed.
+    Calibration (the calibration page, control command flick_calib): while `sink` is set, every lobe goes to
+    it with its measurements and nothing clicks, so the thresholds come from the same segmentation that
+    decides the click afterwards."""
+
+    ON, OFF = 60.0, 25.0
+
+    def __init__(self, cfg):
+        self.cfg = cfg
+        self.lobe = None
+        self.quiet_since = None
+        self.refractory_until = -INF
+        self.candidates = self.confirmed = 0
+        self.rejected = Counter()
+        self.sink = None                       # calibración: recibe cada lóbulo y no hay clic
+
+    def reset(self):
+        self.lobe = None
+        self.quiet_since = None
+
+    def feed(self, t, theta_dot, rho, dt, allowed):
+        """Returns the lobe {t0, sign, peak, deg, ms} of a confirmed flick when it ends, else None."""
+        cfg, a = self.cfg, abs(theta_dot)
+        lobe = self.lobe
+        if lobe is not None:
+            turned = theta_dot * lobe["sign"] < -self.OFF
+            if a >= self.OFF and not turned:
+                lobe["peak"] = max(lobe["peak"], a)
+                lobe["deg"] += theta_dot * dt
+                lobe["rho"] = max(lobe["rho"], rho)
+                return None
+            self.lobe = None
+            self.quiet_since = None if turned else t
+            lobe["ms"] = t - lobe["t0"]
+            if self.sink is not None:           # midiendo tus giros: se reporta todo, no se hace clic
+                self.sink(dict(lobe, t_end=t, rho_ratio=lobe["rho"] / lobe["peak"] if lobe["peak"] else 0.0))
+                return None
+            return self._decide(t, lobe, allowed)
+        if a < self.OFF:
+            if self.quiet_since is None:
+                self.quiet_since = t
+            return None
+        if a < self.ON:
+            self.quiet_since = None            # busy but not a lobe yet: not quiet either
+            return None
+        quiet_ms = t - self.quiet_since if self.quiet_since is not None else 0.0
+        self.quiet_since = None
+        self.lobe = dict(t0=t, sign=1 if theta_dot > 0 else -1, peak=a, deg=theta_dot * dt, rho=rho, quiet_ms=quiet_ms)
+        return None
+
+    def _decide(self, t, lobe, allowed):
+        cfg = self.cfg
+        if lobe["peak"] < cfg.flick_thr:
+            return None                        # an ordinary roll, not even a candidate
+        self.candidates += 1
+        reason = (None if t >= self.refractory_until else "vuelta del giro")
+        if reason is None and cfg.flick_dir != "any" and lobe["sign"] != (1 if cfg.flick_dir == "cw" else -1):
+            reason = "sentido"
+        if reason is None and lobe["quiet_ms"] < cfg.flick_quiet_ms:
+            reason = "sin pausa previa"
+        if reason is None and lobe["ms"] > cfg.flick_max_ms:
+            reason = "lento"
+        if reason is None and not cfg.flick_deg_min <= abs(lobe["deg"]) <= cfg.flick_deg_max:
+            reason = "ángulo"
+        if reason is None and lobe["rho"] > cfg.flick_dom * lobe["peak"]:
+            reason = "con movimiento"
+        if reason is None and not allowed:
+            reason = "no permitido"
+        if reason is not None:
+            self.rejected[reason] += 1
+            return None
+        self.confirmed += 1
+        self.refractory_until = t + cfg.flick_refractory
+        return lobe
+
+
 class ShakeDetector:
     """Lobes above 600 deg/s with >= 4 sign reversals of the dominant axis within 700 ms."""
 
@@ -994,6 +1080,7 @@ class AirMouse:
         self.motion = Motion(cfg)
         self.tap, self.dwell = TapDetector(cfg), DwellDetector(cfg)
         self.scroll, self.shake = RollScroller(cfg), ShakeDetector(cfg)
+        self.flick, self.flick_times = FlickClicker(cfg), []
         self.shadow = RollScroller(cfg)    # signal-level scroll metric: fed even while paused (replay report)
         self.P = None
         self.last_set = None
@@ -1139,7 +1226,7 @@ class AirMouse:
         scroll = ("bezel" if "BEZEL" in usable else "roll") if cfg.scroll == "auto" else cfg.scroll
         if self.held is not None:
             b = self.held[0]
-            if (b == "left" and click != "button") or (b != "left" and cfg.home_key != b):
+            if (b == "left" and "button" not in click) or (b != "left" and cfg.home_key != b):
                 self._release_held("modo")
         if self.scroll_mode == "roll" and scroll != "roll" and self.scroll.active:
             self._scroll_exit(timeout=False)
@@ -1150,6 +1237,7 @@ class AirMouse:
             self.tap.reset()
             self.dwell.reset()
             self.scroll.reset()
+            self.flick.reset()
             self.say(f"modos: clic por {click}, scroll por {scroll}")
 
     def _pause(self, reason):
@@ -1516,7 +1604,7 @@ class AirMouse:
         if self._input_stale(t):
             self.stale_count += 1
             ev["reason"] = "antiguo"
-        elif self.scroll_mode != "bezel":
+        elif self.scroll_mode not in ("bezel", "roll"):   # con el scroll por giro el bisel sigue sirviendo
             ev["reason"] = f"modo {self.scroll_mode}"
         elif not self.inputs_allowed:
             ev["reason"] = "pausa"
@@ -1549,7 +1637,7 @@ class AirMouse:
             self.say(f"botón {key}: suelto → {BUTTON_NAMES[button]} arriba ({held_ms} ms)")
             self._click_done(t, "button", held_ms=held_ms)
             ev.update(action=f"{button}up", applied=True)
-        elif key == "back" and self.click_mode != "button":
+        elif key == "back" and "button" not in self.click_mode:
             ev["reason"] = f"modo {self.click_mode}"
         elif key == "home" and button == "none":
             ev["reason"] = "inicio desactivado"
@@ -1706,6 +1794,20 @@ class AirMouse:
             # what the detector would do regardless of pause/freeze: the replay's signal-level metric
             self.shadow.feed(t, step.e, step.theta_dot, step.rho,
                              not stale and t >= self.gap_blank_until and self.calib_mode is None)
+        # click by a forearm-roll flick: the cursor goes back to where the twist started
+        if "flick" in self.click_mode or self.flick.sink is not None:
+            allowed = (gest_ok and not stale and not self.scroll.active and self.held is None
+                       and self.now >= self.clicks_disabled_until)
+            lobe = self.flick.feed(t, step.theta_dot, step.rho, step.dt, allowed)
+            if lobe is not None:
+                self._rewind(lobe["t0"] - 20)
+                if self.last_click_pos is not None and t - self.last_click_t < 500:
+                    self._jump_to(*self.last_click_pos)   # double click: same spot
+                self.flick_times.append(self.t_s(t))
+                self._click(t, f"giro, pico {lobe['peak']:.0f} °/s, {abs(lobe['deg']):.0f}°")
+                self.log_gesture(t, "flick", peak=lobe["peak"], width=round(lobe["ms"]), verdict="confirmado")
+                self.frozen_until = max(self.frozen_until, t + 150)
+                frozen = self.frozen(t)
         # tap decision (gyro time)
         res = self.tap.feed_gyro(t, step.omega_mag)
         if res is not None:
@@ -2130,7 +2232,8 @@ class AirMouse:
             self.gesture_file = None
 
 
-REPO_ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+# desde la app (GEARSTREAM_DATA) los gestos van a tu carpeta de datos, no a la de instalación
+REPO_ROOT = os.environ.get("GEARSTREAM_DATA") or os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
 
 def gestures_dir():
@@ -2198,7 +2301,13 @@ async def ui_source(url, retry_s=2.0):
 
 async def sdb_source(device, interval, flush_ms=10):
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-    from sdb_client import SdbConnection
+    from sdb_client import SdbConnection, find_watch
+    if device == "auto":
+        log("buscando el reloj en la red (puerto 26101)...")
+        hosts = await find_watch()
+        if not hosts:
+            raise SystemExit("no encontré ningún reloj; pásame la IP con --device")
+        device = hosts[0]
     host, _, port = device.partition(":")
     port = int(port or 26101)
     sensors = (("gyroscope", "GYROSCOPE"), ("accelerometer", "ACCELERATION"), ("gravity", "GRAVITY"))
@@ -2404,6 +2513,9 @@ def replay(path, cfg, realtime=False):
     emit(f"scroll: entradas {am.scroll.entries} · muescas +{am.scroll.up}/−{am.scroll.down} · |e| máx {am.scroll.max_e:.0f}° · "
           f"señal (también en pausa): entradas {am.shadow.entries} · muescas +{am.shadow.up}/−{am.shadow.down} · "
           f"rechazos {dict(am.shadow.rejected) or '—'}")
+    emit(f"giro para clic: candidatos {am.flick.candidates} → confirmados {am.flick.confirmed} · instantes "
+          f"{[round(v, 1) for v in am.flick_times]} · rechazos {dict(am.flick.rejected) or '—'}"
+          + ("" if "flick" in am.click_mode else " (usa --click flick)"))
     emit(f"sacudidas {am.shake.toggles} {[round(v, 1) for v in am.shake_times]} · pausas sin datos {len(sin_datos)} "
           f"({', '.join(f'{d:.1f} s' for d in sin_datos) or '—'}; {am.stalls_on_arrival} detectadas al llegar) · "
           f"pausas brazo caído {res['pausas_brazo']} · descartadas por antigüedad {am.stale_count} · esquina {res['esquina']}")
@@ -2413,8 +2525,9 @@ def replay(path, cfg, realtime=False):
     emit(f"totales: px recorridos {am.travel:.0f} · velocidad máx {am.max_speed:.0f} px/s · tiempo congelado {am.frozen_s:.1f} s · "
           f"salto máx tras pausa {am.resume_jump:.0f} px · movimientos {am.moves} · clics {am.clicks} · "
           f"recortes por presupuesto de px/s {am.capped}")
+    res["giro_clics"], res["giro_instantes"] = am.flick.confirmed, am.flick_times
     res["exit_code"] = 1 if (res["reposo_px_s_medio"] > 0 or rest_exc >= 1 or am.tap.confirmed > 0
-                             or am.shadow.entries > 0) else 0
+                             or am.shadow.entries > 0 or am.flick.confirmed > 0) else 0
     return res
 
 
@@ -2427,7 +2540,7 @@ def _tun(kind, lo=None, hi=None, choices=None, attr=None, label=""):
     return Tunable(kind, lo, hi, choices, attr, label)
 
 
-CLICK_MODES = ("auto", "button", "tap", "dwell", "tap+dwell", "none")
+CLICK_MODES = ("auto", "button", "tap", "dwell", "tap+dwell", "flick", "button+flick", "none")
 SCROLL_MODES = ("auto", "bezel", "roll", "none")
 TUNABLES = {
     "gain": _tun("float", 0.1, 5.0, label="ganancia"),
@@ -2452,6 +2565,13 @@ TUNABLES = {
     "tap_pre": _tun("float", 1.0, 90.0, label="giro máx. antes"),
     "tap_post": _tun("float", 1.0, 90.0, label="giro máx. después"),
     "tap_post_ms": _tun("int", 80, 600, label="ms hasta decidir"),
+    "flick_thr": _tun("float", 80.0, 800.0, label="giro para clic °/s"),
+    "flick_max_ms": _tun("int", 80, 500, label="giro para clic ms máx."),
+    "flick_dir": _tun("choice", choices=("any", "cw", "ccw"), label="giro para clic: sentido"),
+    "flick_dom": _tun("float", 0.2, 0.95, label="giro para clic: movimiento máx."),
+    "flick_deg_min": _tun("float", 1.0, 60.0, label="giro para clic: ° mín."),
+    "flick_deg_max": _tun("float", 20.0, 180.0, label="giro para clic: ° máx."),
+    "flick_quiet_ms": _tun("int", 0, 400, label="giro para clic: pausa previa ms"),
     "dwell_time": _tun("float", 0.3, 3.0, label="reposo s"),
     "dwell_speed": _tun("float", 0.2, 10.0, label="reposo °/s"),
     "scroll_enter": _tun("float", 10.0, 80.0, label="entrar scroll °"),
@@ -2632,6 +2752,12 @@ class ControlServer:
         am = self.am
         ack = lambda detail=None: [(False, {"type": "ack", "name": name, "detail": detail})]
         err = lambda detail: [(False, {"type": "error", "name": name, "detail": detail})]
+        if name == "flick_calib":            # la página mide tus giros: cada lóbulo como evento "lobe", sin clic
+            on = bool(msg.get("on"))
+            am.flick.reset()
+            am.flick.sink = (lambda lobe: am.event("lobe", **lobe)) if on else None
+            am.say("midiendo giros para calibrar el clic…" if on else "medición de giros terminada")
+            return ack({"on": on})
         if name == "recalibrate":
             am.motion.start_calibration(background=False)
             am.say("recalibro: apoya la muñeca en la mesa y mantenla quieta…")
@@ -2749,7 +2875,7 @@ def build_parser(explicit_only=False):
         return add(*names, **kw)
     a("--source", choices=("ui", "sdb"), default="ui", help="ui: ws del servidor; sdb: directo al reloj (exclusivo)")
     a("--url", default="ws://localhost:8765/ui")
-    a("--device", default="192.168.0.XX", help="IP[:puerto] del reloj para --source sdb")
+    a("--device", default="auto", help="IP[:puerto] del reloj para --source sdb (auto: lo busca en la red)")
     a("--interval", type=int, default=10, help="ms entre muestras en sensorctl (--source sdb)")
     a("--replay", metavar="DIR", help="reproduce una grabación (implica --dry-run) y sale 1 si hay deriva o clics falsos")
     a("--realtime", action="store_true", help="con --replay: al ritmo real")
@@ -2790,6 +2916,15 @@ def build_parser(explicit_only=False):
     a("--tap-post", type=float, default=20.0, help="°/s máx. después del toque")
     a("--tap-post-ms", type=int, default=250, help="ms hasta decidir (mín. 80)")
     a("--tap-polarity", choices=("any", "neg"), default="any")
+    a("--flick-thr", type=float, default=200.0, help="°/s: pico del giro del antebrazo que es un clic (--click flick)")
+    a("--flick-max-ms", type=int, default=220, help="ms: un giro más largo es un scroll o un movimiento")
+    a("--flick-refractory", type=int, default=350, help="ms tras el clic en que la vuelta del giro no cuenta")
+    a("--flick-dir", choices=("any", "cw", "ccw"), default="any",
+      help="sentido del giro que hace clic: cw = horario visto desde el codo (atornillar), ccw al revés, any los dos")
+    a("--flick-dom", type=float, default=0.6, help="fracción del pico que puede moverse el cursor durante el giro")
+    a("--flick-deg-min", type=float, default=8.0, help="° mínimos de giro")
+    a("--flick-deg-max", type=float, default=100.0, help="° máximos de giro")
+    a("--flick-quiet-ms", type=int, default=120, help="ms de muñeca quieta antes del giro")
     a("--dwell-time", type=float, default=0.7)
     a("--dwell-speed", type=float, default=1.5)
     a("--dwell-arm", type=float, default=40.0)

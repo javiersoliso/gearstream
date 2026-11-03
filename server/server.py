@@ -15,7 +15,9 @@ import json
 import logging
 import re
 import socket
+import sys
 import time
+import urllib.parse
 from collections import Counter
 from pathlib import Path
 
@@ -25,7 +27,7 @@ from websockets.exceptions import ConnectionClosed
 from websockets.http11 import Response
 
 ROOT = Path(__file__).resolve().parent
-WEB_DIR = ROOT / "web"
+WEB_DIR = Path(getattr(sys, "_MEIPASS", ROOT)) / "web"   # empaquetado (app/gearstream.py), las páginas van dentro
 DRAW_DIR = ROOT.parent / "recordings" / "dibujos"   # main() lo cambia con --out
 DRAW_ID = re.compile(r"^\d{8}-\d{6}$")
 DRAW_NAME = re.compile(r"^dibujo-\d{8}-\d{6}\.jsonl$")
@@ -258,7 +260,41 @@ class Hub:
                 self.counts.clear()
 
 
+# Quién puede hablar con el servidor. Host: solo pedidos dirigidos a esta laptop (más tu red si la abres con
+# --host 0.0.0.0); otro nombre es una página que se hace pasar por localhost (DNS rebinding). Origin: si quien
+# llama es un navegador, la página tiene que venir de esos mismos hosts; si no, cualquier página abierta en tu
+# navegador podría leer tus sensores o escribir en tu carpeta (los navegadores dejan abrir WebSockets a otros
+# sitios). Sin Origin es un programa (el puente, el ratón aéreo, la app del reloj), no un navegador.
+ALLOWED_HOSTS = {"localhost", "127.0.0.1", "::1"}    # main() suma las IP de tu red si la abres
+REFUSED = Counter()
+
+
+def host_of(value, url=False):
+    """El nombre de máquina, en minúsculas, de un Host ("localhost:8765") o de un Origin ("http://localhost:8765")."""
+    try:
+        return urllib.parse.urlsplit(value if url else "//" + value).hostname
+    except ValueError:
+        return None
+
+
+def refuse(request):
+    """Por qué no atender esta petición, o None."""
+    host = request.headers.get("Host", "")
+    if host_of(host) not in ALLOWED_HOSTS:
+        return f"Host {host!r}"
+    origin = request.headers.get("Origin")
+    if origin is not None and host_of(origin, url=True) not in ALLOWED_HOSTS:
+        return f"Origin {origin!r}"
+    return None
+
+
 def serve_static(connection, request):
+    why = refuse(request)
+    if why:
+        REFUSED[why] += 1
+        if REFUSED[why] <= 3:                     # avisa, sin llenar el registro si insiste
+            log(f"rechazado {request.path}: {why}")
+        return connection.respond(403, "Forbidden\n")
     if request.headers.get("Upgrade", "").lower() == "websocket":
         return None
     path = request.path.split("?", 1)[0]
@@ -315,7 +351,8 @@ def lan_ips():
 
 async def main():
     parser = argparse.ArgumentParser(description="GearStream server")
-    parser.add_argument("--host", default="0.0.0.0")
+    parser.add_argument("--host", default="0.0.0.0",
+                        help="0.0.0.0 abre a tu red (la app del teléfono o del reloj); 127.0.0.1, solo esta laptop")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--out", default=str(ROOT.parent / "recordings"), help="carpeta de grabaciones")
     parser.add_argument("--no-record", action="store_true", help="no guardar CSV")
@@ -326,13 +363,22 @@ async def main():
     TAKE_DIR = Path(args.out) / "mocap"
     CAPT_DIR = Path(args.out) / "capturas"
     recorder = Recorder(None if args.no_record else Path(args.out))
-    watch_urls = [f"ws://{ip}:{args.port}/watch" for ip in lan_ips()]
+    local = host_of(args.host) in ("localhost", "127.0.0.1", "::1")
+    if args.host in ("0.0.0.0", "::", ""):         # abierto a tu red: también atiende pedidos a tus IP y a tu nombre
+        ALLOWED_HOSTS.update(lan_ips(), {socket.gethostname().lower()})
+    elif not local:
+        ALLOWED_HOSTS.add(host_of(args.host))
+    watch_urls = [] if local else [f"ws://{ip}:{args.port}/watch" for ip in lan_ips()]
     hub = Hub(recorder, watch_urls)
     try:
         async with serve(hub.handle, args.host, args.port, process_request=serve_static,
                          compression=None, max_size=8 * 2**20, ping_interval=20, ping_timeout=20):
             log(f"GearStream escuchando en el puerto {args.port}")
             log(f"  dashboard: http://localhost:{args.port}/")
+            if local:
+                log("  solo esta laptop: para la app del teléfono o del reloj, ábrelo a tu red (--host 0.0.0.0)")
+            else:
+                log("  abierto a tu red: quien esté en tu Wi-Fi puede ver tus sensores; úsalo solo en redes de confianza")
             for url in watch_urls:
                 log(f"  URL para el reloj: {url}")
             await hub.report()

@@ -25,12 +25,16 @@
     #keys { margin-top: 10px; font-size: 12px; color: #6c7686; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
     #saved { color: #5dcaa5; }
     button { font: inherit; font-size: 18px; padding: 10px 26px; border-radius: 10px; border: 1px solid #58c4dd; background: transparent; color: #ece9e1; cursor: pointer; margin-top: 24px; }
+    #demowrap { display: none; position: relative; width: min(84vw, 620px); margin: 0 auto 16px; }
+    #demo { display: block; width: 100%; aspect-ratio: 16 / 10; border-radius: 10px; border: 1px solid #1c2230; }
+    #demowrap #metro { position: absolute; right: -44px; top: 50%; margin: -110px 0 0; }   /* con muñeco, la bolita va a su lado */
   </style>
 </head>
 <body>
-  <header><span>Dataset de gestos · GearStream</span><span id="rates">conectando…</span></header>
+  <header><span id="title">Dataset de gestos · GearStream</span><span id="rates">conectando…</span></header>
   <main>
     <div>
+      <div id="demowrap"><canvas id="demo"></canvas></div>
       <div id="step"></div>
       <div id="line">Unos 5 minutos, 13 pasos. Cada paso es una línea: mientras se muestra, se graba.</div>
       <div id="state">Reloj en la muñeca izquierda, pantalla del reloj encendida (tócala), ratón aéreo apagado.</div>
@@ -43,6 +47,12 @@
     <div id="bar"><div id="fill"></div></div>
     <div id="keys"><span>Espacio: pausa · R: repetir el paso anterior · → saltar</span><span id="saved"></span></div>
   </footer>
+  <script src="vendor/three.min.js"></script>
+  <script>window.THREE || document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>');</script>
+  <script src="wrist.js"></script>
+  <script src="mocapmath.js"></script>
+  <script src="cursodemos.js"></script>
+  <script src="stickdemo.js"></script>
   <script src="dataset.js"></script>
 </body>
 </html>
