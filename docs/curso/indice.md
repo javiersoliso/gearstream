@@ -13,7 +13,7 @@ Cada capítulo tiene la misma forma:
 
 [mapa.md](mapa.md) dibuja qué necesita cada concepto, y [conceptos.json](conceptos.json) es su fuente: cada concepto con su definición, lo que necesita, las palabras que lo nombran y las funciones del código que lo usan. `python -I tools/check_curso.py` comprueba que cada concepto llegue después de lo que necesita, que ningún término del glosario aparezca en un capítulo anterior al que lo define, y que cada función con matemática del repo esté cubierta por algún concepto. La regla del glosario vale para todo lo que está dentro de un capítulo, preguntas incluidas: por eso el capítulo 1 dice "qué tan rápido gira" y no "velocidad angular", que se define en el 5.
 
-Los capítulos ya escritos tienen su guion en [capitulos/](capitulos/) y su página en `server/web/`, marcada con `<meta name="curso-capitulo">`; `check_curso.py` también revisa su texto con la regla del glosario. Por ahora están escritos el 8 y el 11.
+Los capítulos ya escritos tienen su guion en [capitulos/](capitulos/) y su página en `server/web/`, marcada con `<meta name="curso-capitulo">`; `check_curso.py` también revisa su texto con la regla del glosario. Por ahora están escritos el 5, el 8 y el 11.
 
 Los datos: `recordings/` es personal y no se sube. Para que los experimentos funcionen sin reloj hay que publicar a propósito una grabación de ejemplo, que todavía no existe.
 
@@ -159,6 +159,8 @@ Los datos: `recordings/` es personal y no se sube. Para que los experimentos fun
 - *Ejercicio que se comprueba:* escribir `inclinacion(g, eje)` y comprobar con las seis posturas (0°, 90°, 180°), y que girar el reloj sobre la mesa no la cambia.
 
 ## Capítulo 5 · Rotar
+
+**Ya está escrito:** su [texto](capitulos/05-rotar.md), con una animación por concepto; las pruebas están en `tools/test_rotar.js` y el ejercicio, en `docs/curso/ejercicios/cap05.js`.
 
 **Conceptos:** `rotacion_2d` · `eje_y_angulo` · `matriz_de_rotacion` · `orden_no_conmuta` · `velocidad_angular` · `velocidad_de_un_punto_que_gira` · `angulos_de_euler` · `singularidad` · `cuaternion` · `integrar_orientacion`
 

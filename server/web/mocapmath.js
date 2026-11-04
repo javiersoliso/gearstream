@@ -360,5 +360,6 @@
     return out;
   }
 
-  return { ANIMS, build, hand, watchOf, idlePose, synth, reconstruct, headingOf, cursorTrack, vec: { add, sub, mul, dot, cross, len, unit, rot } };
+  return { ANIMS, build, hand, watchOf, idlePose, synth, reconstruct, headingOf, cursorTrack, vec: { add, sub, mul, dot, cross, len, unit, rot },
+    quat: { qmul, qcols, qfromCols } };
 });
