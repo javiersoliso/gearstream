@@ -307,6 +307,8 @@ Los datos: `recordings/` es personal y no se sube. Para que los experimentos fun
 
 ## Capítulo 11 · Frecuencia
 
+**Ya escrito:** [cap11.md](cap11.md), con una animación por concepto.
+
 **Conceptos:** `suma_de_senos` · `correlacion` · `retraso_por_correlacion` · `numeros_complejos` · `dft` · `fuga_y_ventana` · `frecuencia_dominante` · `nyquist` · `funcion_de_transferencia` · `retraso_puro` · `remanente` · `ritmo_y_armonia` · `octavas`
 
 **Pregunta guía.** ¿Se puede medir tu tiempo de reacción solo con una línea que se mueve y tu muñeca?

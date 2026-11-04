@@ -45,6 +45,10 @@ let a = M.analyze(play((t) => M.targetAt(comps, t - 0.2)), comps, 0.1);
 near(a.delay, 0.2, 0.012, 'retraso por correlación');
 for (const f of a.freqs) { near(f.delay, 0.2, 0.012, `retraso a ${f.f} Hz`); near(f.gain, 1, 0.02, `ganancia a ${f.f} Hz`); }
 assert.ok(a.remnant < 0.02, 'sin ruido no hay remanente');
+// el ejercicio del capítulo 11: llegar 0.25 s tarde deja |1 − H| = 2|sen(π f τ)| en cada onda
+a = M.analyze(play((t) => M.targetAt(comps, t - 0.25)), comps, 0.1);
+near(a.delay, 0.25, 0.012, 'ejercicio: τ');
+for (const f of a.freqs) near(f.error, 2 * Math.abs(Math.sin(Math.PI * f.f * 0.25)), 0.03, `ejercicio: |1 − H| a ${f.f} Hz`);
 // adelantarse 100 ms (con vista previa)
 a = M.analyze(play((t) => M.wave(comps, t + 0.1)), comps, 0.1);
 near(a.delay, -0.1, 0.012, 'adelantarse sale negativo');

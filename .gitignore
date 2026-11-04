@@ -15,3 +15,7 @@ __pycache__/
 # Sistema
 Thumbs.db
 .DS_Store
+
+# Animaciones del curso (python docs/curso/animaciones/render.py): el entorno de Manim y sus videos intermedios
+.venv-manim/
+docs/curso/animaciones/media/
