@@ -127,7 +127,7 @@
    "definicion": "La parte de la medida que cambia al azar aunque nada se mueva.",
    "prerrequisitos": ["senal", "resumir_ventana"],
    "terminos": ["ruido", "ruidos"],
-   "codigo": ["server/web/mocapmath.js:synth", "tools/air_mouse.py:Motion._rest_window"]
+   "codigo": ["server/web/mocapmath.js:synth", "tools/air_mouse.py:Motion._rest_window", "server/web/fusionmath.js:normal"]
   },
   {
    "id": "tamano_tipico",
@@ -279,7 +279,7 @@
    "definicion": "Un sesgo b se vuelve un error b·t que no para de crecer (la deriva); el ruido suma como un paseo al azar, que crece como √t.",
    "prerrequisitos": ["integral_discreta", "sesgo", "ruido", "tamano_tipico"],
    "terminos": ["deriva", "paseo al azar"],
-   "codigo": ["server/web/mocapmath.js:cursorTrack", "server/web/armfilter.js:ArmFilter.step"]
+   "codigo": ["server/web/mocapmath.js:cursorTrack", "server/web/armfilter.js:ArmFilter.step", "server/web/fusionmath.js:soloGiro"]
   },
   {
    "id": "doble_integral_zupt",
@@ -359,7 +359,7 @@
    "definicion": "El ángulo entre un eje del reloj y la vertical: sale de un producto punto (arccos) o de atan2 de dos componentes de la gravedad.",
    "prerrequisitos": ["arriba_desde_gravedad", "producto_punto", "trigonometria"],
    "terminos": ["inclinación", "inclinaciones"],
-   "codigo": ["tools/air_mouse.py:Motion.roll_from_gravity", "tools/analyze_dataset.py:event_features", "tools/air_mouse.py:AirMouse._pose_gate"]
+   "codigo": ["tools/air_mouse.py:Motion.roll_from_gravity", "tools/analyze_dataset.py:event_features", "tools/air_mouse.py:AirMouse._pose_gate", "server/web/fusionmath.js:elevacion"]
   },
   {
    "id": "aceleracion_lineal",
@@ -375,7 +375,7 @@
    "definicion": "Hacia dónde apunta algo en horizontal; girar alrededor de la vertical no cambia la gravedad, así que la gravedad no ve el rumbo.",
    "prerrequisitos": ["arriba_desde_gravedad", "trigonometria", "producto_cruz"],
    "terminos": ["rumbo", "rumbos"],
-   "codigo": ["server/web/mocapmath.js:headingOf", "server/web/mocapmath.js:axesOf"]
+   "codigo": ["server/web/mocapmath.js:headingOf", "server/web/mocapmath.js:axesOf", "server/web/fusionmath.js:orientacion", "server/web/fusionmath.js:gravedadLeida"]
   },
   {
    "id": "rotacion_2d",
@@ -479,7 +479,7 @@
    "definicion": "El giro alrededor del eje horizontal perpendicular al antebrazo: pitch = ω·(f × g)/|f × g|.",
    "prerrequisitos": ["roll", "producto_cruz", "arriba_desde_gravedad", "vector_unitario", "singularidad"],
    "terminos": ["pitch"],
-   "codigo": ["server/web/wrist.js:Wrist.rates", "tools/air_mouse.py:Motion.feed_gyro", "tools/reconstruct_drawing.py:frame_rates", "tools/analyze_drawing.py:watch_features"]
+   "codigo": ["server/web/wrist.js:Wrist.rates", "tools/air_mouse.py:Motion.feed_gyro", "tools/reconstruct_drawing.py:frame_rates", "tools/analyze_drawing.py:watch_features", "server/web/fusionmath.js:subida"]
   },
   {
    "id": "yaw",
@@ -599,7 +599,7 @@
    "definicion": "Juntar dos medidas imperfectas para que cada una tape el defecto de la otra: el giroscopio es rápido pero se desvía, la gravedad no se desvía pero no ve el rumbo.",
    "prerrequisitos": ["error_acumulado", "arriba_desde_gravedad", "rumbo"],
    "terminos": ["fusion*"],
-   "codigo": ["server/web/mocapmath.js:reconstruct"]
+   "codigo": ["server/web/mocapmath.js:reconstruct", "server/web/fusionmath.js:verdadera", "server/web/fusionmath.js:inclinacion"]
   },
   {
    "id": "filtro_complementario",
@@ -607,7 +607,7 @@
    "definicion": "Integrar el giroscopio y tirar suavemente hacia la medida absoluta: lo rápido de uno y lo lento del otro; con un sesgo b el error queda quieto en b/k.",
    "prerrequisitos": ["fusion_de_sensores", "suavizar", "integral_discreta", "velocidad_de_un_punto_que_gira"],
    "terminos": ["filtro complementario", "complementario"],
-   "codigo": ["tools/air_mouse.py:Motion.feed_gyro", "server/web/avatar.js:onGravity"]
+   "codigo": ["tools/air_mouse.py:Motion.feed_gyro", "server/web/avatar.js:onGravity", "server/web/fusionmath.js:paso", "server/web/fusionmath.js:complementario", "server/web/fusionmath.js:errores", "server/web/fusionmath.js:valle", "server/web/fusion.js:onGyro"]
   },
   {
    "id": "triad",
@@ -639,7 +639,7 @@
    "definicion": "El sesgo alrededor de la vertical no tiene quién lo corrija (la gravedad no lo ve): unos 12 cm en 10 s a 2.4 m de la pantalla.",
    "prerrequisitos": ["mahony", "metodo_de_proyeccion", "error_acumulado"],
    "terminos": ["deriva del rumbo"],
-   "codigo": ["server/web/mocapmath.js:cursorTrack", "server/web/avatar.js:autoCenterStep"]
+   "codigo": ["server/web/mocapmath.js:cursorTrack", "server/web/avatar.js:autoCenterStep", "server/web/fusionmath.js:giroVertical", "server/web/fusionmath.js:erroresAntebrazo", "server/web/fusionmath.js:derivaPredicha", "server/web/fusion.js:mesaPaso"]
   },
   {
    "id": "recentrar",
@@ -1204,6 +1204,23 @@
   {"id": "tools/sdb_bridge.py:Bridge.report", "que_hace": "Muestras por segundo, retraso de la más nueva e ida y vuelta."},
   {"id": "tools/export_mocap.py:resample", "que_hace": "Interpolación a una rejilla común."},
   {"id": "tools/export_mocap.py:gap_free", "que_hace": "¿Hay huecos de más de 500 ms en el tramo?"},
-  {"id": "tools/export_mocap.py:windows", "que_hace": "Los tramos de 30 s con más giro medio (suma acumulada), sin solaparse."}
+  {"id": "tools/export_mocap.py:windows", "que_hace": "Los tramos de 30 s con más giro medio (suma acumulada), sin solaparse."},
+  {"id": "server/web/fusionmath.js:normal", "que_hace": "Números al azar con forma de campana, repetibles (el ruido de la muñeca inventada)."},
+  {"id": "server/web/fusionmath.js:verdadera", "que_hace": "La elevación de verdad de la muñeca inventada: va y viene despacio y cada 6 s sube rápido y vuelve."},
+  {"id": "server/web/fusionmath.js:inclinacion", "que_hace": "Lo que medirían de esa muñeca el giroscopio (con sesgo y ruido) y el acelerómetro (inclinado atan(r·α/g) por cada sacudida)."},
+  {"id": "server/web/fusionmath.js:paso", "que_hace": "Un paso del filtro complementario: θ + ω·Δt + k·Δt·(medido − θ)."},
+  {"id": "server/web/fusionmath.js:complementario", "que_hace": "El filtro complementario sobre una grabación entera."},
+  {"id": "server/web/fusionmath.js:soloGiro", "que_hace": "El giroscopio sumado solo (el filtro con k = 0): se va b·t."},
+  {"id": "server/web/fusionmath.js:errores", "que_hace": "Error promedio con signo, rms y el más grande de una estimación contra la verdad."},
+  {"id": "server/web/fusionmath.js:valle", "que_hace": "El error rms del filtro para rigideces de 0.01 a 50 por segundo."},
+  {"id": "server/web/fusionmath.js:elevacion", "que_hace": "La elevación del antebrazo, asin(f·ĝ), con la gravedad o con el acelerómetro."},
+  {"id": "server/web/fusionmath.js:subida", "que_hace": "Qué tan rápido sube la mano, ω·(f × ĝ)/|f × ĝ|, sin restar el sesgo."},
+  {"id": "server/web/fusionmath.js:giroVertical", "que_hace": "El giro alrededor de la vertical, ω·ĝ: lo que mueve el rumbo."},
+  {"id": "server/web/fusionmath.js:orientacion", "que_hace": "Los ejes de un reloj inclinado, atornillado y con un rumbo: Ry · Rz · Rx · (reloj plano)."},
+  {"id": "server/web/fusionmath.js:gravedadLeida", "que_hace": "Lo que lee de la gravedad ese reloj: no depende del rumbo."},
+  {"id": "server/web/fusionmath.js:erroresAntebrazo", "que_hace": "Errores de inclinación y de rumbo de un antebrazo reconstruido contra el de verdad."},
+  {"id": "server/web/fusionmath.js:derivaPredicha", "que_hace": "Lo que debería irse el rumbo: ∫ b·ĝ dt con la orientación de verdad."},
+  {"id": "server/web/fusion.js:onGyro", "que_hace": "En vivo: suma el giroscopio, lo filtra contra el acelerómetro y lo compara con la gravedad del reloj."},
+  {"id": "server/web/fusion.js:mesaPaso", "que_hace": "La prueba de la mesa: mide el sesgo vertical 10 s y cuánto se va el rumbo en 50 s."}
  ]
 }

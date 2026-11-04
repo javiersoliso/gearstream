@@ -13,6 +13,8 @@ Cada capítulo tiene la misma forma:
 
 [mapa.md](mapa.md) dibuja qué necesita cada concepto, y [conceptos.json](conceptos.json) es su fuente: cada concepto con su definición, lo que necesita, las palabras que lo nombran y las funciones del código que lo usan. `python -I tools/check_curso.py` comprueba que cada concepto llegue después de lo que necesita, que ningún término del glosario aparezca en un capítulo anterior al que lo define, y que cada función con matemática del repo esté cubierta por algún concepto. La regla del glosario vale para todo lo que está dentro de un capítulo, preguntas incluidas: por eso el capítulo 1 dice "qué tan rápido gira" y no "velocidad angular", que se define en el 5.
 
+Los capítulos ya escritos tienen su guion en [capitulos/](capitulos/) y su página en `server/web/`, marcada con `<meta name="curso-capitulo">`; `check_curso.py` también revisa su texto con la regla del glosario. Por ahora están escritos el 8 y el 11.
+
 Los datos: `recordings/` es personal y no se sube. Para que los experimentos funcionen sin reloj hay que publicar a propósito una grabación de ejemplo, que todavía no existe.
 
 ## Contenido
@@ -236,6 +238,8 @@ Los datos: `recordings/` es personal y no se sube. Para que los experimentos fun
 
 **Pregunta guía.** El giroscopio es rápido pero se desvía; la gravedad no se desvía pero no lo ve todo. ¿Cómo se juntan los dos?
 
+**Ya está escrito**, como piloto del curso: la página `server/web/fusion.html` (con el servidor andando, `/fusion.html`), su [guion](capitulos/08-fusion.md) con lo que dejó el piloto, la cuenta en `server/web/fusionmath.js`, las pruebas en `tools/test_fusion.js` y el ejercicio en `docs/curso/ejercicios/cap08.js`.
+
 **Preguntas que salen de ahí**
 
 1. Si confío 100 % en el giroscopio, ¿qué pasa en un minuto? ¿Y si confío 100 % en la gravedad?
@@ -307,7 +311,7 @@ Los datos: `recordings/` es personal y no se sube. Para que los experimentos fun
 
 ## Capítulo 11 · Frecuencia
 
-**Ya escrito:** [cap11.md](cap11.md), con una animación por concepto.
+**Ya está escrito:** su [texto](capitulos/11-frecuencia.md), con una animación por concepto; la página es el Sismógrafo (`server/web/sismo.html`), la cuenta está en `server/web/sismomath.js` y el ejercicio, en `tools/test_sismo.js`.
 
 **Conceptos:** `suma_de_senos` · `correlacion` · `retraso_por_correlacion` · `numeros_complejos` · `dft` · `fuga_y_ventana` · `frecuencia_dominante` · `nyquist` · `funcion_de_transferencia` · `retraso_puro` · `remanente` · `ritmo_y_armonia` · `octavas`
 

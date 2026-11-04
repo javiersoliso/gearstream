@@ -1,9 +1,10 @@
 """Renderiza las animaciones de un capítulo y deja los GIF (y los MP4 con sonido) en docs/curso/media/<capítulo>/.
 
     python docs/curso/animaciones/render.py                 # capítulo 11, todas las escenas
+    python docs/curso/animaciones/render.py cap08           # capítulo 8
     python docs/curso/animaciones/render.py cap11 Enrollar  # una escena
 
-Necesita manim (pip install manim), ffmpeg y LaTeX (MiKTeX o TeX Live) en el PATH. Los videos intermedios quedan en
+Necesita manim (pip install manim), ffmpeg y LaTeX (MiKTeX o TeX Live) en el PATH; el capítulo 8, también node. Los videos intermedios quedan en
 docs/curso/animaciones/media/, que no se sube.
 """
 import os
@@ -14,6 +15,8 @@ import sys
 AQUI = os.path.dirname(os.path.abspath(__file__))
 MEDIA = os.path.join(AQUI, "media")
 ESCENAS = {
+    "cap08": ["DosTestigos", "Resorte", "Valle", "GravedadNoVeRumbo", "Triad", "MetodoDeProyeccion", "Mahony",
+              "DerivaDelRumbo", "Recentrar"],
     "cap11": ["SumaDeSenos", "FlechaQueGira", "Enrollar", "Fuga", "RespuestaH", "RetrasoPorCorrelacion",
               "Remanente", "Nyquist", "RitmoYArmonia", "Octavas"],
 }

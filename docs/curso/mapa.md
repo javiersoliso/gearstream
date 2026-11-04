@@ -2,7 +2,7 @@
 
 > Generado por `python -I tools/check_curso.py --escribir` a partir de [conceptos.json](conceptos.json) y del orden de [indice.md](indice.md). No lo edites a mano: cambia esos dos y vuelve a generarlo.
 
-136 conceptos en 13 capítulos · 114 funciones de 17 archivos · 282 términos en el glosario.
+136 conceptos en 13 capítulos · 131 funciones de 19 archivos · 282 términos en el glosario.
 
 En `conceptos.json` cada concepto dice qué necesita. En los diagramas la flecha va al revés, en el sentido en que se aprende: de lo que necesitas a lo que te deja entender. Para que se lean, solo están las flechas directas (si A lleva a B y B lleva a C, la de A a C no se dibuja). Los recuadros punteados son conceptos de capítulos anteriores.
 
@@ -125,7 +125,7 @@ flowchart TD
 | **Acelerómetro** `acelerometro` | Mide en m/s² lo que empuja al reloj más la gravedad, en sus tres ejes. | `ejes_del_reloj`, `unidades`, `muestreo` | `mocapmath.js:synth`, `air_mouse.py:Motion.feed_accel` |
 | **Giroscopio** `giroscopio` | Mide qué tan rápido gira el reloj alrededor de cada uno de sus ejes, en °/s. | `ejes_del_reloj`, `unidades`, `muestreo` | `mocapmath.js:synth`, `wrist.js:Wrist.rates` |
 | **El sensor de gravedad** `sensor_gravedad` | No es un sensor: es una cuenta interna de Samsung que da la dirección de arriba en los ejes del reloj (y que no podemos auditar). | `acelerometro`, `giroscopio` | `air_mouse.py:Motion.gravity_measurement` |
-| **Ruido** `ruido` | La parte de la medida que cambia al azar aunque nada se mueva. | `senal`, `resumir_ventana` | `mocapmath.js:synth`, `air_mouse.py:Motion._rest_window` |
+| **Ruido** `ruido` | La parte de la medida que cambia al azar aunque nada se mueva. | `senal`, `resumir_ventana` | `mocapmath.js:synth`, `air_mouse.py:Motion._rest_window`, `fusionmath.js:normal` |
 | **Tamaño típico: RMS y desviación estándar** `tamano_tipico` | √(promedio de x²): el tamaño de algo que va y viene; restando antes el promedio es la desviación estándar. | `ruido`, `resumir_ventana` | `sismomath.js:analyze`, `analyze_dataset.py:window_features`, `analyze_dataset.py:event_features` |
 | **Sesgo** `sesgo` | Un error que no se va: con la mano quieta el giroscopio no marca cero sino unas décimas de °/s. | `giroscopio`, `ruido`, `resumir_ventana` | `mocapmath.js:synth`, `wrist.js:Wrist.rates` |
 | **Umbral** `umbral` | Una línea que separa: por debajo cuenta como quieto (o nada), por encima pasó algo. | `senal`, `unidades` | `air_mouse.py:Motion._rest_window`, `air_mouse.py:DwellDetector.feed` |
@@ -224,7 +224,7 @@ flowchart TD
 | **Derivar con números** `derivada_discreta` | (x[k+1] − x[k]) / Δt: cuánto cambia por segundo; la diferencia central usa la muestra anterior y la siguiente. | `marca_de_tiempo`, `senal` | `mocapmath.js:synth`, `armfilter.js:ArmFilter.step`, `air_mouse.py:TapDetector.feed_accel`, `reconstruct_drawing.py:stroke_data`, `air_mouse.py:Motion.feed_accel` |
 | **Segunda diferencia** `segunda_derivada` | (x[k+1] − 2x[k] + x[k−1]) / Δt²: la aceleración a partir de tres posiciones seguidas. | `derivada_discreta` | `mocapmath.js:synth` |
 | **Integrar con números** `integral_discreta` | Sumar tasa × Δt muestra a muestra (la suma acumulada) da cuánto cambió en total. | `marca_de_tiempo`, `senal` | `mocapmath.js:cursorTrack`, `flick.js:FlickDetector.update`, `dibuja.js:onGyro`, `game.js:onGyro`, `analyze_drawing.py:watch_features` |
-| **Integrar acumula error** `error_acumulado` | Un sesgo b se vuelve un error b·t que no para de crecer (la deriva); el ruido suma como un paseo al azar, que crece como √t. | `integral_discreta`, `sesgo`, `ruido`, `tamano_tipico` | `mocapmath.js:cursorTrack`, `armfilter.js:ArmFilter.step` |
+| **Integrar acumula error** `error_acumulado` | Un sesgo b se vuelve un error b·t que no para de crecer (la deriva); el ruido suma como un paseo al azar, que crece como √t. | `integral_discreta`, `sesgo`, `ruido`, `tamano_tipico` | `mocapmath.js:cursorTrack`, `armfilter.js:ArmFilter.step`, `fusionmath.js:soloGiro` |
 | **Integrar dos veces y velocidad cero** `doble_integral_zupt` | De aceleración a velocidad a posición: el error crece como t², así que se fuerza la velocidad a cero cuando se sabe que está quieto (ZUPT). | `error_acumulado`, `segunda_derivada` | `analyze_drawing.py:watch_features`, `armfilter.js:ArmFilter.step` |
 | **Suavizar** `suavizar` | Promediar con lo reciente: media móvil o un promedio que olvida, y ← y + α(x − y); deja pasar lo lento y frena lo rápido (paso bajo). | `resumir_ventana`, `marca_de_tiempo`, `ruido` | `analyze_dataset.py:movavg`, `armfilter.js:ArmFilter.step`, `air_mouse.py:OneEuro.alpha`, `air_mouse.py:OneEuro.__call__`, `wrist.js:Wrist.rates`, `reconstruct_drawing.py:stroke_data` |
 | **Derivar amplifica el ruido** `derivar_amplifica_ruido` | Dividir por un Δt chico agranda cada temblor: antes de derivar hay que suavizar. | `derivada_discreta`, `ruido`, `suavizar` | `armfilter.js:ArmFilter.step`, `reconstruct_drawing.py:stroke_data` |
@@ -267,9 +267,9 @@ flowchart TD
 |---|---|---|---|
 | **Lo que mide el acelerómetro** `fuerza_especifica` | Quieto marca 9.81 m/s² hacia arriba: siente lo que lo sostiene, no la caída (fuerza específica = aceleración − gravedad). | `acelerometro`, `vector`, `segunda_derivada` | `mocapmath.js:synth`, `air_mouse.py:Motion._rest_window` |
 | **La gravedad dice dónde es arriba** `arriba_desde_gravedad` | Normalizada, la gravedad es la dirección vertical en los ejes del reloj: absoluta, sin integrar nada. | `fuerza_especifica`, `vector_unitario`, `sensor_gravedad` | `wrist.js:Wrist.rates`, `air_mouse.py:Motion.gravity_measurement`, `air_mouse.py:Motion.feed_gravity`, `air_mouse.py:AirMouse._calib_forearm` |
-| **Inclinación** `inclinacion` | El ángulo entre un eje del reloj y la vertical: sale de un producto punto (arccos) o de atan2 de dos componentes de la gravedad. | `arriba_desde_gravedad`, `producto_punto`, `trigonometria` | `air_mouse.py:Motion.roll_from_gravity`, `analyze_dataset.py:event_features`, `air_mouse.py:AirMouse._pose_gate` |
+| **Inclinación** `inclinacion` | El ángulo entre un eje del reloj y la vertical: sale de un producto punto (arccos) o de atan2 de dos componentes de la gravedad. | `arriba_desde_gravedad`, `producto_punto`, `trigonometria` | `air_mouse.py:Motion.roll_from_gravity`, `analyze_dataset.py:event_features`, `air_mouse.py:AirMouse._pose_gate`, `fusionmath.js:elevacion` |
 | **Aceleración lineal** `aceleracion_lineal` | Acelerómetro − gravedad: lo que empuja de verdad, sin el peso. | `fuerza_especifica`, `arriba_desde_gravedad` | `game.js:onAccel`, `analyze_dataset.py:signals`, `analyze_drawing.py:watch_features`, `avatar.js:onAccel` |
-| **Rumbo** `rumbo` | Hacia dónde apunta algo en horizontal; girar alrededor de la vertical no cambia la gravedad, así que la gravedad no ve el rumbo. | `arriba_desde_gravedad`, `trigonometria`, `producto_cruz` | `mocapmath.js:headingOf`, `mocapmath.js:axesOf` |
+| **Rumbo** `rumbo` | Hacia dónde apunta algo en horizontal; girar alrededor de la vertical no cambia la gravedad, así que la gravedad no ve el rumbo. | `arriba_desde_gravedad`, `trigonometria`, `producto_cruz` | `mocapmath.js:headingOf`, `mocapmath.js:axesOf`, `fusionmath.js:orientacion`, `fusionmath.js:gravedadLeida` |
 
 ### 5 · Rotar
 
@@ -355,7 +355,7 @@ flowchart TD
 |---|---|---|---|
 | **El antebrazo es un eje del reloj** `antebrazo_eje_x` | En la muñeca izquierda el antebrazo (codo → mano) es +x; en la derecha, con el reloj puesto igual, es −x. | `ejes_del_reloj`, `marco_de_referencia`, `regla_mano_derecha` | `wrist.js:forearmOf`, `mocapmath.js:watchOf`, `air_mouse.py:AirMouse._calib_forearm` |
 | **Roll: atornillar** `roll` | La parte del giro alrededor del antebrazo f: roll = ω·f (positivo: horario visto desde el codo). | `antebrazo_eje_x`, `velocidad_angular`, `producto_punto` | `wrist.js:Wrist.rates`, `flick.js:FlickDetector.update`, `dibuja.js:point3`, `reconstruct_drawing.py:frame_rates` |
-| **Pitch: subir y bajar** `pitch` | El giro alrededor del eje horizontal perpendicular al antebrazo: pitch = ω·(f × g)/\|f × g\|. | `roll`, `producto_cruz`, `arriba_desde_gravedad`, `vector_unitario`, `singularidad` | `wrist.js:Wrist.rates`, `air_mouse.py:Motion.feed_gyro`, `reconstruct_drawing.py:frame_rates`, `analyze_drawing.py:watch_features` |
+| **Pitch: subir y bajar** `pitch` | El giro alrededor del eje horizontal perpendicular al antebrazo: pitch = ω·(f × g)/\|f × g\|. | `roll`, `producto_cruz`, `arriba_desde_gravedad`, `vector_unitario`, `singularidad` | `wrist.js:Wrist.rates`, `air_mouse.py:Motion.feed_gyro`, `reconstruct_drawing.py:frame_rates`, `analyze_drawing.py:watch_features`, `fusionmath.js:subida` |
 | **Yaw: izquierda y derecha** `yaw` | El giro alrededor de la vertical, sin la parte que ya es roll: el coeficiente de g al escribir ω en la base {g, f, f × g}, (ω·g − roll·(g·f)) / (1 − (g·f)²). | `roll`, `arriba_desde_gravedad`, `coordenadas_en_una_base`, `singularidad` | `wrist.js:Wrist.rates`, `air_mouse.py:Motion.feed_gyro`, `reconstruct_drawing.py:frame_rates`, `analyze_drawing.py:watch_features`, `game.js:onGyro` |
 | **Atornillar no mueve el cursor** `giros_independientes` | Un roll puro no tiene nada de yaw ni de pitch, a cualquier inclinación: los tres giros no se pisan. | `yaw`, `pitch` | `air_mouse.py:Motion.feed_gyro` |
 
@@ -465,12 +465,12 @@ flowchart TD
 
 | Concepto | Qué es | Necesita | En el código |
 |---|---|---|---|
-| **Fusión de sensores** `fusion_de_sensores` | Juntar dos medidas imperfectas para que cada una tape el defecto de la otra: el giroscopio es rápido pero se desvía, la gravedad no se desvía pero no ve el rumbo. | `error_acumulado`, `arriba_desde_gravedad`, `rumbo` | `mocapmath.js:reconstruct` |
-| **Filtro complementario** `filtro_complementario` | Integrar el giroscopio y tirar suavemente hacia la medida absoluta: lo rápido de uno y lo lento del otro; con un sesgo b el error queda quieto en b/k. | `fusion_de_sensores`, `suavizar`, `integral_discreta`, `velocidad_de_un_punto_que_gira` | `air_mouse.py:Motion.feed_gyro`, `avatar.js:onGravity` |
+| **Fusión de sensores** `fusion_de_sensores` | Juntar dos medidas imperfectas para que cada una tape el defecto de la otra: el giroscopio es rápido pero se desvía, la gravedad no se desvía pero no ve el rumbo. | `error_acumulado`, `arriba_desde_gravedad`, `rumbo` | `mocapmath.js:reconstruct`, `fusionmath.js:verdadera`, `fusionmath.js:inclinacion` |
+| **Filtro complementario** `filtro_complementario` | Integrar el giroscopio y tirar suavemente hacia la medida absoluta: lo rápido de uno y lo lento del otro; con un sesgo b el error queda quieto en b/k. | `fusion_de_sensores`, `suavizar`, `integral_discreta`, `velocidad_de_un_punto_que_gira` | `air_mouse.py:Motion.feed_gyro`, `avatar.js:onGravity`, `fusionmath.js:paso`, `fusionmath.js:complementario`, `fusionmath.js:errores`, `fusionmath.js:valle`, `fusion.js:onGyro` |
 | **TRIAD** `triad` | Armar la orientación completa con dos direcciones conocidas en los dos marcos: arriba (de la gravedad) y el antebrazo con un rumbo supuesto. | `arriba_desde_gravedad`, `rumbo`, `matriz_de_rotacion`, `antebrazo_eje_x` | `mocapmath.js:triad` |
 | **El método de proyección** `metodo_de_proyeccion` | Rumbo = ∫yaw dt y el resto de la gravedad (TRIAD): sirve para apuntar, pero con el antebrazo casi vertical el rumbo no existe y se pierde. | `triad`, `yaw`, `integral_discreta`, `singularidad` | `mocapmath.js:reconstruct` |
 | **Filtro de Mahony** `mahony` | Integrar el cuaternión con ω + Kp·e, donde e = arriba medido × arriba predicho es el giro que falta para que coincidan. | `filtro_complementario`, `integrar_orientacion`, `producto_cruz` | `mocapmath.js:reconstruct`, `avatar.js:onGravity` |
-| **Por qué el rumbo se va** `deriva_del_rumbo` | El sesgo alrededor de la vertical no tiene quién lo corrija (la gravedad no lo ve): unos 12 cm en 10 s a 2.4 m de la pantalla. | `mahony`, `metodo_de_proyeccion`, `error_acumulado` | `mocapmath.js:cursorTrack`, `avatar.js:autoCenterStep` |
+| **Por qué el rumbo se va** `deriva_del_rumbo` | El sesgo alrededor de la vertical no tiene quién lo corrija (la gravedad no lo ve): unos 12 cm en 10 s a 2.4 m de la pantalla. | `mahony`, `metodo_de_proyeccion`, `error_acumulado` | `mocapmath.js:cursorTrack`, `avatar.js:autoCenterStep`, `fusionmath.js:giroVertical`, `fusionmath.js:erroresAntebrazo`, `fusionmath.js:derivaPredicha`, `fusion.js:mesaPaso` |
 | **Recentrar** `recentrar` | Como el rumbo es relativo, se fija un frente y se vuelve a él: con un botón o de a poco, cuando la mano descansa. | `deriva_del_rumbo` | `avatar.js:autoCenterStep`, `armfilter.js:ArmFilter.rotateY`, `air_mouse.py:Motion.feed_gyro` |
 
 ### 9 · El cuerpo en 3D
@@ -1238,6 +1238,33 @@ Cada función del repo que hace matemática y los conceptos que la explican (con
 | `FlickDetector.threshold` | Umbral adaptativo: 0.35 × la mediana de tus picos recientes, nunca menos de 70 °/s. | Umbral que se adapta (10) |
 | `FlickDetector.update` | Integra ω_x como ángulo y detecta giros: umbral con histéresis, dominancia del eje x y periodo refractario. | Marca de tiempo (0), Integrar con números (3), Roll: atornillar (6), Detectar un pico (10), Histéresis (10), Periodo refractario (10), Dominancia de un eje (10), El clic de tornillo (10) |
 | `FlickDetector.tempo` | Tempo: 60000 / el intervalo mediano entre giros. | Unidades (0), Resumir una ventana (0), Tempo (10) |
+
+### `server/web/fusion.js`
+
+| Función | Qué hace | Conceptos |
+|---|---|---|
+| `onGyro` | En vivo: suma el giroscopio, lo filtra contra el acelerómetro y lo compara con la gravedad del reloj. | Filtro complementario (8) |
+| `mesaPaso` | La prueba de la mesa: mide el sesgo vertical 10 s y cuánto se va el rumbo en 50 s. | Por qué el rumbo se va (8) |
+
+### `server/web/fusionmath.js`
+
+| Función | Qué hace | Conceptos |
+|---|---|---|
+| `normal` | Números al azar con forma de campana, repetibles (el ruido de la muñeca inventada). | Ruido (1) |
+| `verdadera` | La elevación de verdad de la muñeca inventada: va y viene despacio y cada 6 s sube rápido y vuelve. | Fusión de sensores (8) |
+| `inclinacion` | Lo que medirían de esa muñeca el giroscopio (con sesgo y ruido) y el acelerómetro (inclinado atan(r·α/g) por cada sacudida). | Fusión de sensores (8) |
+| `paso` | Un paso del filtro complementario: θ + ω·Δt + k·Δt·(medido − θ). | Filtro complementario (8) |
+| `complementario` | El filtro complementario sobre una grabación entera. | Filtro complementario (8) |
+| `soloGiro` | El giroscopio sumado solo (el filtro con k = 0): se va b·t. | Integrar acumula error (3) |
+| `errores` | Error promedio con signo, rms y el más grande de una estimación contra la verdad. | Filtro complementario (8) |
+| `valle` | El error rms del filtro para rigideces de 0.01 a 50 por segundo. | Filtro complementario (8) |
+| `elevacion` | La elevación del antebrazo, asin(f·ĝ), con la gravedad o con el acelerómetro. | Inclinación (4) |
+| `subida` | Qué tan rápido sube la mano, ω·(f × ĝ)/\|f × ĝ\|, sin restar el sesgo. | Pitch: subir y bajar (6) |
+| `giroVertical` | El giro alrededor de la vertical, ω·ĝ: lo que mueve el rumbo. | Por qué el rumbo se va (8) |
+| `orientacion` | Los ejes de un reloj inclinado, atornillado y con un rumbo: Ry · Rz · Rx · (reloj plano). | Rumbo (4) |
+| `gravedadLeida` | Lo que lee de la gravedad ese reloj: no depende del rumbo. | Rumbo (4) |
+| `erroresAntebrazo` | Errores de inclinación y de rumbo de un antebrazo reconstruido contra el de verdad. | Por qué el rumbo se va (8) |
+| `derivaPredicha` | Lo que debería irse el rumbo: ∫ b·ĝ dt con la orientación de verdad. | Por qué el rumbo se va (8) |
 
 ### `server/web/game.js`
 

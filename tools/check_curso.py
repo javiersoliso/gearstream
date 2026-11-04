@@ -16,12 +16,16 @@ Qué comprueba, y por qué:
      invertidas ni las direcciones de los enlaces), sin distinguir mayúsculas ni tildes.
   3. Inventario. Cada función del inventario la usa algún concepto, cada función que nombra un concepto está
      en el inventario y, si el código está al lado (en este repo), la función está definida en su archivo.
+4. Capítulos escritos. La regla del glosario vale también para el texto de los capítulos ya hechos: los
+     guiones docs/curso/capitulos/NN-*.md y las páginas de server/web que se marcan con
+     <meta name="curso-capitulo" content="NN"> (de ellas se lee el texto, sin scripts, estilos ni código).
 De paso: los capítulos van numerados de corrido, los enlaces internos (#...) llevan a un título, cada
 concepto que nombra el apéndice está en el capítulo que dice su fila, y mapa.md está al día.
 Solo usa la biblioteca estándar.
 """
 import argparse
 import copy
+import html as html_mod
 import json
 import re
 import sys
@@ -39,6 +43,8 @@ EN_CODIGO = re.compile(r"`([^`]*)`")
 DESTINO = re.compile(r"\]\(([^)]*)\)")
 TITULO = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 CAP_N = re.compile(r"\bcap\. (\d+)")
+ARCHIVO_CAP = re.compile(r"^(\d+)-.+\.md$")
+META_CAP = re.compile(r'<meta\s+name="curso-capitulo"\s+content="(\d+)"', re.I)
 
 
 def emit(text):
@@ -102,6 +108,35 @@ def leer_indice(texto):
     return caps, apendice
 
 
+def texto_de_pagina(fuente):
+    """La prosa de una página HTML: sin <script>, <style>, <pre>, <code>, comentarios ni etiquetas. Lo que se
+    borra se cambia por sus saltos de línea, para que los números de línea sigan siendo los del archivo."""
+    mismas_lineas = lambda m: "\n" * m[0].count("\n") + " "
+    fuente = re.sub(r"(?is)<(script|style|pre|code)\b.*?</\1\s*>", mismas_lineas, fuente)
+    fuente = re.sub(r"(?s)<!--.*?-->", mismas_lineas, fuente)
+    fuente = re.sub(r"<[^>]+>", mismas_lineas, fuente)
+    return html_mod.unescape(fuente)
+
+
+def leer_capitulos(raiz=RAIZ):
+    """Los capítulos escritos, como (n, archivo, [(línea, texto)]): los guiones docs/curso/capitulos/NN-*.md y
+    las páginas de server/web marcadas con <meta name="curso-capitulo" content="NN">."""
+    out = []
+    carpeta = raiz / "docs" / "curso" / "capitulos"
+    for f in sorted(carpeta.glob("*.md")) if carpeta.is_dir() else []:
+        m = ARCHIVO_CAP.match(f.name)
+        if m:
+            out.append((int(m[1]), f"docs/curso/capitulos/{f.name}",
+                        list(enumerate(f.read_text(encoding="utf-8").splitlines(), 1))))
+    web = raiz / "server" / "web"
+    for f in sorted(web.glob("*.html")) if web.is_dir() else []:
+        fuente = f.read_text(encoding="utf-8", errors="replace")
+        m = META_CAP.search(fuente)
+        if m:
+            out.append((int(m[1]), f"server/web/{f.name}", list(enumerate(texto_de_pagina(fuente).splitlines(), 1))))
+    return out
+
+
 def definida(nombre, fuente, python):
     """¿El archivo define `nombre`? def/class en Python; function, class, const/let/var o un método en JS."""
     n = re.escape(nombre)
@@ -113,8 +148,9 @@ def definida(nombre, fuente, python):
 
 # ---------- comprobar ----------
 
-def revisar(datos, indice, mapa=None, raiz=RAIZ):
-    """(errores, notas): errores vacío = el curso pasa. `mapa` es el texto de mapa.md (None: no se compara)."""
+def revisar(datos, indice, mapa=None, raiz=RAIZ, escritos=()):
+    """(errores, notas): errores vacío = el curso pasa. `mapa` es el texto de mapa.md (None: no se compara).
+    `escritos`: los capítulos ya escritos, como los da leer_capitulos()."""
     errores, notas = [], []
     conceptos = datos.get("conceptos", [])
     por_id = {}
@@ -173,6 +209,26 @@ def revisar(datos, indice, mapa=None, raiz=RAIZ):
             if t not in vistos and rx.search(junto):
                 errores.append(f"indice.md:{cap['linea']}: el cap. {cap['n']} dice «{t}» (partido en dos líneas), "
                                f"que se define en el cap. {n} («{cid}»)")
+
+    # 4. los capítulos escritos: la misma regla del glosario
+    numeros = {cap["n"] for cap in caps}
+    for n, archivo, lineas in escritos:
+        if n not in numeros:
+            errores.append(f"{archivo}: dice ser del capítulo {n}, que no está en el índice")
+            continue
+        tarde = [x for x in terminos if x[3] > n]
+        vistos = set()
+        for i, linea in lineas:
+            texto = plano(prosa(linea))
+            for t, rx, cid, m in tarde:
+                if rx.search(texto):
+                    vistos.add(t)
+                    errores.append(f"{archivo}:{i}: el cap. {n} dice «{t}», que se define en el cap. {m} («{cid}»)")
+        junto = plano(" ".join(prosa(linea) for _, linea in lineas))
+        for t, rx, cid, m in tarde:
+            if t not in vistos and rx.search(junto):
+                errores.append(f"{archivo}: el cap. {n} dice «{t}» (partido en dos líneas), "
+                               f"que se define en el cap. {m} («{cid}»)")
 
     # 3. inventario
     inventario = {}
@@ -342,15 +398,30 @@ class Prueba(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.datos, cls.indice, cls.mapa = cargar()
+        cls.escritos = leer_capitulos()
 
-    def errores(self, datos=None, indice=None, mapa=None):
-        return revisar(datos or self.datos, indice or self.indice, mapa)[0]
+    def errores(self, datos=None, indice=None, mapa=None, escritos=None):
+        return revisar(datos or self.datos, indice or self.indice, mapa,
+                       escritos=self.escritos if escritos is None else escritos)[0]
 
     def concepto(self, datos, cid):
         return next(c for c in datos["conceptos"] if c["id"] == cid)
 
     def test_el_curso_pasa(self):
         self.assertEqual(self.errores(mapa=self.mapa), [])
+
+    def test_capitulo_escrito_con_termino_adelantado(self):
+        escritos = self.escritos + [(8, "server/web/x.html", [(3, "luego vendrá un filtro de partículas")])]
+        self.assertTrue(any("x.html:3" in e and "«filtro de partículas»" in e for e in self.errores(escritos=escritos)))
+
+    def test_capitulo_escrito_que_no_existe(self):
+        self.assertTrue(any("capítulo 99" in e for e in self.errores(escritos=[(99, "y.md", [])])))
+
+    def test_pagina_sin_scripts_ni_codigo(self):
+        texto = texto_de_pagina("<p>hola</p>\n<script>\nlet partículas;\n</script>\n<code>Fourier</code> <b>fin</b>")
+        self.assertNotIn("partículas", texto)
+        self.assertNotIn("Fourier", texto)
+        self.assertEqual(texto.splitlines()[-1].split(), ["fin"])   # las mismas líneas que el archivo
 
     def test_prerrequisito_que_llega_despues(self):
         d = copy.deepcopy(self.datos)
@@ -414,7 +485,8 @@ def main():
         mapa = generar_mapa(datos, indice)
         (CURSO / "mapa.md").write_text(mapa, encoding="utf-8", newline="\n")
         emit("escrito docs/curso/mapa.md")
-    errores, notas = revisar(datos, indice, mapa)
+    escritos = leer_capitulos()
+    errores, notas = revisar(datos, indice, mapa, escritos=escritos)
     for n in notas:
         emit(f"nota: {n}")
     if errores:
@@ -425,7 +497,7 @@ def main():
     caps, _ = leer_indice(indice)
     emit(f"bien: {len(datos['conceptos'])} conceptos en {len(caps)} capítulos, en orden; glosario sin términos "
          f"adelantados; {len(datos['inventario'])} funciones, todas cubiertas{'' if notas else ' y encontradas'}; "
-         f"mapa.md al día")
+         f"mapa.md al día; {len(escritos)} textos de capítulos escritos, sin términos adelantados")
 
 
 if __name__ == "__main__":

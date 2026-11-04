@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="curso-capitulo" content="8">
+  <title>Fusión de sensores</title>
+  <style>
+    :root { --bg: #10131a; --card: #171c26; --line: #2c3546; --ink: #ece9e1; --dim: #9aa3b2;
+            --verdad: #ece9e1; --giro: #9db4ff; --acel: #ffd166; --fus: #f0997b; --rumbo: #58c4dd; --ok: #5dcaa5; }
+    html { background: var(--bg); }
+    body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.65 Georgia, 'Times New Roman', serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 80px; }
+    header .kicker { font: 13px/1.4 system-ui, sans-serif; color: var(--dim); letter-spacing: 0.04em; text-transform: uppercase; }
+    h1 { font-weight: 600; font-size: 34px; line-height: 1.2; margin: 6px 0 14px; }
+    h2 { font-weight: 600; font-size: 24px; margin: 56px 0 10px; }
+    p { margin: 12px 0; }
+    .guia { font-size: 20px; color: var(--ink); border-left: 3px solid var(--fus); padding: 2px 0 2px 16px; margin: 20px 0; }
+    .eq { font: italic 19px/1.5 Georgia, serif; text-align: center; margin: 18px 0; padding: 12px; background: var(--card); border-radius: 10px; overflow-x: auto; white-space: nowrap; }
+    .eq small { display: block; font: 13px/1.4 system-ui, sans-serif; color: var(--dim); font-style: normal; white-space: normal; margin-top: 4px; }
+    .box { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; margin: 18px 0; }
+    .box p:first-child { margin-top: 0; } .box p:last-child { margin-bottom: 0; }
+    figure { margin: 22px -8px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 12px 10px; }
+    figure canvas { display: block; width: 100%; }
+    figcaption { font: 13px/1.5 system-ui, sans-serif; color: var(--dim); margin-top: 8px; }
+    .ctl { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; font: 14px/1.4 system-ui, sans-serif; color: var(--dim); margin: 8px 2px 4px; }
+    .ctl label { display: flex; align-items: center; gap: 8px; }
+    .ctl input[type=range] { width: 150px; accent-color: var(--fus); }
+    .ctl output { color: var(--ink); font-variant-numeric: tabular-nums; min-width: 4.5em; }
+    button { font: 14px system-ui, sans-serif; padding: 6px 12px; border-radius: 9px; border: 1px solid var(--line); background: #10131a; color: var(--ink); cursor: pointer; }
+    button[aria-pressed=true] { border-color: var(--fus); color: var(--fus); }
+    button:disabled { opacity: 0.45; cursor: default; }
+    .read { font: 14px/1.5 system-ui, sans-serif; color: var(--dim); margin: 6px 2px 0; font-variant-numeric: tabular-nums; }
+    .read b { color: var(--ink); font-weight: 600; }
+    .key { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin: 0 4px 0 10px; vertical-align: 0; }
+    .key:first-child { margin-left: 0; }
+    .c-verdad { color: var(--verdad); } .c-giro { color: var(--giro); } .c-acel { color: var(--acel); } .c-fus { color: var(--fus); } .c-rumbo { color: var(--rumbo); }
+    code { font: 14px ui-monospace, Consolas, monospace; background: var(--card); padding: 1px 5px; border-radius: 5px; }
+    pre { font: 13px/1.55 ui-monospace, Consolas, monospace; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; overflow-x: auto; }
+    pre .where { color: var(--dim); }
+    details { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; margin: 10px 0; }
+    summary { cursor: pointer; font-weight: 600; }
+    details p { margin: 8px 0 2px; }
+    #estado { position: fixed; right: 12px; top: 10px; font: 12px system-ui, sans-serif; color: var(--dim); background: #10131acc; padding: 4px 10px; border-radius: 8px; border: 1px solid var(--line); }
+    a { color: var(--rumbo); }
+    @media (max-width: 560px) { body { font-size: 16px; } h1 { font-size: 27px; } figure { margin: 18px -4px; } .ctl input[type=range] { width: 120px; } }
+  </style>
+</head>
+<body>
+<div id="estado">conectando…</div>
+<main>
+  <header>
+    <div class="kicker">Curso de GearStream · capítulo 8</div>
+    <h1>Fusión de sensores, y por qué el rumbo se va</h1>
+  </header>
+
+  <p class="guia">El giroscopio es rápido pero se desvía; la gravedad no se desvía pero no lo ve todo. ¿Cómo se juntan los dos?</p>
+
+  <!-- ===================================================================== -->
+  <h2>Dos testigos que mienten</h2>
+  <p>Para saber cuánto tienes la mano levantada, el reloj tiene dos testigos. Los dos mienten, cada uno a su manera.</p>
+  <p>El <b class="c-giro">giroscopio</b> dice qué tan rápido sube o baja la mano. Sumando eso muestra a muestra (capítulo 3) sale el ángulo: una curva suave que sigue cada movimiento sin atraso. Pero con la mano quieta no marca cero: marca su sesgo, <i>b</i>. Al sumar, ese <i>b</i> se vuelve un error <i>b·t</i> que nunca deja de crecer.</p>
+  <p>El <b class="c-acel">acelerómetro</b> dice dónde es arriba (capítulo 4), así que no se desvía nunca. Pero no distingue la gravedad de un tirón: cada vez que la mano acelera, cree que arriba se inclinó.</p>
+
+  <figure>
+    <canvas id="figA"></canvas>
+    <div class="ctl">
+      <label>sesgo <i>b</i> <input id="b" type="range" min="0" max="2" step="0.05" value="0.5"><output id="bOut"></output></label>
+      <label>sacudidas <input id="sac" type="range" min="0" max="2" step="0.05" value="1"><output id="sacOut"></output></label>
+    </div>
+    <div class="read" id="readA"></div>
+    <figcaption><span class="key" style="background:var(--verdad)"></span>la verdad <span class="key" style="background:var(--giro)"></span>giroscopio sumado <span class="key" style="background:var(--acel)"></span>acelerómetro · Un minuto de una muñeca inventada: va y viene despacio y cada 6 s sube rápido y vuelve. Sube el sesgo y mira la violeta irse; sube las sacudidas y mira la amarilla saltar.</figcaption>
+  </figure>
+
+  <p>Lo que uno tiene, al otro le falta. El giroscopio es bueno para lo rápido y malo para lo lento; el acelerómetro, al revés. ¿Se puede quedarse con lo bueno de cada uno?</p>
+
+  <!-- ===================================================================== -->
+  <h2>Un resorte</h2>
+  <p>La idea es confiar en el giroscopio, pero atar la estimación a la medida del acelerómetro con un resorte. En cada muestra, la estimación avanza lo que dice el giroscopio, y el resorte la tira un poquito hacia lo que dice el acelerómetro:</p>
+  <div class="eq">θ ← θ + ω·Δt + k·Δt·(θ<sub>acel</sub> − θ)<small>ω: lo que dice el giroscopio (°/s) · Δt: el tiempo entre muestras (0.01 s) · k: la rigidez del resorte</small></div>
+  <p>La rigidez <i>k</i> va en "por segundo": con <i>k</i> = 1/s, en un segundo el resorte cierra casi dos tercios de la diferencia. Juega con ella.</p>
+
+  <figure>
+    <canvas id="figB1"></canvas>
+    <canvas id="figB2"></canvas>
+    <div class="ctl">
+      <label>rigidez <i>k</i> <input id="k" type="range" min="0" max="1000" step="1" value="500"><output id="kOut"></output></label>
+      <button id="playB" aria-pressed="true">pausa</button>
+    </div>
+    <div class="read" id="readB"></div>
+    <figcaption>Arriba, los antebrazos vistos de costado: <span class="c-verdad">blanco</span> el de verdad, <span class="c-acel">amarillo</span> el que dice el acelerómetro, <span class="c-fus">coral</span> el filtro, atado al amarillo por el resorte. Abajo, el error del filtro durante el minuto; la punteada es <i>b/k</i>.</figcaption>
+  </figure>
+
+  <p>Mira el error, abajo. No crece: sube un poco al principio y después se queda quieto, temblando alrededor de la línea punteada, <i>b/k</i>.</p>
+  <div class="box">
+    <p><b>Por qué b/k.</b> El error <i>e</i> = θ − θ<sub>verdad</sub> cambia por dos razones: el sesgo lo empuja <i>b</i> grados por segundo, y el resorte lo devuelve <i>k·e</i> grados por segundo. Mientras <i>b</i> sea más grande que <i>k·e</i>, el error crece. Se queda quieto cuando los dos tirones se empatan:</p>
+    <div class="eq">e′ = b − k·e  &nbsp;⇒&nbsp;  e → b / k</div>
+    <p>Un sesgo de 0.5 °/s con <i>k</i> = 1/s deja medio grado de error. Para siempre, pero nunca más.</p>
+  </div>
+  <p>Esto se llama <b>filtro complementario</b>, porque de cada testigo toma lo que al otro le falta: lo rápido del giroscopio y lo lento del acelerómetro. Juntar dos medidas así, para que cada una tape el defecto de la otra, es la <b>fusión de sensores</b>.</p>
+
+  <!-- ===================================================================== -->
+  <h2>El valle</h2>
+  <p>Entonces, ¿un <i>k</i> enorme? Si el resorte es muy rígido, la estimación es el acelerómetro, con todos sus saltos. Si es muy blando, es el giroscopio, con su deriva. Entre los dos extremos hay un fondo.</p>
+
+  <figure>
+    <canvas id="figC"></canvas>
+    <div class="read" id="readC"></div>
+    <figcaption>El error típico del filtro (rms, desde el segundo 5) para cada rigidez, con la misma muñeca de arriba. El punto es tu <i>k</i>. La punteada es <i>b/k</i>: a la izquierda manda el sesgo. A la derecha mandan las sacudidas.</figcaption>
+  </figure>
+
+  <p>Prueba quitar las sacudidas (en la primera figura): el fondo se corre a la derecha, porque si el acelerómetro no miente conviene creerle más. Si subes el sesgo, también se corre a la derecha: hay más deriva que frenar. No hay un <i>k</i> bueno para todo; depende de cuánto miente cada testigo.</p>
+
+  <!-- ===================================================================== -->
+  <h2>Lo que la gravedad no ve</h2>
+  <p>Hasta aquí, una sola dimensión. En 3D el reloj gira de tres maneras: <b>inclinar</b> (subir y bajar la mano), <b>atornillar</b> (girar alrededor del antebrazo) y cambiar de <b>rumbo</b> (apuntar a otro lado, en horizontal). Mueve los tres controles y mira qué lee el reloj de la gravedad.</p>
+
+  <figure>
+    <canvas id="figD"></canvas>
+    <div class="ctl">
+      <label>inclinar <input id="dIncl" type="range" min="-80" max="80" step="1" value="20"><output id="dInclOut"></output></label>
+      <label>atornillar <input id="dTorn" type="range" min="-90" max="90" step="1" value="0"><output id="dTornOut"></output></label>
+      <label>rumbo <input id="dRumbo" type="range" min="-180" max="180" step="1" value="0"><output id="dRumboOut"></output></label>
+      <button id="dVivo" aria-pressed="false">con mi reloj</button>
+    </div>
+    <figcaption>El antebrazo con el reloj, y la flecha <span class="c-acel">amarilla</span> que apunta arriba. A la derecha, las tres cifras que lee el reloj de la gravedad, en sus propios ejes.</figcaption>
+  </figure>
+
+  <p>Inclinar y atornillar mueven las cifras. El rumbo no mueve ni una. Claro: girar alrededor de la vertical deja la vertical donde estaba. La gravedad es una sola flecha, y una flecha no cambia si giras alrededor de ella.</p>
+  <p>Eso tiene una consecuencia. El resorte del rumbo no tiene de dónde agarrarse: la inclinación queda atada a la gravedad, pero el rumbo queda suelto, y su error crece con el sesgo como la curva violeta, <i>b·t</i>, para siempre.</p>
+  <p>Con tu reloj: aprieta "con mi reloj", déjalo plano sobre la mesa y gíralo como una perilla. Las tres cifras casi no se mueven.</p>
+
+  <!-- ===================================================================== -->
+  <h2>En 3D: el filtro de Mahony</h2>
+  <p>El mocap hace esto mismo en 3D. Guarda la orientación del reloj en un cuaternión (capítulo 5) y, en cada muestra, la gira lo que dice el giroscopio más una corrección: el giro chiquito que llevaría el "arriba" que predice hasta el "arriba" que mide.</p>
+  <div class="eq">e = ĝ<sub>medido</sub> × ĝ<sub>predicho</sub> &nbsp;&nbsp;&nbsp; q ← q ⊗ exp((ω + K<sub>p</sub>·e)·Δt / 2)<small>e: el giro que falta para que los dos "arriba" coincidan · K<sub>p</sub>: la rigidez del resorte, como k</small></div>
+  <p>El producto cruz de dos flechas casi verticales da un eje horizontal, así que la corrección inclina y nunca toca el rumbo. Es el mismo resorte, con otro nombre: el filtro de Mahony.</p>
+
+  <figure>
+    <canvas id="figE"></canvas>
+    <div class="ctl">
+      <label>rigidez <i>K<sub>p</sub></i> <input id="kp" type="range" min="0" max="7" step="1" value="5"><output id="kpOut"></output></label>
+      <label>animación <select id="anim"><option value="apuntar">apuntar</option><option value="tablet">usar una tablet</option><option value="caminar">caminar</option></select></label>
+    </div>
+    <div class="read" id="readE"></div>
+    <figcaption>Un minuto de una animación del mocap, con el ruido y el sesgo de un giroscopio de verdad. <span class="c-fus">Coral</span>: el error de inclinación del antebrazo. <span class="c-rumbo">Azul</span>: el error de rumbo. La punteada es ∫ b·ĝ dt, lo que el sesgo gira alrededor de la vertical. Caminando, el brazo cuelga y por ratos su rumbo no existe: ahí la azul se corta.</figcaption>
+  </figure>
+
+  <p>Con <i>K<sub>p</sub></i> = 0 se van los dos. Con cualquier <i>K<sub>p</sub></i> desde 0.5, la inclinación se queda pegada bajo un grado, y el rumbo sigue la punteada casi exacto: se va lo que el sesgo vertical dice, ni más ni menos. Eso es la <b>deriva del rumbo</b>, y ningún <i>K<sub>p</sub></i> la arregla.</p>
+  <p>Las páginas que todavía no usan esto (el ratón aéreo, Dibuja) sacan el rumbo con el <b>método de proyección</b>: rumbo = ∫yaw dt, y lo demás de la gravedad (con TRIAD). Sirve para apuntar, pero con el brazo colgando el antebrazo es casi vertical y su rumbo deja de existir: en las pruebas del mocap, caminando, se equivoca 16° de mediana. Mahony guarda la orientación entera y no tiene ese hueco.</p>
+  <p>¿Qué arreglaría el rumbo? Otra flecha fija en el mundo que no sea vertical: el norte de un magnetómetro, que este reloj no tiene, o algo que se vea, como la pantalla. Sin eso queda <b>recentrar</b>: decidir dónde es el frente y volver ahí, con un botón o de a poco cuando la mano descansa.</p>
+
+  <!-- ===================================================================== -->
+  <h2>Con tu reloj</h2>
+  <p>Ahora con tu muñeca. Sube y baja la mano y, de vez en cuando, sacúdela.</p>
+
+  <figure>
+    <canvas id="figF"></canvas>
+    <div class="ctl">
+      <label>sesgo de más <input id="fB" type="range" min="0" max="2" step="0.05" value="0"><output id="fBOut"></output></label>
+      <label>rigidez <i>k</i> <output id="fKOut"></output></label>
+      <button id="fHand"></button>
+      <button id="fRe">recentrar</button>
+    </div>
+    <div class="read" id="readF"></div>
+    <figcaption><span class="c-verdad">Blanca</span>: la gravedad que ya calcula el reloj (ojo: esa ya es una fusión, hecha por Samsung; por eso sirve de referencia). <span class="c-acel">Amarilla</span>: el acelerómetro crudo. <span class="c-giro">Violeta</span>: el giroscopio sumado. <span class="c-fus">Coral</span>: tu filtro, con el <i>k</i> de la figura del resorte. Los últimos 20 s. El reloj ya resta casi todo su sesgo: súmale uno con el control para verlo.</figcaption>
+  </figure>
+
+  <div class="box">
+    <p><b>La prueba de la mesa.</b> Deja el reloj quieto sobre la mesa y aprieta empezar. Los primeros 10 s miden el sesgo alrededor de la vertical; los 50 siguientes, cuánto se va el rumbo. Si la cuenta está bien, se va sesgo × 50 s, y la inclinación de tu filtro no se mueve.</p>
+    <div class="ctl"><button id="mesa">empezar</button><span id="mesaOut"></span></div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <h2>El código</h2>
+  <p>El resorte de una dimensión, de <code>server/web/fusionmath.js</code>, el mismo que corre en esta página:</p>
+  <pre id="codPaso">cargando…</pre>
+  <p>Y el de Mahony, la rama de fusión de <code>reconstruct</code> en <code>server/web/mocapmath.js</code>, la que mueve el antebrazo del mocap:</p>
+  <pre id="codMahony">cargando…</pre>
+
+  <h2>Ejercicio</h2>
+  <p>Escribe tu propio filtro complementario en <code>docs/curso/ejercicios/cap08.js</code> y corre:</p>
+  <pre>node tools/test_fusion.js --ejercicio</pre>
+  <p>Pasa si con <i>k</i> = 0 integra el giroscopio, si con un sesgo <i>b</i> el error se queda en <i>b/k</i>, si con <i>k</i> grande sigue a la medida y si con la muñeca inventada le gana a los dos testigos solos.</p>
+
+  <h2>Preguntas</h2>
+  <details><summary>Si confío 100 % en el giroscopio, ¿qué pasa en un minuto? ¿Y si confío 100 % en la gravedad?</summary>
+    <p>Con el giroscopio solo el ángulo se va <i>b·t</i>: con 0.5 °/s, 30° en un minuto (la violeta). Con la gravedad sola no se va nunca, pero cada sacudida la hace saltar decenas de grados (la amarilla).</p></details>
+  <details><summary>¿Qué significa "tirar suavemente" hacia la gravedad? ¿Qué tan fuerte, y qué pasa si tiro demasiado?</summary>
+    <p>Es <i>k</i>: la fracción de la diferencia que se corrige por segundo. Muy fuerte y la estimación copia los saltos del acelerómetro; muy suave y queda el error <i>b/k</i>, grande. El mejor está en el fondo del valle, y depende de cuánto miente cada testigo.</p></details>
+  <details><summary>¿Por qué la fusión corrige la inclinación pero nunca el rumbo?</summary>
+    <p>Porque girar alrededor de la vertical no cambia la gravedad. La corrección <i>e</i> = ĝ<sub>medido</sub> × ĝ<sub>predicho</sub> es siempre un eje horizontal: inclina, y nada más.</p></details>
+  <details><summary>¿Por qué el método de proyección se pierde al caminar y la fusión no?</summary>
+    <p>Caminando, el brazo cuelga: el antebrazo es casi vertical y su rumbo no existe (es la singularidad del capítulo 5). La proyección necesita ese rumbo en cada muestra; Mahony guarda la orientación entera en un cuaternión, que no tiene ese hueco. En las pruebas: 16° de mediana contra menos de 1°.</p></details>
+  <details><summary>Si la gravedad del reloj ya es una cuenta de Samsung que junta sensores, ¿estoy fusionando una fusión?</summary>
+    <p>Sí. El sensor "gravedad" del reloj ya junta el acelerómetro y el giroscopio; por eso tiembla tan poco y en vivo la usamos de referencia. El testigo que tiembla de verdad es el acelerómetro crudo. Mahony con la gravedad de Samsung funciona bien, a cambio de no saber qué rigidez eligió Samsung.</p></details>
+  <details><summary>¿Qué haría falta para que el rumbo no se fuera nunca?</summary>
+    <p>Otra dirección fija en el mundo que no sea vertical: el norte de un magnetómetro (este reloj no lo entrega) o algo que se vea, como una pantalla o una cámara.</p></details>
+  <details><summary>¿Cuándo conviene recentrar, y cómo se hace sin que el usuario lo note?</summary>
+    <p>Cuando la mano descansa: si está quieta, nadie nota que el frente se mueve un poco. Se hace de a poco, unos grados por segundo, como <code>autoCenterStep</code> en el avatar, o con un botón cuando el usuario lo pide.</p></details>
+  <details><summary>¿Por qué un error de unas décimas de °/s se ve en el cursor como centímetros?</summary>
+    <p>A 2.4 m de la pantalla, un grado son 2.4 m × π/180 ≈ 4.2 cm. Un sesgo de 0.3 °/s en 10 s son 3°: unos 12 cm.</p></details>
+
+  <p style="margin-top:40px"><a href="/">← volver al tablero</a></p>
+</main>
+<script src="wrist.js"></script>
+<script src="mocapmath.js"></script>
+<script src="fusionmath.js"></script>
+<script src="fusion.js"></script>
+</body>
+</html>
