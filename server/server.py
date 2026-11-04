@@ -50,7 +50,22 @@ logging.getLogger("websockets.server").addFilter(lambda r: r.getMessage() != "op
 
 
 def log(msg):
-    print(time.strftime("%H:%M:%S"), msg, flush=True)
+    """print() que sobrevive a una consola o tubería cp1252 (los mensajes llevan → · °): nunca tumba el servidor."""
+    line = f"{time.strftime('%H:%M:%S')} {msg}"
+    try:
+        print(line, flush=True)
+    except UnicodeEncodeError:
+        enc = getattr(sys.stdout, "encoding", None) or "ascii"
+        print(line.encode(enc, "replace").decode(enc), flush=True)
+
+
+def tolerant_streams():
+    """Lo que no se pueda codificar en la salida sale como «?» en vez de lanzar UnicodeEncodeError."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(errors="replace")
+        except (AttributeError, ValueError):   # None (sin consola) o un flujo que no se deja reconfigurar
+            pass
 
 
 def flatten(values, prefix=""):
@@ -350,6 +365,7 @@ def lan_ips():
 
 
 async def main():
+    tolerant_streams()
     parser = argparse.ArgumentParser(description="GearStream server")
     parser.add_argument("--host", default="0.0.0.0",
                         help="0.0.0.0 abre a tu red (la app del teléfono o del reloj); 127.0.0.1, solo esta laptop")
