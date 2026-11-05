@@ -1,0 +1,149 @@
+# Capítulo 3 · Derivar e integrar con números
+
+**Pregunta guía.** Si el giroscopio solo dice qué tan rápido giras, ¿cómo sabes cuánto giraste?
+
+El reloj no da funciones: da una muestra cada 10 ms. Así que aquí derivar es restar, integrar es sumar, y casi todo lo
+interesante es qué les pasa a los errores cuando se resta o se suma muchas veces.
+
+Las animaciones salen de [`animaciones/cap03.py`](../animaciones/cap03.py) (Manim), con señales inventadas y números de
+reloj de verdad; la media móvil es la de [`tools/analyze_dataset.py`](../../../tools/analyze_dataset.py), importada
+tal cual. Lo que dice el capítulo se comprueba en [`tools/test_derivar.js`](../../../tools/test_derivar.js).
+
+---
+
+## 1. Derivar: cuánto cambia por segundo
+
+![Muestras de una curva; la diferencia hacia adelante y la central, y sus resultados contra la derivada de verdad](../media/cap03/DerivarConNumeros.gif)
+
+Con muestras, la derivada es una resta dividida por el tiempo. Hacia adelante, $(x[k+1]-x[k])/\Delta t$; o usando la
+muestra anterior y la siguiente, la **diferencia central**:
+
+$$\frac{x[k+1]-x[k-1]}{2\,\Delta t}$$
+
+La central queda centrada en la muestra y cae mucho más cerca de la curva: en la prueba, con una onda de 0.25 Hz, su
+error es 200 veces menor.
+
+## 2. La segunda diferencia
+
+![Tres muestras seguidas: la punteada sigue la pendiente de antes y lo que le falta para llegar a la tercera muestra es la aceleración](../media/cap03/SegundaDiferencia.gif)
+
+Si nada cambiara, la tercera muestra caería siguiendo la recta de las dos primeras. Lo que le falta es la aceleración:
+
+$$a[k] = \frac{x[k+1]-2x[k]+x[k-1]}{\Delta t^2}$$
+
+Así saca `synth` de `server/web/mocapmath.js` lo que leería el acelerómetro a partir de una animación.
+
+## 3. Integrar: sumar tasa × Δt
+
+![Barras de tasa × Δt que se van sumando en el ángulo; con muestras perdidas, un Δt fijo se queda corto y el tiempo del reloj no](../media/cap03/IntegrarConNumeros.gif)
+
+Cada muestra del giroscopio dice qué tan rápido, y entre una y otra pasó $\Delta t$. Sumando:
+
+$$\theta \approx \sum_k \omega[k]\,\Delta t$$
+
+10 °/s durante 3 s dan 30°. $\Delta t$ no se supone: sale del tiempo de cada muestra. Si se pierden muestras, un $\Delta t$
+fijo se queda corto, y el tiempo del reloj cubre el hueco. Por eso `onGyro` de `server/web/game.js` hace
+`dt = (t − S.lastGyroT) / 1000`. `cursorTrack` de `mocapmath.js` hace la misma suma en 9 líneas, con $\Delta t$ fijo
+porque sus muestras son inventadas y nunca se pierden.
+
+## 4. Integrar acumula error
+
+![A la izquierda el sesgo crece en línea recta hasta 18° en un minuto; a la derecha 16 paseos al azar y su tamaño típico, que crece como la raíz de t](../media/cap03/ErrorAcumulado.gif)
+
+Un sesgo de $b$ = 0.3 °/s parece nada, pero se suma siempre para el mismo lado: el error es $b\,t$, 18° en un minuto
+y 1080° (tres vueltas) en una hora. A eso se le dice **deriva**.
+
+El ruido va para los dos lados y en parte se cancela, pero no del todo: la suma es un **paseo al azar**, y su tamaño
+típico crece como $\sigma\sqrt{t\,\Delta t}$. Con 2 °/s de ruido a 100 muestras por segundo son 1.5° en un minuto. El
+sesgo crece como $t$ y el ruido como $\sqrt t$: a la larga manda el sesgo.
+
+## 5. Integrar dos veces
+
+![Un error constante de aceleración se vuelve una recta en la velocidad y una parábola en la posición](../media/cap03/DosVecesIntegrar.gif)
+
+De la aceleración a la posición hay dos integrales, y cada una sube el exponente: un sesgo $b$ deja $b\,t$ en la
+velocidad y $\tfrac12 b\,t^2$ en la posición. Con 0.05 m/s² son 2.5 m en 10 s y 90 m en un minuto. Por eso el
+reloj no puede decir dónde está tu mano solo con el acelerómetro.
+
+![Un trazo de 60 mm: la velocidad integrada termina lejos de cero; repartiendo ese error, la posición cae casi encima de la de verdad](../media/cap03/VelocidadCero.gif)
+
+Lo que salva es algo que se sabe sin medirlo: **al apoyar y al levantar el dedo está quieto**. La velocidad al final
+tiene que ser cero, así que lo que sobra es error, y se reparte a lo largo del trazo. Es la **velocidad cero** (ZUPT),
+y son dos líneas en `watch_features` de `tools/analyze_drawing.py`. Un sesgo constante se va entero; el ruido, no todo.
+`ArmFilter.step` hace lo mismo cada vez que el brazo se queda quieto.
+
+## 6. Suavizar
+
+![Una señal con ruido; la media móvil con su ventana y tres promedios que olvidan: más suaves, más tarde llegan al salto](../media/cap03/Suavizar.gif)
+
+Suavizar es promediar con lo reciente. La **media móvil** promedia las últimas $n$ muestras (`movavg` de
+`tools/analyze_dataset.py`, 8 líneas). El **promedio que olvida** no guarda la ventana, solo el valor anterior:
+
+$$y \leftarrow y + \alpha\,(x - y)$$
+
+Los dos dejan pasar lo lento y frenan lo rápido (es un filtro **paso bajo**). Lo que se pierde es tiempo: con α = 0.2
+un salto tarda 0.04 s en llegar, con α = 0.05, 0.19 s, y con α = 0.015, 0.65 s. `game.js` aprende el sesgo del
+giroscopio así, con α = 0.002, solo mientras la mano está quieta.
+
+## 7. Derivar amplifica el ruido
+
+![Una señal con un ruido que no se ve; su derivada directa es casi puro ruido, y suavizar antes de derivar la limpia](../media/cap03/DerivarAmplificaRuido.gif)
+
+Derivar es dividir por un $\Delta t$ chico, y eso agranda cada temblor: el ruido pasa de $\sigma$ a
+$\sigma/(\sqrt2\,\Delta t)$. Un ruido de 0.01, que no se ve, se vuelve 0.7, más o menos lo mismo que la señal. Por eso
+antes de derivar hay que suavizar, pagando un poco de atraso. Integrar hace lo contrario: frena lo rápido y acumula lo
+lento.
+
+## 8. Quitar lo lento
+
+![Una aceleración con movimiento lento y dos golpes; restando su promedio de 40 ms solo quedan los golpes](../media/cap03/QuitarLoLento.gif)
+
+Al revés de suavizar: la señal menos su promedio reciente deja solo lo rápido (un filtro **paso alto**). Un golpe en la
+mesa se ve aunque la mano se esté moviendo. En `signals` de `tools/analyze_dataset.py` es una línea,
+`hp = la - movavg(la, 4)`: lo que cambió en 40 ms.
+
+## 9. Una curva suave
+
+![La recta y la curva 3u² − 2u³, sus rapideces y dos puntos que recorren un riel: uno arranca de golpe, el otro de a poco](../media/cap03/CurvaSuave.gif)
+
+Para ir de 0 a 1 sin golpes, $3u^2 - 2u^3$ (*smoothstep*) empieza y termina con pendiente cero. Es `smooth` en
+`mocapmath.js`, y `targetAt` en `server/web/sismomath.js` la usa para que la línea del Sismógrafo entre sin saltos.
+
+## 10. Una onda
+
+![Una onda a medida que cambian su amplitud, su frecuencia y su fase](../media/cap03/UnaOnda.gif)
+
+Lo más simple que va y viene es $a\sin(2\pi f t + \varphi)$: la **amplitud** $a$ dice qué tan lejos va, la
+**frecuencia** $f$ cuántas vueltas por segundo, y la **fase** $\varphi$ dónde empieza.
+
+## 11. Integrar una onda
+
+![Tres ondas de la misma tasa a 0.5, 2 y 8 Hz: el ángulo que dejan es cada vez más chico](../media/cap03/IntegrarUnaOnda.gif)
+
+Si la muñeca va y viene, la tasa sube y baja y lo que se suma en una mitad se resta en la otra. Integrar
+$a\sin(2\pi f t)$ da una onda de amplitud
+
+$$\frac{a}{2\pi f}$$
+
+A 100 °/s son ±31.8° a 0.5 Hz, ±8° a 2 Hz y ±2° a 8 Hz. Por eso un temblor rápido se ve enorme en el giroscopio y
+casi no mueve el ángulo.
+
+---
+
+## Experimento con tus datos
+
+Deja el reloj quieto en la mesa 60 s y graba:
+
+1. Integra el giroscopio tal cual. ¿Cuánto giró algo que no se movió?
+2. Mide el sesgo con el promedio de los primeros 10 s, réstalo e integra otra vez. ¿Qué queda?
+3. Predice la deriva con $b\,t$ y compárala con lo que mediste.
+4. Integra dos veces el acelerómetro, menos su promedio. ¿Cuánto "se movió"?
+
+## Ejercicio que se comprueba
+
+Escribe `integrar(t, tasa)` en [`docs/curso/ejercicios/cap03.js`](../ejercicios/cap03.js) y córrelo con
+`node tools/test_derivar.js --ejercicio`. Las pruebas comprueban que:
+- 10 °/s durante 3 s dan 30°, también si se pierden muestras;
+- un sesgo da $b\,t$, el ruido $\sigma\sqrt{t\,\Delta t}$ e integrar dos veces $\tfrac12 b\,t^2$;
+- una onda da amplitud $a/(2\pi f)$;
+- la velocidad cero baja el error de un trazo.

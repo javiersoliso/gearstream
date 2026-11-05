@@ -13,7 +13,7 @@ Cada capítulo tiene la misma forma:
 
 [mapa.md](mapa.md) dibuja qué necesita cada concepto, y [conceptos.json](conceptos.json) es su fuente: cada concepto con su definición, lo que necesita, las palabras que lo nombran y las funciones del código que lo usan. `python -I tools/check_curso.py` comprueba que cada concepto llegue después de lo que necesita, que ningún término del glosario aparezca en un capítulo anterior al que lo define, y que cada función con matemática del repo esté cubierta por algún concepto. La regla del glosario vale para todo lo que está dentro de un capítulo, preguntas incluidas: por eso el capítulo 1 dice "qué tan rápido gira" y no "velocidad angular", que se define en el 5.
 
-Los capítulos ya escritos tienen su guion en [capitulos/](capitulos/) y su página en `server/web/`, marcada con `<meta name="curso-capitulo">`; `check_curso.py` también revisa su texto con la regla del glosario. Por ahora están escritos el 5, el 8 y el 11.
+Los capítulos ya escritos tienen su guion en [capitulos/](capitulos/) y su página en `server/web/`, marcada con `<meta name="curso-capitulo">`; `check_curso.py` también revisa su texto con la regla del glosario. Por ahora están escritos el 3, el 5, el 8 y el 11.
 
 Los datos: `recordings/` es personal y no se sube. Para que los experimentos funcionen sin reloj hay que publicar a propósito una grabación de ejemplo, que todavía no existe.
 
@@ -110,6 +110,8 @@ Los datos: `recordings/` es personal y no se sube. Para que los experimentos fun
 - *Ejercicio que se comprueba:* calcular el ángulo entre la gravedad de dos posturas con el producto punto y con atan2, y comprobar que da 90° entre caras vecinas y 180° entre opuestas.
 
 ## Capítulo 3 · Derivar e integrar con números
+
+**Ya está escrito:** su [texto](capitulos/03-derivar.md), con una animación por concepto; las pruebas están en `tools/test_derivar.js` y el ejercicio, en `docs/curso/ejercicios/cap03.js`.
 
 **Conceptos:** `derivada_discreta` · `segunda_derivada` · `integral_discreta` · `error_acumulado` · `doble_integral_zupt` · `suavizar` · `derivar_amplifica_ruido` · `paso_alto` · `curva_suave` · `onda_seno` · `integrar_un_seno`
 

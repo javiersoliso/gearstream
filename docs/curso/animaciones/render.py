@@ -15,6 +15,9 @@ import sys
 AQUI = os.path.dirname(os.path.abspath(__file__))
 MEDIA = os.path.join(AQUI, "media")
 ESCENAS = {
+    "cap03": ["DerivarConNumeros", "SegundaDiferencia", "IntegrarConNumeros", "ErrorAcumulado", "DosVecesIntegrar",
+              "VelocidadCero", "Suavizar", "DerivarAmplificaRuido", "QuitarLoLento", "CurvaSuave", "UnaOnda",
+              "IntegrarUnaOnda"],
     "cap05": ["RotarEnElPlano", "EjeYAngulo", "TodoGiroEsUnEje", "MatrizDeRotacion", "OrdenNoConmuta",
               "VelocidadAngular", "PuntoQueGira", "VistoDesdeElReloj", "AngulosDeEuler", "Singularidad", "Cuaternion",
               "IntegrarOrientacion"],
