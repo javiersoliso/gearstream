@@ -4,7 +4,7 @@
     python docs/curso/animaciones/render.py cap08           # capítulo 8
     python docs/curso/animaciones/render.py cap11 Enrollar  # una escena
 
-Necesita manim (pip install manim), ffmpeg y LaTeX (MiKTeX o TeX Live) en el PATH; los capítulos 5 y 8, también node. Los videos intermedios quedan en
+Necesita manim (pip install manim), ffmpeg y LaTeX (MiKTeX o TeX Live) en el PATH; casi todos los capítulos, también node, y el 6 y el 12, scipy. Los videos intermedios quedan en
 docs/curso/animaciones/media/, que no se sube.
 """
 import os
@@ -15,16 +15,39 @@ import sys
 AQUI = os.path.dirname(os.path.abspath(__file__))
 MEDIA = os.path.join(AQUI, "media")
 ESCENAS = {
+    "cap00": ["Senal", "Unidades", "Muestreo", "MarcaDeTiempo", "InterpolacionLineal", "Cuantizar", "LecturasNuevas",
+             "ResumirVentana", "Latencia", "AlinearRelojes", "AgruparMuestras"],
+    "cap01": ["EjesDelReloj", "Acelerometro", "Giroscopio", "SensorDeGravedad", "Ruido", "TamanoTipico", "Sesgo",
+             "Umbral", "AprenderSesgo"],
+    "cap02": ["UnVector", "LargoDeUnVector", "VectorUnitario", "SenoYCoseno", "PorQueAtan2", "AngulosQueDanLaVuelta",
+             "ProductoPunto", "ProductoCruz", "ReglaManoDerecha", "MarcoDeReferencia", "CoordenadasEnUnaBase",
+             "CambioDeMarco", "SeisCaras"],
     "cap03": ["DerivarConNumeros", "SegundaDiferencia", "IntegrarConNumeros", "ErrorAcumulado", "DosVecesIntegrar",
-              "VelocidadCero", "Suavizar", "DerivarAmplificaRuido", "QuitarLoLento", "CurvaSuave", "UnaOnda",
-              "IntegrarUnaOnda"],
+             "VelocidadCero", "Suavizar", "DerivarAmplificaRuido", "QuitarLoLento", "CurvaSuave", "UnaOnda",
+             "IntegrarUnaOnda"],
+    "cap04": ["QueMideElAcelerometro", "ArribaSinIntegrar", "SeisPosturas", "InclinacionConSigno",
+             "AceleracionLineal", "BrazoColgando", "LoQueNoVe"],
     "cap05": ["RotarEnElPlano", "EjeYAngulo", "TodoGiroEsUnEje", "MatrizDeRotacion", "OrdenNoConmuta",
-              "VelocidadAngular", "PuntoQueGira", "VistoDesdeElReloj", "AngulosDeEuler", "Singularidad", "Cuaternion",
-              "IntegrarOrientacion"],
+             "VelocidadAngular", "PuntoQueGira", "VistoDesdeElReloj", "AngulosDeEuler", "Singularidad", "Cuaternion",
+             "IntegrarOrientacion"],
+    "cap06": ["AntebrazoEsEjeX", "Roll", "Pitch", "Yaw", "BaseTorcida", "CasiVertical", "AtornillarNoMueveElCursor",
+             "ManoEquivocada", "TresFlechas"],
+    "cap07": ["ArcoDTheta", "RayoTangente", "DosAngulos", "Ganancia", "Recortar", "Subpixel", "ZonaMuerta",
+             "CurvaDeAceleracion", "Filtro1Euro", "MapaLineal", "Potencias", "LeyDeFitts"],
     "cap08": ["DosTestigos", "Resorte", "Valle", "GravedadNoVeRumbo", "Triad", "MetodoDeProyeccion", "Mahony",
-              "DerivaDelRumbo", "Recentrar"],
-    "cap11": ["SumaDeSenos", "FlechaQueGira", "Enrollar", "Fuga", "RespuestaH", "RetrasoPorCorrelacion",
-              "Remanente", "Nyquist", "RitmoYArmonia", "Octavas"],
+             "DerivaDelRumbo", "Recentrar"],
+    "cap09": ["Esqueleto", "CinematicaDirecta", "Trayectorias", "LeyDeCosenos", "CinematicaInversa", "FabricarRuido",
+             "SintetizarIMU", "PruebaConVerdad", "AceleracionDeUnPunto", "LimitesDelCuerpo", "Verosimilitud",
+             "FiltroDeParticulas", "Remuestreo"],
+    "cap10": ["DetectarUnPico", "DosUmbrales", "PeriodoRefractario", "UmbralQueSeAdapta", "DominanciaDeUnEje",
+             "ClicDeTornillo", "ToqueEnLaEsfera", "ElEmpujon", "LaSacudida", "ClicPorPermanencia",
+             "ScrollConElAntebrazo", "ElTempo", "AciertosYFalsasAlarmas", "MuestrasDeUnGolpe", "ElAUC"],
+    "cap11": ["SumaDeSenos", "FlechaQueGira", "Enrollar", "Fuga", "RespuestaH", "RetrasoPorCorrelacion", "Remanente",
+             "Nyquist", "RitmoYArmonia", "Octavas"],
+    "cap12": ["LetrasRedibujadas", "LoQueVeElReloj", "Rasgos", "Segmentar", "Estandarizar", "MinimosCuadrados",
+             "RCuadrado", "Sobreajuste", "PruebaJusta", "Retardos", "RidgeCastigo", "ControlLambda",
+             "PredecirVelocidad", "DescensoPorGradiente", "RedNeuronal", "MasDatos", "ParecidoDeForma", "CuantoCreo",
+             "VecinosCercanos", "MatrizDeConfusion", "FDeAnova", "OtraPersona"],
 }
 CON_SONIDO = {"RitmoYArmonia", "Octavas"}
 CALIDAD = ("-qm", "720p30")       # manim escribe en media/videos/<archivo>/720p30/

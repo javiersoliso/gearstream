@@ -13,7 +13,7 @@ Cada capítulo tiene la misma forma:
 
 [mapa.md](mapa.md) dibuja qué necesita cada concepto, y [conceptos.json](conceptos.json) es su fuente: cada concepto con su definición, lo que necesita, las palabras que lo nombran y las funciones del código que lo usan. `python -I tools/check_curso.py` comprueba que cada concepto llegue después de lo que necesita, que ningún término del glosario aparezca en un capítulo anterior al que lo define, y que cada función con matemática del repo esté cubierta por algún concepto. La regla del glosario vale para todo lo que está dentro de un capítulo, preguntas incluidas: por eso el capítulo 1 dice "qué tan rápido gira" y no "velocidad angular", que se define en el 5.
 
-Los capítulos ya escritos tienen su guion en [capitulos/](capitulos/) y su página en `server/web/`, marcada con `<meta name="curso-capitulo">`; `check_curso.py` también revisa su texto con la regla del glosario. Por ahora están escritos el 3, el 5, el 8 y el 11.
+Los capítulos ya escritos tienen su guion en [capitulos/](capitulos/) y su página en `server/web/`, marcada con `<meta name="curso-capitulo">`; `check_curso.py` también revisa su texto con la regla del glosario. Ya están escritos los trece.
 
 Los datos: `recordings/` es personal y no se sube. Para que los experimentos funcionen sin reloj hay que publicar a propósito una grabación de ejemplo, que todavía no existe.
 
@@ -35,6 +35,8 @@ Los datos: `recordings/` es personal y no se sube. Para que los experimentos fun
 - [Apéndice · Supuestos, falencias y cosas por mejorar](#apéndice--supuestos-falencias-y-cosas-por-mejorar)
 
 ## Capítulo 0 · Un número que cambia
+
+**Ya está escrito:** su [texto](capitulos/00-numero.md), con una animación por concepto; las pruebas están en `tools/test_muestreo.js` y el ejercicio, en `docs/curso/ejercicios/cap00.js`.
 
 **Conceptos:** `senal` · `unidades` · `muestreo` · `marca_de_tiempo` · `interpolacion_lineal` · `cuantizar` · `lecturas_nuevas` · `resumir_ventana` · `latencia` · `alinear_relojes` · `agrupar_muestras`
 
@@ -61,6 +63,8 @@ Los datos: `recordings/` es personal y no se sube. Para que los experimentos fun
 
 ## Capítulo 1 · Qué es un sensor
 
+**Ya está escrito:** su [texto](capitulos/01-sensor.md), con una animación por concepto; las pruebas están en `tools/test_sensor.js` y el ejercicio, en `docs/curso/ejercicios/cap01.js`.
+
 **Conceptos:** `ejes_del_reloj` · `acelerometro` · `giroscopio` · `sensor_gravedad` · `ruido` · `tamano_tipico` · `sesgo` · `umbral` · `aprender_sesgo`
 
 **Pregunta guía.** ¿Qué siente de verdad el reloj cuando mueves la mano?
@@ -85,6 +89,8 @@ Los datos: `recordings/` es personal y no se sube. Para que los experimentos fun
 - *Ejercicio que se comprueba:* en una grabación con reposo y movimiento, encontrar el primer segundo quieto y su sesgo, y comprobar que coincide con el que toma `Motion._calibrate` repitiendo la misma grabación (`--replay`).
 
 ## Capítulo 2 · Vectores y marcos
+
+**Ya está escrito:** su [texto](capitulos/02-vectores.md), con una animación por concepto; las pruebas están en `tools/test_marcos.js` y el ejercicio, en `docs/curso/ejercicios/cap02.js`.
 
 **Conceptos:** `vector` · `norma` · `vector_unitario` · `trigonometria` · `envolver_angulos` · `producto_punto` · `producto_cruz` · `regla_mano_derecha` · `marco_de_referencia` · `coordenadas_en_una_base` · `cambio_de_marco`
 
@@ -138,6 +144,8 @@ Los datos: `recordings/` es personal y no se sube. Para que los experimentos fun
 
 ## Capítulo 4 · La gravedad dice dónde es arriba
 
+**Ya está escrito:** su [texto](capitulos/04-gravedad.md), con una animación por concepto; las pruebas están en `tools/test_gravedad.js` y el ejercicio, en `docs/curso/ejercicios/cap04.js`.
+
 **Conceptos:** `fuerza_especifica` · `arriba_desde_gravedad` · `inclinacion` · `aceleracion_lineal` · `rumbo`
 
 **Pregunta guía.** Con la mano quieta, ¿cómo sabe el reloj hacia dónde está inclinado?
@@ -189,6 +197,8 @@ Los datos: `recordings/` es personal y no se sube. Para que los experimentos fun
 
 ## Capítulo 6 · Del reloj al antebrazo: roll, yaw y pitch
 
+**Ya está escrito:** su [texto](capitulos/06-antebrazo.md), con una animación por concepto; las pruebas están en `tools/test_antebrazo.js` y el ejercicio, en `docs/curso/ejercicios/cap06.js`.
+
 **Conceptos:** `antebrazo_eje_x` · `roll` · `pitch` · `yaw` · `giros_independientes`
 
 **Pregunta guía.** El giroscopio gira con el reloj. ¿Cómo se convierte eso en "apunté a la izquierda" o "atornillé"?
@@ -213,6 +223,8 @@ Los datos: `recordings/` es personal y no se sube. Para que los experimentos fun
 
 ## Capítulo 7 · De 3D a 2D: el cursor
 
+**Ya está escrito:** su [texto](capitulos/07-cursor.md), con una animación por concepto; las pruebas están en `tools/test_cursor.js` y el ejercicio, en `docs/curso/ejercicios/cap07.js`.
+
 **Conceptos:** `arco_d_theta` · `rayo_tangente` · `coordenadas_esfericas` · `ganancia` · `recortar` · `subpixel` · `zona_muerta` · `curva_de_aceleracion` · `filtro_1euro` · `mapa_lineal_2x2` · `potencias_y_logaritmos` · `ley_de_fitts`
 
 **Pregunta guía.** ¿Cuántos píxeles tiene que moverse el cursor cuando giras la muñeca un grado?
@@ -234,7 +246,7 @@ Los datos: `recordings/` es personal y no se sube. Para que los experimentos fun
 - *La matemática mínima:* el arco `D·θ` (θ en radianes; un grado son `D·π/180`); el rayo `D·tan θ ≈ D·θ` para ángulos pequeños; la ganancia en píxeles por grado; una curva suave entre `v_lo` y `v_hi`; el filtro 1€, `α = 1/(1 + 1/(2π f_c Δt))` con `f_c = f_min + β|ẋ|`; Fitts, `ID = log2(D/W + 1)`.
 - *El código:* la clase `OneEuro` de `tools/air_mouse.py` (26 líneas).
 - *Experimento con datos reales:* la prueba de objetivos de `calibrate.html` con dos ajustes distintos; comparar tiempos, sobrepasos y bits por segundo.
-- *Ejercicio que se comprueba:* ¿a qué ángulo se separan 1 cm D·θ y D·tan θ con D = 2.4 m? Con `tan θ − θ ≈ θ³/3` salen unos 13°; comprobarlo con `cursorTrack`. (En 2D, en los íconos de las esquinas, la simulación llega a unos 3 cm.)
+- *Ejercicio que se comprueba:* ¿a qué ángulo se separan 1 cm D·θ y D·tan θ con D = 2.4 m? Con `tan θ − θ ≈ θ³/3` salen unos 13°; comprobarlo con `cursorTrack`. (En 2D, en los íconos de la derecha, a 19° y 2.32 m, la simulación llega a 3.4 cm.)
 
 ## Capítulo 8 · Fusión de sensores y por qué el rumbo se va
 
@@ -265,6 +277,8 @@ Los datos: `recordings/` es personal y no se sube. Para que los experimentos fun
 
 ## Capítulo 9 · El cuerpo en 3D
 
+**Ya está escrito:** su [texto](capitulos/09-cuerpo.md), con una animación por concepto; las pruebas están en `tools/test_cuerpo.js` y el ejercicio, en `docs/curso/ejercicios/cap09.js`.
+
 **Conceptos:** `esqueleto` · `cinematica_directa` · `trayectorias` · `ley_de_cosenos` · `cinematica_inversa` · `ruido_gaussiano` · `sintetizar_imu` · `prueba_con_verdad` · `aceleracion_de_un_punto_que_gira` · `limites_articulares` · `verosimilitud` · `filtro_de_particulas` · `remuestreo_de_particulas`
 
 **Pregunta guía.** Con un solo reloj en la muñeca, ¿se puede saber dónde está todo el brazo?
@@ -282,13 +296,15 @@ Los datos: `recordings/` es personal y no se sube. Para que los experimentos fun
 
 **Cómo sería el capítulo**
 
-- *Intuición visual:* el stickman con el antebrazo de verdad (cian) y el reconstruido (coral); al lado, una nube de codos posibles que se aprieta cuando mueves el brazo y se abre cuando lo dejas quieto.
+- *Intuición visual:* el stickman con el antebrazo de verdad (cian) y el reconstruido (coral); al lado, una nube de codos posibles que se aprieta al mover el brazo y más aún con el brazo quieto, sin que eso sea certeza: el resorte junta la nube aunque el error real siga igual.
 - *La matemática mínima:* cinemática directa, `codo = hombro + L₁·u` y `muñeca = codo + L₂·f`; la inversa con la ley de los cosenos, `x = (L₁² − L₂² + d²)/(2d)`; la síntesis, ω del giro relativo entre muestras y `a = (p₊ − 2p + p₋)/Δt² + g`; las partículas pesadas por `exp(−r²/2σ²)`, con r el residuo de la aceleración centrípeta del codo.
 - *El código:* `ik` de `server/web/mocapmath.js` (9 líneas).
-- *Experimento con datos reales:* cortar tus sesiones en tomas (`python tools/export_mocap.py`) y ver tu antebrazo en el stickman; en el avatar con el filtro, mover el brazo y dejarlo quieto para ver cómo la nube de codos se aprieta y se abre.
+- *Experimento con datos reales:* cortar tus sesiones en tomas (`python tools/export_mocap.py`) y ver tu antebrazo en el stickman; en el avatar con el filtro, mover el brazo y dejarlo quieto para ver cómo se aprieta la nube de codos, y por qué una nube chica no quiere decir que el codo esté bien.
 - *Ejercicio que se comprueba:* implementar la cinemática inversa de dos huesos y comprobar, con mil objetivos al azar, que el codo queda a L₁ del hombro y la muñeca a L₂ del codo, y que llega al objetivo cuando está a su alcance.
 
 ## Capítulo 10 · Gestos
+
+**Ya está escrito:** su [texto](capitulos/10-gestos.md), con una animación por concepto; las pruebas están en `tools/test_gestos.js` y el ejercicio, en `docs/curso/ejercicios/cap10.js`.
 
 **Conceptos:** `deteccion_de_picos` · `histeresis` · `periodo_refractario` · `umbral_adaptativo` · `dominancia_de_eje` · `clic_de_tornillo` · `toque` · `empujon` · `sacudida` · `permanencia` · `scroll_por_roll` · `tempo` · `aciertos_y_falsas_alarmas` · `auc`
 
@@ -342,6 +358,8 @@ Los datos: `recordings/` es personal y no se sube. Para que los experimentos fun
 
 ## Capítulo 12 · Aprender de datos
 
+**Ya está escrito:** su [texto](capitulos/12-aprender.md), con una animación por concepto; las pruebas están en `tools/test_aprender.js` y el ejercicio, en `docs/curso/ejercicios/cap12.js`.
+
 **Conceptos:** `rasgos` · `segmentar` · `estandarizar` · `minimos_cuadrados` · `r_cuadrado` · `validacion_cruzada` · `ventana_de_retardos` · `ridge` · `predecir_velocidad` · `descenso_por_gradiente` · `red_neuronal` · `parecido_de_forma` · `vecinos_cercanos` · `matriz_de_confusion` · `anova_f`
 
 **Pregunta guía.** ¿Puede el reloj aprender a redibujar una letra que nunca vio?
@@ -378,7 +396,7 @@ Lo que damos por hecho, lo que ya medimos que falla y lo que falta, cada cosa co
 | 3 | Apuntas con el antebrazo, no con el dedo: el reloj no ve los dedos. | [cap. 6](#capítulo-6--del-reloj-al-antebrazo-roll-yaw-y-pitch) · `antebrazo_eje_x`; [cap. 12](#capítulo-12--aprender-de-datos) · `predecir_velocidad` |
 | 4 | La gravedad del reloj es confiable, aunque sea una cuenta interna de Samsung que no controlamos ni podemos auditar. | [cap. 1](#capítulo-1--qué-es-un-sensor) · `sensor_gravedad`; [cap. 8](#capítulo-8--fusión-de-sensores-y-por-qué-el-rumbo-se-va) · `fusion_de_sensores` |
 | 5 | El sesgo del giroscopio es casi constante y se aprende con la mano quieta (\|ω\| < 2 °/s). | [cap. 1](#capítulo-1--qué-es-un-sensor) · `aprender_sesgo` |
-| 6 | El cursor es lineal en el ángulo (D·θ); el rayo real va como D·tan θ. A la distancia de un monitor la diferencia es chica: 3 cm a 13° y 2.4 m, en la simulación. | [cap. 7](#capítulo-7--de-3d-a-2d-el-cursor) · `rayo_tangente` |
+| 6 | El cursor es lineal en el ángulo (D·θ); el rayo real va como D·tan θ. A la distancia de un monitor la diferencia es chica: 1 cm a 13° y 2.4 m; en la simulación, 3.4 cm a 19° y 2.32 m. | [cap. 7](#capítulo-7--de-3d-a-2d-el-cursor) · `rayo_tangente` |
 | 7 | Los tiempos del reloj y de la laptop están alineados y el retraso de la red es estable. | [cap. 0](#capítulo-0--un-número-que-cambia) · `alinear_relojes`, `latencia` |
 | 8 | El cuerpo tiene medidas fijas: brazo de 0.29 m y antebrazo de 0.27 m en el mocap, 0.30 y 0.25 m en el filtro del codo. En el mocap el codo no se mueve cuando reproducimos tus grabaciones. | [cap. 9](#capítulo-9--el-cuerpo-en-3d) · `esqueleto`, `filtro_de_particulas` |
 | 9 | Una persona, un reloj y una laptop, en la misma red Wi-Fi. | [cap. 0](#capítulo-0--un-número-que-cambia) · `agrupar_muestras` |
@@ -387,7 +405,7 @@ Lo que damos por hecho, lo que ya medimos que falla y lo que falta, cada cosa co
 
 | # | Lo que el código da por hecho sin decirlo | Dónde se explica |
 |---|---|---|
-| 10 | En las páginas (`wrist.js`), todo giro de menos de 2 °/s se aprende como sesgo: un giro lento y parejo hecho a propósito se va borrando. El ratón aéreo lo evita (pide pico a pico < 1 °/s y una mediana chica). | [cap. 1](#capítulo-1--qué-es-un-sensor) · `aprender_sesgo` |
+| 10 | En las páginas (`wrist.js`), todo giro de menos de 2 °/s se aprende como sesgo: un giro lento y parejo hecho a propósito se va borrando. El ratón aéreo lo evita (pide pico a pico < 2.5 °/s y una mediana chica). | [cap. 1](#capítulo-1--qué-es-un-sensor) · `aprender_sesgo` |
 | 11 | Con el antebrazo a menos de unos 17° de la vertical (\|g·f\| > 0.95: la mano muy arriba o el brazo colgando), las páginas apagan el pitch y achican el yaw. | [cap. 5](#capítulo-5--rotar) · `singularidad`; [cap. 6](#capítulo-6--del-reloj-al-antebrazo-roll-yaw-y-pitch) · `yaw`, `pitch` |
 | 12 | La misma cuenta está tres veces y no igual: las páginas cortan el giro a cero bajo 0.6 °/s (con un salto), el ratón aéreo resta la zona muerta (sin salto) y el avatar toma el yaw como ω·arriba, sin quitarle la parte de roll. | [cap. 6](#capítulo-6--del-reloj-al-antebrazo-roll-yaw-y-pitch) · `yaw`; [cap. 7](#capítulo-7--de-3d-a-2d-el-cursor) · `zona_muerta` |
 | 13 | En las páginas, un hueco de más de 100 ms entre muestras se integra como si fueran 10 ms: lo que giraste durante una pausa del Wi-Fi se pierde. | [cap. 0](#capítulo-0--un-número-que-cambia) · `marca_de_tiempo`; [cap. 3](#capítulo-3--derivar-e-integrar-con-números) · `integral_discreta` |
