@@ -109,7 +109,7 @@ class SegundaDiferencia(Scene):
 
         g = always_redraw(tres)
         self.add(g)
-        n1 = texto("Si nada cambiara, seguiría por la punteada. Lo que falta (rojo), dividido por Δt², es la aceleración.", 22)\
+        n1 = texto("Lo que le falta para seguir la punteada (rojo), sobre Δt², es la aceleración.", 22)\
             .to_edge(DOWN, buff=0.15)
         self.play(FadeIn(n1))
         self.wait(2)
