@@ -18,10 +18,11 @@ sale de `synth` en [`server/web/mocapmath.js`](../../../server/web/mocapmath.js)
 Se esperaría que un acelerómetro quieto marcara cero. Marca 9.81 m/s² **hacia arriba**. Adentro hay una masita sostenida
 por algo parecido a un resorte, y lo que se mide es cuánto se estira:
 
-$$\text{lectura} = \vec a - \vec g$$
+$$\text{lectura} = \vec a + \vec g$$
 
-Con $\vec g$ apuntando hacia abajo, quieto ($\vec a = 0$) da 9.81 hacia arriba. Cayendo ($\vec a = \vec g$) da 0: nada
-sostiene a la masita. Subiendo con 3 m/s² da 12.81. Siente lo que lo sostiene, no la caída: es la **fuerza específica**.
+En este curso $\vec g$ son 9.81 m/s² **hacia arriba**, igual que la lee el sensor de gravedad del reloj. (En un libro de
+física suele apuntar hacia abajo, y por eso allá la cuenta aparece con resta.) Quieto ($\vec a = 0$) da 9.81 hacia arriba.
+Cayendo ($\vec a = -\vec g$) da 0: nada sostiene a la masita. Subiendo con 3 m/s² da 12.81. Siente lo que lo sostiene, no la caída: es la **fuerza específica**.
 Así arma `synth` lo que leería el reloj: suma a la aceleración de la animación los 9.81 hacia arriba.
 
 ## 2. Arriba, sin integrar nada
@@ -36,8 +37,9 @@ $$\hat g = \frac{\vec g}{|\vec g|}$$
 Es una medida **absoluta**: cada lectura vale por sí sola, así que no hay nada que se acumule. En un minuto, el
 giroscopio sumado con un sesgo de 0.3 °/s se va 18°; la gravedad sigue donde estaba.
 
-El reloj además trae un sensor de gravedad, que no es un sensor sino una cuenta interna de Samsung. Da esa misma dirección
-también con la mano en movimiento, y apunta hacia arriba igual que el acelerómetro quieto. `Motion.gravity_measurement` de
+El reloj además trae un sensor de gravedad, que no es un sensor sino una cuenta interna de Samsung. Intenta dar esa misma
+dirección también con la mano en movimiento, aunque cuánto se equivoca entonces no lo sabemos (capítulo 1), y apunta hacia
+arriba igual que el acelerómetro quieto. `Motion.gravity_measurement` de
 `tools/air_mouse.py` lo usa si llegó hace menos de 500 ms; si no, normaliza el acelerómetro.
 
 ## 3. La inclinación

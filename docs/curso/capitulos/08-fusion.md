@@ -12,9 +12,9 @@ Cada escena tiene una frase que, una vez vista la figura, tiene que parecer obvi
 |---|---|---|---|---|
 | 1 | Dos testigos que mienten | El giroscopio es bueno en lo rápido y malo en lo lento; el acelerómetro, al revés. | Un minuto de una muñeca inventada: la verdad, el giroscopio sumado (se va b·t) y el acelerómetro (salta con cada sacudida). Controles: sesgo y sacudidas. | `test_fusion.js`: 29.7° a los 60 s con b = 0.5 °/s; el acelerómetro promedia 0.01° pero salta 36°. |
 | 2 | Un resorte | El error no crece: se queda quieto en b/k. | Los antebrazos de costado, el filtro atado al acelerómetro por un resorte que engorda con k; abajo, el error contra la punteada b/k. | Con la mano quieta, el error a los 30 s y a los 60 s es b/k (cuatro pares de b y k). |
-| 3 | El valle | No hay un k bueno para todo: depende de cuánto miente cada testigo. | El error rms para k de 0.01 a 50 por segundo; la punteada b/k es el lado izquierdo. | El fondo está cerca de k = 1/s (0.70°); sin sacudidas se corre a 11.5/s. |
+| 3 | El valle | No hay un k bueno para todo: depende de cuánto miente cada testigo. | El error rms para k de 0.01 a 50 por segundo; la punteada b/k es el lado izquierdo, donde en un minuto hay tiempo de llegar a ella (k de 0.2/s para arriba). | El fondo está cerca de k = 1/s (0.70°); sin sacudidas se corre a 11.5/s. |
 | 4 | Lo que la gravedad no ve | Una flecha no cambia si giras alrededor de ella: la gravedad no ve el rumbo. | El antebrazo con el reloj, tres controles (inclinar, atornillar, rumbo) y las tres cifras que lee el reloj. Con el reloj de verdad, las cifras en vivo. | Para varias poses, cambiar el rumbo no cambia ninguna cifra. |
-| 5 | En 3D: Mahony | El mismo resorte en 3D endereza la inclinación y deja el rumbo irse ∫ b·ĝ dt, ni más ni menos. | Un minuto de la animación de apuntar del mocap, con ruido y sesgo: error de inclinación, error de rumbo y la punteada ∫ b·ĝ dt. Control Kp y animación. | Kp = 0: la inclinación se va 26°. Kp = 2: 0.19° de inclinación y 23.2° de rumbo, contra 22.9° predichos. |
+| 5 | En 3D: Mahony | El mismo resorte en 3D endereza la inclinación y deja el rumbo irse casi exactamente ∫ b·ĝ dt. | Un minuto de la animación de apuntar del mocap, con ruido y sesgo: error de inclinación, error de rumbo y la punteada ∫ b·ĝ dt. Control Kp y animación. | Kp = 0: la inclinación se va 26°. Kp = 2: 0.19° de inclinación y 23.2° de rumbo, contra 22.9° predichos. |
 | 6 | Con tu reloj | Lo mismo, con tu muñeca. | Los últimos 20 s: la gravedad del reloj (ya fusionada por Samsung), el acelerómetro crudo, el giroscopio sumado y el filtro. Un control suma sesgo, porque el reloj ya resta casi todo el suyo. Y la prueba de la mesa: 10 s para medir el sesgo vertical, 50 s para ver si el rumbo se va sesgo × 50 s. | A mano, con el reloj. Con `tools/fake_watch.py` se comprobó que los datos llegan y se dibujan. |
 
 ## Las animaciones
@@ -33,7 +33,7 @@ el resorte tira más cuanto más se aleja, hasta que los dos se igualan en e = b
 
 ![La estimación atada a la medida con un resorte; el error sube y se queda quieto en b/k, más bajo cuanto más rígido el resorte](../media/cap08/Resorte.gif)
 
-**Qué tan fuerte tirar.** A la izquierda del valle manda el giroscopio y el error es b/k; a la derecha manda el
+**Qué tan fuerte tirar.** A la izquierda del valle manda el giroscopio y el error va hacia b/k, y llega si hay tiempo: $e(t) = (b/k)(1 - e^{-kt})$; a la derecha manda el
 acelerómetro y salta con él. Sin sacudidas, el fondo se corre a la derecha.
 
 ![El error rms contra k en escala logarítmica: un valle con el fondo cerca de k = 1/s, que sin sacudidas se corre a k ≈ 12/s](../media/cap08/Valle.gif)
@@ -52,13 +52,13 @@ colgando la sombra es un punto, y caminando el método se pierde: 16° de median
 
 ![De costado, el antebrazo baja hasta colgar y su sombra se encoge; caminando, el error de la proyección salta cuando el brazo cuelga y el de la fusión no](../media/cap08/MetodoDeProyeccion.gif)
 
-**Mahony.** El mismo resorte en 3D: e = arriba medido × arriba predicho es el eje del giro que falta, y girar
-alrededor de él Kp·|e| por segundo junta las dos flechas. Sin resorte la inclinación se va 26° en un minuto; con
+**Mahony.** El mismo resorte en 3D: e = arriba medido × arriba predicho es el eje del giro que le falta al reloj, y girar
+el reloj alrededor de él Kp·|e| por segundo junta las dos flechas. Desde el reloj, la flecha predicha va al revés: $-\omega \times v$. Sin resorte la inclinación se va 26° en un minuto; con
 Kp = 2 no pasa de unas décimas.
 
 ![Dos flechas, arriba medido y arriba predicho, que se juntan girando alrededor de su producto cruz; luego el error de inclinación con Kp = 0 y con Kp = 2](../media/cap08/Mahony.gif)
 
-**Por qué el rumbo se va.** Con Kp = 2 el rumbo se va igual, y exactamente ∫ b·ĝ dt: la parte del sesgo que gira
+**Por qué el rumbo se va.** Con Kp = 2 el rumbo se va igual, y casi exactamente ∫ b·ĝ dt (el ruido suma un paseo de unas décimas de grado): la parte del sesgo que gira
 alrededor de la vertical. Unas décimas de °/s son unos 12 cm de cursor en 10 s, con la pantalla a 2.4 m.
 
 ![El error de rumbo de la fusión encima de la curva predicha ∫ b·ĝ dt, y el rayo a la pantalla que se corre 12 cm en 10 s](../media/cap08/DerivaDelRumbo.gif)
@@ -72,7 +72,7 @@ falta botón, pero también se come los giros que dejas puestos mucho rato.
 
 - El filtro complementario: `θ ← θ + ω·Δt + k·Δt·(θ_acel − θ)`.
 - Por qué b/k: `e′ = b − k·e`, que deja de crecer cuando `e = b/k`.
-- El acelerómetro se inclina con cada tirón: una muñeca a r del codo que acelera su giro a α empuja de costado con r·α, y el acelerómetro cree que arriba se inclinó `atan(r·α / g)`.
+- El acelerómetro se inclina con cada tirón: una muñeca a r del codo que acelera su giro a α empuja de costado con r·α. Con el brazo colgando, el acelerómetro cree que arriba se inclinó `atan(r·α / g)`; con el brazo horizontal ese tirón no inclina la elevación, y en medio el efecto cambia. La simulación usa esa fórmula en toda postura: es un modelo inventado, para tener sacudidas de un tamaño creíble, no la física de cada postura. Con la física completa el valle sigue ahí.
 - Mahony: `e = ĝ_medido × ĝ_predicho` y `q ← q ⊗ exp((ω + Kp·e)·Δt/2)`.
 - La deriva del rumbo: `∫ b·ĝ dt`, la parte del sesgo que gira alrededor de la vertical.
 

@@ -136,11 +136,13 @@ console.log('Rasgos');
 {
   const hz = 100, t = Array.from({ length: hz }, (_, i) => i / hz), x = t.map((s) => 20 * Math.sin(2 * Math.PI * 6 * s));
   near(Math.sqrt(prom(x.map((v) => v * v))), 20 / Math.SQRT2, 1e-9, 'el RMS de una onda es a/√2');
-  const hann = x.map((v, i) => v * (0.5 - 0.5 * Math.cos(2 * Math.PI * i / (hz - 1))));
+  // window_features saca la frecuencia del largo del giro, ya centrado: una muñeca que va y viene a 6 Hz sale en 12 Hz
+  const largo = x.map(Math.abs), centro = prom(largo);
+  const hann = largo.map((v, i) => (v - centro) * (0.5 - 0.5 * Math.cos(2 * Math.PI * i / (hz - 1))));
   const energia = (f) => (punto(hann, t.map((s) => Math.cos(2 * Math.PI * f * s)))) ** 2 + (punto(hann, t.map((s) => Math.sin(2 * Math.PI * f * s)))) ** 2;
   let dom = 1; for (let f = 1; f <= 15; f++) if (energia(f) > energia(dom)) dom = f;
-  assert.strictEqual(dom, 6, 'la frecuencia dominante');
-  ok('un segundo de una onda de 6 Hz y 20 °/s: RMS 14.1 y frecuencia dominante 6 Hz');
+  assert.strictEqual(dom, 12, 'la frecuencia dominante del largo');
+  ok('un segundo de una onda de 6 Hz y 20 °/s: RMS 14.1 y, por usar el largo del giro, frecuencia dominante 12 Hz');
   assert.strictEqual(13 * (3 + 3 + 3) + 3, 120);
   ok('13 miradas × 9 números + 3 de postura = 120 rasgos');
 }

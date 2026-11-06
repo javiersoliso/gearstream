@@ -244,8 +244,8 @@ function simular(N, rtt, dt, dur) {
 near(simular(1, 60, 10, 60000).porSegundo, 1000 / 60, 0.1, 'un paquete cada 60 ms deja pasar 17 por segundo');
 near(simular(6, 60, 10, 60000).porSegundo, 100, 0.5, 'con 6 por paquete pasan las 100');
 ok(`un paquete cada 60 ms: N = 1 deja pasar ${simular(1, 60, 10, 60000).porSegundo.toFixed(1)} por segundo, N = 6 deja ${simular(6, 60, 10, 60000).porSegundo.toFixed(1)}`);
-assert.ok(simular(6, 60, 10, 60000).peor <= 60, 'la que más espera no pasa de N muestras');
-ok(`con N = 6, la que más espera lleva ${simular(6, 60, 10, 60000).peor} ms cuando sale: hasta N muestras`);
+assert.ok(simular(6, 60, 10, 60000).peor <= 60, 'la que más espera no pasa de (N − 1)·Δt más el turno de salir');
+ok(`con N = 6, la que más espera lleva ${simular(6, 60, 10, 60000).peor} ms cuando sale: (N − 1)·Δt más el turno de salir`);
 
 if (process.argv.includes('--ejercicio')) {
   probar(require(path.join(RAIZ, 'docs', 'curso', 'ejercicios', 'cap00.js')).interpolar, 'tu ejercicio');

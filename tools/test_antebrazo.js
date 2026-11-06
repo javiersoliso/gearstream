@@ -80,7 +80,7 @@ ok('g·f es el seno de la elevación, 1 − (g·f)² es |f × g|² y p forma án
 // ---------- atornillar no mueve el cursor ----------
 console.log('Atornillar no mueve el cursor');
 for (const mano of ['left', 'right']) {
-  for (let e = -89; e <= 89; e += 4) {
+  for (let e = -89; e <= 89; e += 2) {
     const b = brazo(e, 30, 20), r = rates(...Object.values(lectura(mul(b.F, 100), b, mano)), mano);
     near(r.yaw, 0, 1e-9, `yaw a ${e}°`); near(r.pitch, 0, 1e-9, `pitch a ${e}°`); near(r.roll, 100, 1e-9, `roll a ${e}°`);
   }
@@ -106,7 +106,7 @@ ok('100 °/s de roll puro dan yaw 0 y pitch 0 de −89° a 89°, en las dos mano
   const r = rates(mul(fVerdad, 100), [0, 0, 1], 'left');
   near(Math.hypot(r.yaw, r.pitch), 100 * Math.sin(d), 1e-9, 'se escapa el seno del error');
   near(r.roll, 100 * Math.cos(d), 1e-9, 'el roll pierde el coseno');
-  ok(`con el reloj girado 10° en la muñeca, 100 °/s de atornillar dejan ${Math.hypot(r.yaw, r.pitch).toFixed(1)} °/s en el cursor`);
+  ok(`con el reloj girado 10° en la muñeca, 100 °/s de atornillar dejan ${Math.hypot(r.yaw, r.pitch).toFixed(1)} °/s fuera del roll, con el antebrazo horizontal`);
 }
 
 // ---------- la mano equivocada ----------

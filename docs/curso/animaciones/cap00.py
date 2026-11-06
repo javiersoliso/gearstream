@@ -722,14 +722,14 @@ class AgruparMuestras(Escena):
         ax = ejes([0, 9, 1], [0, 120, 40], ancho=5.4, alto=1.75, numeros=True).move_to(RIGHT * 0.6 + DOWN * 1.85)
         Ns = np.arange(1, 9)
         caudal = np.minimum(Ns / (rtt / 1000), f)
-        retraso = Ns * dt
+        retraso = (Ns - 1) * dt
         barras = VGroup(*[Rectangle(width=0.32, height=ax.c2p(0, c)[1] - ax.c2p(0, 0)[1], stroke_width=0, fill_color=BIEN, fill_opacity=0.85)
                           .move_to(ax.c2p(n, 0), aligned_edge=DOWN) for n, c in zip(Ns, caudal)])
         puntos = VGroup(*[Dot(ax.c2p(n, r), radius=0.06, color=ERROR) for n, r in zip(Ns, retraso)])
-        ley = VGroup(texto("muestras/s", 18, color=BIEN), texto("retraso añadido, ms", 18, color=ERROR)).arrange(DOWN, aligned_edge=LEFT, buff=0.08)\
+        ley = VGroup(texto("muestras/s", 18, color=BIEN), texto("espera a juntarse, ms", 18, color=ERROR)).arrange(DOWN, aligned_edge=LEFT, buff=0.08)\
             .next_to(ax, RIGHT, buff=0.3)
         self.play(Write(form), Create(ax), FadeIn(ley))
         self.play(LaggedStart(*[GrowFromEdge(b, DOWN) for b in barras], lag_ratio=0.1), run_time=1.5)
         self.play(LaggedStart(*[FadeIn(p, scale=2) for p in puntos], lag_ratio=0.1), run_time=1.5)
-        self.decir(f"El precio: la primera del paquete espera a las otras, hasta N muestras: {6 * dt} ms con N = 6.", espera=3.5)
+        self.decir(f"El precio: la primera del paquete espera a las otras, (N − 1)·Δt: {5 * dt} ms con N = 6.", espera=3.5)
         self.decir("Es --batch de sdb_bridge.py: un awk en el reloj que junta N líneas antes de soltarlas.", espera=3.5)

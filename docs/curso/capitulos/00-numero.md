@@ -136,7 +136,7 @@ algo que salga de una cuenta, y el modelo solo muestra cómo pueden aparecer las
 De mil números hay que quedarse con pocos. Un tramo de muestras seguidas es una **ventana**, y se resume así:
 
 - El **promedio** cuenta a todas. Un solo valor raro lo arrastra.
-- La **mediana** es la del medio al ordenarlas. Un valor raro no la mueve. A cambio, no ve un suceso corto: en un
+- La **mediana** es la del medio al ordenarlas. Un valor raro casi no la mueve. A cambio, no ve un suceso corto: en un
   segundo con 0.1 s de movimiento, la mediana sigue diciendo que no pasó nada.
 - El **máximo** ve lo más grande, pero lo decide un solo valor.
 - El **pico a pico** es el máximo menos el mínimo: cuánto se abrió la señal en la ventana.
@@ -196,8 +196,9 @@ solo pasan unas 17. El **caudal** es:
 
 $$\text{caudal} = \frac{\text{muestras por paquete}}{\text{ida y vuelta}}$$
 
-Con 6 muestras por paquete pasan las 100, y más no hace falta: no hay más que mandar. El precio es tiempo. La primera
-del paquete tiene que esperar a las otras: hasta $N$ muestras de **retraso**, 60 ms con $N = 6$.
+Con 6 muestras por paquete pasan justo las 100. Con menos no alcanza: las muestras se van quedando atrás. Con más hay margen
+por si la red empeora, y no pasan más porque no hay más que mandar. El precio es tiempo. La primera del paquete tiene que
+esperar a las otras, $(N-1)\,\Delta t$, y después a que le toque salir: ese es el **retraso**, 60 ms con $N = 6$.
 
 Es `--batch` de `sdb_bridge.py`: en `Bridge.read_sensor`, un `awk` corriendo en el reloj junta $N$ líneas antes de
 soltarlas. Y `Bridge.report` dice cuántas muestras viajan por paquete. Una limitación práctica: el reloj acepta una sola

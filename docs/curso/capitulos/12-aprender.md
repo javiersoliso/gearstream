@@ -11,7 +11,7 @@ Las animaciones salen de [`animaciones/cap12.py`](../animaciones/cap12.py) (Mani
 grabaciones de verdad son personales y no se publican. [`animaciones/datos_cap12.py`](../animaciones/datos_cap12.py)
 inventa una sesión de 53 letras, la escribe en el formato de `draw_recorder.py` y se la pasa a
 [`tools/reconstruct_drawing.py`](../../../tools/reconstruct_drawing.py) sin cambiarle nada. Sus parámetros se ajustaron a
-mano hasta dar resultados del tamaño de los reales, así que sus números enseñan cómo se comporta la cuenta, no cómo es
+mano para que esta sesión dé resultados del tamaño de los reales, así que sus números enseñan cómo se comporta la cuenta, no cómo es
 tu mano. Cuando aparece un número de la grabación real es el que publica el README del proyecto, y se dice cada vez. Lo
 general se comprueba en [`tools/test_aprender.js`](../../../tools/test_aprender.js).
 
@@ -29,8 +29,8 @@ grabación real, según el README, fue 0.74.
 
 El reloj va en la muñeca. Ve lo que hacen la muñeca y el antebrazo: el giro, la aceleración y la postura. No ve los
 dedos. La parte lenta y grande del trazo pasa por la muñeca; la parte fina la hacen los dedos, y esa no le llega. Por
-eso una letra grande se redibuja mejor que una chica: en la grabación real lo que más decidía la calidad era cuánto
-giraba la muñeca. Tampoco ve cuándo apoyas el dedo (en el README, un AUC de 0.56 y 0.58, casi al azar), así que
+eso es de esperar que una letra grande se redibuje mejor que una chica: en la grabación real, cuánto giraba la muñeca fue la
+señal más alta de la calidad (r = 0.22), aunque 53 letras no alcanzan para afirmarlo. Tampoco ve cuándo apoyas el dedo (en el README, un AUC de 0.56 y 0.58, casi al azar), así que
 `reconstruct_drawing.py` recibe del trackpad cuándo apoya, cuándo levanta y dónde empieza cada trazo. La forma la pone
 el reloj; el comienzo y el final, no.
 
@@ -78,7 +78,9 @@ cuadrados** elige los pesos que hacen más chica la suma de los errores al cuadr
 
 $$\min_W \lVert XW - V \rVert^2$$
 
-Al cuadrado para que un error grande pese mucho y para que el fondo sea uno solo, como en una parábola. En el fondo el
+Al cuadrado para que un error grande pese mucho y para que el fondo sea fácil de hallar, como en una parábola. (Es uno solo si
+ninguna columna de $X$ se puede armar con las otras. Aquí el roll repite a $\omega_x$, así que de los nueve números de cada mirada
+solo ocho son independientes.) En el fondo el
 error queda perpendicular a cada columna de $X$, y eso da un sistema chico, como el de las coordenadas en una base:
 $X^{\mathsf T}X\,W = X^{\mathsf T}V$. A esto también se le dice una **regresión**. En `tools/analyze_drawing.py` lo hace
 `r2`, con `np.linalg.lstsq`, y con eso `main` saca la calibración del giro: en la grabación real, 5.3 mm de trazo por
@@ -232,7 +234,7 @@ En la grabación real, ridge sacó 0.74 y la red 0.60. Con los datos inventados,
   no son independientes: salen de 42 o 45 trazos.
 - **Una mala parada.** Las muestras de validación de `MLP.fit` son instantes al azar. Es la trampa de la sección 7: los
   de al lado se entrenaron, y la red cree que sigue mejorando. Dándole trazos enteros para validar, sin cambiar nada más,
-  la red sube en las 5 semillas probadas, de 0.71 a 0.74 en promedio. Sigue debajo de ridge.
+  la red sube en las 5 semillas probadas, de 0.71 a 0.74 en promedio. En promedio sigue debajo de ridge.
 - **La suerte.** Solo cambiando la semilla, la red va de 0.67 a 0.74. Ridge no tiene semilla.
 
 ¿Y con diez veces más datos? Con una sesión inventada diez veces más larga, ridge pasa de 0.78 a 0.80 y la red de 0.70 a
@@ -256,7 +258,7 @@ $\cos 30° = 0.87$, y dada vuelta da −1. Compara punto con punto en el mismo o
 Como no ve el tamaño, `main` informa aparte el largo redibujado sobre el real: 0.63 con ridge en los datos inventados y
 0.58 en los reales. El reloj dibuja más chico, y es de esperar: ridge achica y la muñeca hace solo una parte.
 
-Y una advertencia: **0 no es el piso**. Con λ enorme el modelo dibuja una raya quieta y aun así saca 0.50 con los datos
+Y una advertencia: **0 no es el piso**. Con λ enorme el modelo dibuja una raya quieta y aun así saca 0.45 con los datos
 inventados, porque muchos trazos van para el mismo lado que la velocidad promedio. Un 0.74 hay que leerlo contra algo
 así, no contra 0.
 
@@ -271,9 +273,11 @@ modelos **iguales** medidos con letras distintas se separan 0.04 o más cerca de
 Para saberlo sin repetir la sesión se vuelven a sacar las letras al azar, con repetición, y se recalcula la diferencia.
 Las dos ventanas usan las mismas letras, así que se comparan de a pares. Con los datos inventados, ±240 ms contra ±160 ms
 da +0.007, y el 95 % de las veces cae entre −0.021 y +0.051: el cero está adentro. Ridge contra la red da +0.098, entre
-−0.006 y +0.187: casi. Lo que en la vida real
-no se puede, aquí sí: repetir la sesión entera 12 veces. La mediana da 0.82 ± 0.03, así que nuestra sesión, con 0.77, salió
-baja, y ±240 ms contra ±160 ms queda entre −0.012 y +0.019. Sacar las letras al azar había medido bien ese temblor.
+−0.006 y +0.187, pero esa es la peor semilla de la red: con otras baja a +0.03, y el promedio de 5 semillas da +0.057. Ahí hay
+dos azares, las letras y la semilla, y sacar letras solo mide el primero. Lo que en la vida real
+no se puede, aquí sí: repetir la sesión entera 12 veces. La mediana da 0.82 ± 0.03, de 0.78 a 0.87. Nuestra sesión, con 0.77,
+queda debajo de todas, y no es mala suerte: sus parámetros se eligieron mirándola a ella. ±240 ms contra ±160 ms queda entre
+−0.012 y +0.019. Sacar las letras al azar había acertado el orden de ese temblor.
 
 Eso coincide con lo que dice el README de la grabación real: las variantes quedan entre 0.67 y 0.75, y con 53 letras de
 una sola sesión esas diferencias son ruido. Y remuestrear mide solo el azar de qué letras tocaron. No sabe nada de otra
@@ -285,7 +289,7 @@ tarde, otra postura u otra persona.
 
 Para gestos, `analyze_dataset.py` usa un modelo que no tiene nada que ajustar: los **vecinos más cercanos** (k-NN). Un
 gesto nuevo mide su distancia a todos los guardados, con los rasgos estandarizados, y los $k = 3$ más próximos votan.
-`knn_loo` pesa cada voto con $1/(1 + d)$. En la animación un vecino de 5 dedos vota 0.85, pero dos de puño suman 1.50, y
+`knn_loo` pesa cada voto con $1/(1 + d)$. En la animación un vecino de 5 dedos vota 0.85, pero dos de puño suman 1.51, y
 gana puño. Su costo es guardar todo y comparar contra todo. Antes de llamarlo, `main` comprime los rasgos con
 $\text{signo}(x)\log(1 + |x|)$ para que un golpe enorme no mande.
 
@@ -309,7 +313,9 @@ $$F = \frac{\sum_g n_g(\bar x_g - \bar x)^2 / (G-1)}{\sum_g \sum_i (x_i - \bar x
 
 Arriba, cuánto se separan los promedios de los gestos; abajo, cuánto varía cada uno por dentro. Si la medida no separa
 nada, F ronda 1. En la animación, el cambio de gravedad da 1292.6, el golpe 556.2, el giro 141.8 y el número de golpes
-3.2. No cambia con la unidad. Pero mide todos los gestos de una vez: el cambio de gravedad gana porque el gesto del brazo
+3.2. `fstat` no cambia con la unidad, pero `main` la calcula sobre los rasgos ya comprimidos, y ahí sí cambia, y el orden también;
+la animación usa los rasgos crudos. F además crece con el número de tomas, así que sirve para comparar medidas de una misma
+sesión. Y mide todos los gestos de una vez: el cambio de gravedad gana porque el gesto del brazo
 se va lejos, y no ayuda en nada con 4 dedos contra 5 dedos. Para esa pareja hay que mirar la F de esa pareja.
 
 ## 19. Si acierta con mis datos, ¿acierta con otra persona?
@@ -319,7 +325,8 @@ se va lejos, y no ayuda en nada con 4 dedos contra 5 dedos. Para esa pareja hay 
 Un 95 % con dejar uno fuera dice algo sobre tus tomas de esa tarde, con tu fuerza, tu correa y tu postura. Las tomas de
 una sesión se parecen entre ellas, y siempre queda alguna gemela adentro. Otra mano cae en otro sitio. En la animación
 un modelo acierta 98 % dejando uno fuera. Con otra persona que tenga 0.9 veces tu fuerza acierta 95 %; con 0.8, 68 %; con
-0.7, 37 %. No cae de a poco: aguanta hasta que los gestos cruzan a los vecinos.
+0.7, 37 %, en este sorteo (con 20 sorteos, 89 %, 64 % y 36 % de media). Aguanta hasta que los gestos cruzan a los vecinos, y
+ahí cae rápido.
 
 La prueba justa para eso es dejar afuera a la persona entera, o por lo menos la sesión entera. El repo no la tiene
 todavía: todo sale de una persona. `tools/analyze_dataset.py` lo avisa en su encabezado.

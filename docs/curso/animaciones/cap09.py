@@ -227,7 +227,7 @@ class Trayectorias(Escena):
         self.play(Create(ax), FadeIn(marcas, lx))
         c1, c2 = linea(ax, t, brazo, BLUE, 4), linea(ax, t, rodilla, ORANGE, 4)
         self.play(Create(c1), Create(c2), run_time=1.2)
-        self.add(texto("hombro: 20°·sen(fase)", 20, color=BLUE).move_to(ax.c2p(1.0, -24)), texto("rodilla", 20, color=ORANGE).move_to(ax.c2p(0.45, 56)))
+        self.add(texto("hombro izquierdo: −20°·sen(fase)", 20, color=BLUE).move_to(ax.c2p(1.0, -24)), texto("rodilla", 20, color=ORANGE).move_to(ax.c2p(0.45, 56)))
         cursor = always_redraw(lambda: DashedLine(ax.c2p((k.get_value() % (3 * n)) / (3 * n) * t[-1], -30), ax.c2p((k.get_value() % (3 * n)) / (3 * n) * t[-1], 60), color=RED))
         self.add(cursor)
         self.decir("Caminar: una fase que da vueltas y cada ángulo es una función de ella")

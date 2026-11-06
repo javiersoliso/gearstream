@@ -25,15 +25,15 @@ antebrazo, y no hay que medirlo: en la **muñeca izquierda** es $+x$, y en la **
 es $-x$. Es el giro de 180° del capítulo 2. `forearmOf` de `wrist.js` es esa línea, y `watchOf` de `mocapmath.js` arma los ejes
 así.
 
-Eso es un supuesto, no una medida. Con el reloj girado 10° sobre la muñeca, $x$ ya no es el antebrazo, y 100 °/s de atornillar
-dejan 17.4 °/s fuera del roll, que el cursor ve. Y si el reloj se pone al revés, la izquierda se comporta como la derecha.
+Eso es un supuesto, no una medida. Con el reloj girado 10° sobre su propio eje $z$, $x$ ya no es el antebrazo, y 100 °/s de atornillar
+dejan al menos 17.4 °/s que el cursor ve, y más con el antebrazo inclinado. Y si el reloj se pone al revés, la izquierda se comporta como la derecha.
 
 Para averiguar el eje, `AirMouse._calib_forearm` usa algo que sí se sabe: con el brazo colgando, el antebrazo apunta abajo, y
 la gravedad queda sobre él. Marca $x = -9.81$ en la izquierda, y dice `usa --forearm +x`.
 
 ## 2. Roll: atornillar
 
-![El antebrazo gira sobre sí mismo a 100 °/s a varias elevaciones y solo se mueve el roll; con ω en otra dirección, el roll es su sombra sobre f](../media/cap06/Roll.gif)
+![El antebrazo gira sobre sí mismo a 100 °/s a varias elevaciones: el roll no cambia, y subir o bajar el brazo solo suma pitch; con ω en otra dirección, el roll es su sombra sobre f](../media/cap06/Roll.gif)
 
 La parte del giro alrededor del antebrazo es un producto punto:
 
@@ -69,7 +69,7 @@ $$\text{yaw} = \frac{\omega\cdot g - \text{roll}\,(g\cdot f)}{1 - (g\cdot f)^2}$
 
 Positivo: hacia la izquierda. La división es lo que hace que 100 °/s alrededor de la vertical sigan dando 100 a cualquier
 elevación. Y el movimiento al revés también pasa: con el antebrazo a 30°, girar 60 °/s alrededor de la vertical marca 30 °/s de
-roll. No es un error: el antebrazo de verdad se atornilla un poco al dar esa vuelta.
+roll. No es un error: $\omega$ de verdad tiene esa parte a lo largo del antebrazo. Pero tampoco es atornillar: una vuelta entera suma 180° de roll y el antebrazo vuelve igual. Por eso sumar el roll no da un ángulo de atornillado.
 
 ## 5. Una base torcida
 
@@ -94,7 +94,7 @@ es simétrico: el yaw es $a$ exacto, pero el roll es la sombra $\omega\cdot f = 
 ![1 − (g·f)² es el área al cuadrado del paralelogramo de f y g; se aplasta al acercarse a la vertical; el mínimo de 0.09 deja el ruido en 3.3 veces](../media/cap06/CasiVertical.gif)
 
 ¿Por qué se divide por $1 - (g\cdot f)^2$? Porque es lo que queda al resolver el sistema, y tiene un sentido: es
-$|f\times g|^2$, el área al cuadrado del paralelogramo de $f$ y $g$. Con el antebrazo apuntando casi al piso, $f$ y $g$ casi coinciden,
+$|f\times g|^2$, el área al cuadrado del paralelogramo de $f$ y $g$. Con el antebrazo casi vertical, $f$ y $g$ casi caen sobre la misma recta,
 la base se aplasta y ya no se pueden separar: atornillar y girar alrededor de la vertical son casi lo mismo. Es la singularidad
 del capítulo 5, ahora dentro de una división.
 
@@ -108,7 +108,7 @@ $|f\times g|$ cae por debajo de 0.3 y el pitch queda en cero. Con eso:
 
 ## 7. Atornillar no mueve el cursor
 
-![100 °/s de atornillar mientras el antebrazo sube y baja: yaw y pitch siguen en cero y el cursor no se mueve; usando ω·g se iría de lado](../media/cap06/AtornillarNoMueveElCursor.gif)
+![100 °/s de atornillar mientras el antebrazo sube y baja: el yaw sigue en cero, el pitch es solo lo que sube la mano y el cursor no se va de lado; usando ω·g sí se iría](../media/cap06/AtornillarNoMueveElCursor.gif)
 
 Si atornillas sin mover la mano, $\omega = b\,f$. El pitch da cero porque $p$ forma ángulo recto con $f$. Y el numerador del yaw da
 

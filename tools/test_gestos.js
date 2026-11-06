@@ -145,7 +145,7 @@ ok('el rebote: 2 eventos sin espera, 1 con 90 ms, y 2 si sigue fuerte después d
   assert.ok(c.every((x) => x.acepta === (x.wx >= 1.3 * x.otro)), 'acepta justo cuando |ω_x| ≥ 1.3 × el otro');
   assert.ok(c.filter((x) => x.tipo === 'muneca').every((x) => x.acepta));
   assert.ok(c.filter((x) => x.tipo === 'brazo').every((x) => !x.acepta));
-  ok('dominancia: pasan los 16 giros de muñeca y ninguno de los 16 del brazo, justo en la recta de 1.3');
+  ok('dominancia: pasan los 16 giros de muñeca y ninguno de los 16 del brazo, con la recta de 1.3');
 }
 
 {

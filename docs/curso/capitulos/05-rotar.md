@@ -23,7 +23,7 @@ primera más $y$ de la segunda:
 
 $$x' = x\cos\theta - y\sin\theta, \qquad y' = x\sin\theta + y\cos\theta$$
 
-El largo no cambia. En el código, `ArmFilter.rotateY` de `server/web/armfilter.js` hace esto mismo en el piso.
+El largo no cambia. En el código, `ArmFilter.rotateY` de `server/web/armfilter.js` hace esto mismo en el piso, con el par $(z, x)$ en vez de $(x, y)$.
 
 ## 2. Un eje y un ángulo (Rodrigues)
 
@@ -76,8 +76,8 @@ rápido cuanto más lejos del eje, $|\omega \times r| = |\omega|\,|r| \sin\varph
 ![A la izquierda el reloj gira y la gravedad queda quieta; a la derecha, visto desde el reloj, la gravedad gira al revés](../media/cap05/VistoDesdeElReloj.gif)
 
 Al revés también sirve: una flecha quieta en el mundo, como la gravedad, vista desde el reloj que gira, cambia a
-$-\omega \times v$. Así siguen la gravedad entre lectura y lectura `Motion.feed_gyro` del ratón aéreo
-(`tools/air_mouse.py`) y `ArmFilter.step`.
+$-\omega \times v$. Así sigue la gravedad entre lectura y lectura `Motion.feed_gyro` del ratón aéreo
+(`tools/air_mouse.py`).
 
 ## 7. Tres ángulos: rumbo, inclinación y giro
 
@@ -86,16 +86,17 @@ $-\omega \times v$. Así siguen la gravedad entre lectura y lectura `Motion.feed
 La forma más fácil de leer una orientación es con tres giros seguidos, cada uno alrededor de un eje que dejó el
 anterior: los **ángulos de Euler**.
 
-$$R = R_z(\text{rumbo})\,R_y(\text{inclinación})\,R_x(\text{giro})$$
+$$R = R_z(\text{rumbo})\,R_y(-\text{inclinación})\,R_x(\text{giro})$$
 
+Aquí $z$ es la vertical y la inclinación positiva sube el antebrazo; por eso el signo, porque $R_y$ positivo baja el eje $x$.
 Son fáciles de leer, pero el orden y el punto de partida importan (sección 4).
 
 ## 8. Cuando un ángulo se come al otro
 
-![Con el antebrazo colgando, cambiar el rumbo y cambiar el giro hacen lo mismo; un movimiento suave cerca de colgar hace saltar el rumbo 180°](../media/cap05/Singularidad.gif)
+![Con el antebrazo colgando, cambiar el rumbo y cambiar el giro hacen lo mismo, con signo contrario; un movimiento suave cerca de colgar hace saltar el rumbo 180°](../media/cap05/Singularidad.gif)
 
-Con el antebrazo colgando, su eje queda sobre la vertical, y **el rumbo y el giro hacen exactamente lo mismo**: se
-perdió una forma de girar. Es el bloqueo del cardán, una singularidad de los tres ángulos (no del giro: el brazo
+Con el antebrazo colgando, su eje queda sobre la vertical, y **el rumbo y el giro hacen lo mismo, con signo contrario**: solo cuenta
+su resta, y se perdió una forma de girar. Es el bloqueo del cardán, una singularidad de los tres ángulos (no del giro: el brazo
 puede moverse igual). Cerca de ahí, un movimiento suave hace saltar el rumbo 180° en un instante. Por eso
 `Wrist.rates` de `server/web/wrist.js` y `AirMouse._pose_gate` tienen cuidado cuando el antebrazo se acerca a la
 vertical.
@@ -108,8 +109,8 @@ Un giro de $\theta$ alrededor de $k$ se guarda en cuatro números:
 
 $$q = \left(\cos\tfrac{\theta}{2},\ k\,\sin\tfrac{\theta}{2}\right)$$
 
-Cuatro números de largo 1: tres libres, como el giro, y **nunca se traban**. Va la mitad del ángulo porque $q$ y
-$-q$ son el mismo giro: una vuelta entera lleva $q$ a $-q$, y hacen falta dos para volver. Componer giros es
+Cuatro números de largo 1: tres libres, como el giro, y **nunca se traban**. Va la mitad del ángulo porque $q$ entra
+dos veces al girar una flecha, una a cada lado; por eso $q$ y $-q$ son el mismo giro: una vuelta entera lleva $q$ a $-q$, y hacen falta dos para volver. Componer giros es
 multiplicarlos, `qmul`: $q_y \otimes q_x$ es lo mismo que $R_y R_x$.
 
 ¿Cuándo conviene cada uno? La matriz, para usar el giro (girar flechas, leer los ejes del reloj); el cuaternión,
@@ -123,7 +124,8 @@ Cada muestra del giroscopio gira el cuaternión un poquito, el giro de $|\omega|
 
 $$q \leftarrow q \otimes \left(\cos\tfrac{|\omega|\Delta t}{2},\ \hat\omega\,\sin\tfrac{|\omega|\Delta t}{2}\right)$$
 
-y después se divide por su largo. Si en vez de girar se suma (la cuenta de la derivada, $q + \tfrac12 q \otimes (0, \omega)\Delta t$),
+y después se divide por su largo. Lo nuevo va a la derecha porque el giroscopio da $\omega$ en los ejes del reloj; con ejes
+del mundo iría a la izquierda, como en la sección 4. Si en vez de girar se suma (la cuenta de la derivada, $q + \tfrac12 q \otimes (0, \omega)\Delta t$),
 $|q|$ crece en cada paso y la matriz que sale ya no es un giro: el cubo se deforma. Así integra `reconstruct` en
 `mocapmath.js` y `onGyro` en el avatar.
 

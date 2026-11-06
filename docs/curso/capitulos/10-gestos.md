@@ -25,7 +25,7 @@ un pico, y un **detector de picos** tiene tres pasos:
 3. Baja: se cierra, y sale un evento.
 
 Lo que sale ya no es una muestra: es un **evento** con instante, signo y tamaño. En la animación, $t$ = 0.80 s, signo +
-y 693 °/s. El detector se entera unos 80 ms después del máximo, cuando la señal baja.
+y 693 °/s. En este giro el detector se entera unos 80 ms después del máximo, cuando la señal baja.
 
 Es `FlickDetector.update` de `server/web/flick.js`, 27 líneas. Cierra el pico también si la señal cambia de signo o si
 pasaron 600 ms. Con la misma forma, `onAccel` de `server/web/game.js` detecta empujones y `TapDetector.feed_accel` de
@@ -94,7 +94,7 @@ $$|\omega_x| > 1.3\cdot\max(|\omega_y|, |\omega_z|)$$
 
 `FlickDetector.update` la mira en la muestra del máximo, al cerrar el pico. En la animación pasan los 16 giros de muñeca y
 ninguno de los 16 del brazo. Son inventados: la separación tan limpia es porque los generamos así, y lo que sí se
-comprueba es que el detector corta justo en la recta. Un pico rechazado no cuenta para nada: no entra en la mediana ni
+comprueba es que el detector usa esa recta, la de 1.3. Un pico rechazado no cuenta para nada: no entra en la mediana ni
 abre el periodo refractario.
 
 `RollScroller.feed` hace lo mismo con otros números: el giro del antebrazo debe ser al menos 1.5 veces el movimiento del
@@ -131,7 +131,7 @@ Pero mover la mano también golpea. Lo que separa a un **toque en la esfera** es
 - que el golpe sea angosto: como mucho 6 muestras grandes en ±80 ms.
 
 ¿Por qué se decide 250 ms tarde? Porque lo que falta saber todavía no pasó. Nadie puede afirmar que la mano siguió quieta
-sin esperar a verlo. El giro, en cambio, se decide unos 80 ms después del máximo.
+sin esperar a verlo. El giro, en cambio, se decide menos de 100 ms después del máximo.
 
 ¿Y qué cuesta esa espera? El clic llega un cuarto de segundo tarde. Mientras tanto el cursor no puede seguir moviéndose,
 porque el clic iría a otro lado: `AirMouse._feed_accel` lo devuelve adonde estaba 80 ms antes del golpe, y `AirMouse.frozen`
@@ -210,8 +210,8 @@ $$\text{BPM} = \frac{60000}{\text{intervalo mediano en ms}}$$
 
 ¿Por qué con la mediana y no con el promedio? Porque un giro que no se detecta deja un intervalo doble. En la animación
 el ritmo es de 120 por minuto y falta un giro: el promedio de los intervalos da 583 ms, o sea 102.9 por minuto, y la mediana da
-510 ms, o sea 117.6. Un error se lleva el promedio y a la mediana casi no la mueve. Los 2.4 que le faltan son redondeo:
-los intervalos salen de muestras cada 10 ms, y de seis intervalos el detector toma el cuarto.
+510 ms, o sea 117.6. Un error se lleva el promedio y a la mediana casi no la mueve. Los 2.4 que le faltan salen de dos cosas:
+el intervalo doble corre el puesto del cuarto, que es el que toma el detector, y las muestras cada 10 ms lo redondean.
 
 ## 13. Aciertos contra falsas alarmas
 
@@ -227,7 +227,7 @@ que barre `main` de `tools/analyze_dataset.py` para el pellizco, con umbrales de
 
 La animación usa datos inventados: 20 gestos y 2 minutos de uso normal. Sin ninguna falsa alarma, el pellizco da 10 de 20 y el
 giro, 20 de 20. Con pellizcos de verdad, lo mejor de `tools/analyze_gesture.py` en la primera captura fue **12 de 20**, también sin
-falsas alarmas: se perderían 4 de cada 10 clics. Por eso el pellizco no sirve como clic a 100 Hz, y el giro sí.
+falsas alarmas: se perderían unos 4 de cada 10 clics, aunque con 20 gestos de una sola captura eso puede ser de 2 a 6. Por eso el pellizco no sirve como clic a 100 Hz, y el giro sí.
 
 ![Una muestra cada 10 ms sobre un golpe de 10 ms y sobre un giro: del golpe se ve entre 0 % y 100 %, y del giro al menos 98.6 %](../media/cap10/MuestrasDeUnGolpe.gif)
 
@@ -238,12 +238,12 @@ suposición nuestra para hacer la cuenta, no una medición del pellizco.
 
 ## 14. AUC
 
-![Las curvas de aciertos contra falsas alarmas del pellizco y del giro, con su área; sacando pares al azar, el positivo gana con la misma frecuencia](../media/cap10/ElAUC.gif)
+![Las curvas de aciertos contra falsas alarmas del pellizco y del giro, con su área; sacando pares al azar, el positivo gana más o menos con esa frecuencia](../media/cap10/ElAUC.gif)
 
 Para comparar dos señales sin elegir umbral, se mira toda la curva. Si cada eje va de 0 a 1, el área bajo la curva es el
 **AUC**, y tiene una lectura mejor:
 
-$$\text{AUC} = P(\text{positivo} > \text{negativo})$$
+$$\text{AUC} = P(\text{positivo} > \text{negativo}) + \tfrac12\,P(\text{empate})$$
 
 Saca un gesto y algo que no era gesto, al azar: el AUC es la probabilidad de que el gesto dé más señal. 0.5 es no
 distinguir nada y 1 es separar todo. Con los datos inventados, el pellizco da 0.75 y el giro, 1.00. El área y la

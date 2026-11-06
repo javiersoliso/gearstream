@@ -36,7 +36,8 @@ El largo sale de Pitágoras, dos veces: en el piso, $d = \sqrt{x^2+y^2}$; y de p
 $$|v| = \sqrt{x^2+y^2+z^2}$$
 
 $(2, 1, 2)$ tiene diagonal $\sqrt5 = 2.24$ y largo 3. El largo no depende de cómo estén los ejes, y eso lo vuelve muy útil:
-`Motion.feed_accel` guarda el largo del acelerómetro, y si está cerca de 9.81 la mano no está empujando nada.
+`Motion.feed_accel` guarda el largo del acelerómetro: si se aleja de 9.81, seguro que algo empuja. Al revés no vale, porque un
+empuje de lado casi no cambia el largo.
 `ShakeDetector.feed` mira el largo del giroscopio para saber si la muñeca se sacude más de 600 °/s, sin importar en qué
 eje, y `windows` de `tools/export_mocap.py` busca con él los tramos con más giro. El largo de una resta es la distancia
 entre dos puntos: así decide `fromRescue` de `server/web/trazos.js` dónde se corta un trazo, y `Drawing.point` cuántas
@@ -136,7 +137,7 @@ revés que $a\times b$. No es una ley de la naturaleza, pero hay que cumplirla s
 ¿Ponerse el reloj en la otra mano es un espejo o un giro? **Un giro.** Un reloj no se puede volver su reflejo. Puesto igual,
 sus ejes x e y se dan vuelta y z se queda: $(-x)\times(-y) = z$. Es un giro de 180° alrededor de z, y por eso `forearmOf` de
 `server/web/wrist.js` solo cambia un signo. Dar vuelta **un solo** eje es otra cosa: $(-x)\times y = -z$. Eso no se consigue
-girando. Es un espejo, y en un espejo el mismo giro va al revés: **cambia el signo de los giros**.
+girando. Es un espejo, y en un espejo los giros alrededor de los otros dos ejes van al revés: **cambian de signo**.
 
 ## 9. Marco de referencia
 

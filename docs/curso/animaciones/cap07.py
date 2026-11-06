@@ -364,7 +364,7 @@ class Recortar(Escena):
         filas = [("el borde de la pantalla", "AirMouse._clamp: x entre vx y vx + vw − 1"),
                  ("la velocidad máxima", "feed_gyro: 4000 px/s, los dos ejes por igual"),
                  ("la mira del juego", "onGyro: ±30° de yaw y ±18° de pitch"),
-                 ("una pausa de red", "feed_gyro: dt entre 5 y 100 ms"),
+                 ("una pausa de red", "feed_gyro: dt de 5 ms o más; de 100 ms para arriba, se descarta"),
                  ("una pausa al reproducir", "timeline: 400 ms como mucho")]
         tabla = VGroup(*[VGroup(texto(a, 26, color=RAYO), texto(b, 22, color=GREY_A)).arrange(DOWN, aligned_edge=LEFT, buff=0.08) for a, b in filas]).arrange(DOWN, aligned_edge=LEFT, buff=0.26).move_to(DOWN * 0.15)
         self.play(LaggedStart(*[FadeIn(f, shift=RIGHT * 0.3) for f in tabla], lag_ratio=0.25), run_time=2.4)
@@ -630,10 +630,13 @@ class MapaLineal(Escena):
         self.play(FadeIn(razon))
         self.decir("El círculo sale elipse y torcido. La ganancia sola no lo arregla: falta el cruce")
         self.wait(2)
-        self.decir("Si el cursor usa la matriz inversa, la cuenta se deshace y el círculo vuelve")
-        inv = MathTex(r"\binom{x}{y} = g\, M^{-1} \binom{\text{yaw}}{\text{pitch}}", font_size=36).next_to(razon, DOWN, buff=0.3)
+        self.decir("Hoy el cursor usa yaw y pitch tal cual: para él, la malla sigue recta")
+        self.play(m.animate.set_value(0.0), run_time=2)
+        self.wait(1)
+        self.decir("Para copiar lo que hace el dedo tendría que usar esa misma M")
+        inv = MathTex(r"\binom{x}{y} = g\, M \binom{\text{yaw}}{\text{pitch}}", font_size=36).next_to(razon, DOWN, buff=0.3)
         self.play(Write(inv))
-        self.play(m.animate.set_value(0.0), run_time=3)
+        self.play(m.animate.set_value(1.0), run_time=2)
         self.wait(1)
         self.decir("Esto todavía no está aplicado: hoy solo hay gain_x y gain_y, sin cruce")
         self.wait(2.5)

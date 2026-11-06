@@ -247,9 +247,9 @@ ok(`a 200 °/s (${(200 * GRADO).toFixed(2)} rad/s), un punto a 25 cm siente ${((
   const dd = mul(add(sub(fp(t0 + h), mul(fp(t0), 2)), fp(t0 - h)), 1 / (h * h));
   const om = mul(eje3, 1.2 + 1.6 * t0), al = mul(eje3, 1.6), f = fp(t0), tang = cross(al, f), cent = cross(om, cross(om, f));
   near(dist(dd, add(tang, cent)), 0, 1e-4, 'f̈ = α × f + ω × (ω × f)');
-  near(dot(tang, cent), 0, 1e-9, 'las dos partes son perpendiculares');
+  near(dot(tang, cent), 0, 1e-9, 'con el eje fijo, las dos partes son perpendiculares');
   near(dot(cent, sub(f, mul(eje3, dot(f, eje3)))) < 0 ? 1 : 0, 1, 0, 'la centrípeta apunta al eje');
-  ok('α × f + ω × (ω × f) da la segunda diferencia de un punto que gira; la segunda parte apunta al eje y la primera es perpendicular');
+  ok('α × f + ω × (ω × f) da la segunda diferencia de un punto que gira; con el eje fijo la segunda parte apunta al eje y la primera es perpendicular');
 }
 {
   const dt = 1e-3, Lw = DEFAULTS.Lw, Lu = DEFAULTS.Lu, ps = [0.5, 1.3, 2.1, 3.3].map((t) => [B.pose(t - dt, 0, 2.5), B.pose(t, 0, 2.5), B.pose(t + dt, 0, 2.5)]);

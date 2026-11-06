@@ -185,9 +185,9 @@ class Valle(Scene):
         self.play(Create(g), i.animate.set_value(len(lx) - 1), run_time=6, rate_func=linear)
         self.remove(punto, lectura)
 
-        bk = ax.plot(lambda x: 0.5 / 10 ** x, x_range=[np.log10(0.5 / 15), 0, 0.01], color=GIRO, stroke_width=3)
+        bk = ax.plot(lambda x: 0.5 / 10 ** x, x_range=[np.log10(0.2), 0, 0.01], color=GIRO, stroke_width=3)     # más a la izquierda, un minuto no alcanza para llegar a b/k
         bk = DashedVMobject(bk, num_dashes=30)
-        izq = texto("k chico: manda el giroscopio\ny el error es b/k", 20, color=GIRO).move_to(ax.c2p(-1.55, 1.6))
+        izq = texto("k chico: manda el giroscopio\ny el error va hacia b/k", 20, color=GIRO).move_to(ax.c2p(-1.55, 1.6))
         der = texto("k grande: manda el acelerómetro\ny el error salta con él", 20, color=ACEL).move_to(ax.c2p(1.2, 10.5))
         self.play(Create(bk), FadeIn(izq))
         self.play(FadeIn(der))
@@ -424,7 +424,7 @@ class MetodoDeProyeccion(Scene):
         VGroup(a1, a2).arrange(DOWN, buff=0.55).next_to(titulo, DOWN, buff=0.4).shift(RIGHT * 0.4)
         l1 = texto("elevación del\nantebrazo (°)", 18).next_to(a1, LEFT, buff=0.3)
         l2 = texto("error del\nantebrazo (°)", 18).next_to(a2, LEFT, buff=0.3)
-        cam = texto("caminando, los brazos colgando (un paso de 8.75 s)", 20).next_to(a1, UP, buff=0.1)
+        cam = texto("caminando, los brazos colgando (8 zancadas en 8.80 s)", 20).next_to(a1, UP, buff=0.1)
         vert = DashedLine(a1.c2p(0, -80), a1.c2p(t[-1], -80), color=ERROR, stroke_opacity=0.7)
         vl = texto("casi vertical", 16, color=ERROR).next_to(vert, RIGHT, buff=0.1)
         self.play(Create(a1), FadeIn(l1, cam), Create(linea(a1, t, p["elev"], WHITE, 3)), Create(vert), FadeIn(vl),
@@ -465,7 +465,7 @@ class Mahony(Scene):
         self.wait(0.5)
         eje = VGroup(Circle(radius=0.16, color=ERROR, stroke_width=4), Dot(radius=0.05, color=ERROR)).move_to(c)
         f1 = MathTex(r"e = \hat g_{\text{medido}} \times \hat g_{\text{predicho}}", font_size=34).move_to(RIGHT * 3.3 + UP * 2.2)
-        n1 = texto("e sale de la pantalla: es el eje del giro que falta,\ny mide sen(ángulo)", 20, color=ERROR)\
+        n1 = texto("e sale de la pantalla: es el giro que le falta al reloj;\ndesde el reloj, la flecha va al revés. Mide sen(ángulo)", 20, color=ERROR)\
             .next_to(f1, DOWN, buff=0.2)
         self.play(FadeIn(eje, scale=2), Write(f1), FadeIn(n1))
         barra_ax = Axes(x_range=[0, 3, 1], y_range=[0, 1, 0.5], x_length=4.6, y_length=2.0, tips=False,

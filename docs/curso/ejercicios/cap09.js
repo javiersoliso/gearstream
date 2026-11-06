@@ -12,8 +12,8 @@
 //
 // La idea, en palabras:
 //   1. Mide d, la distancia del hombro al objetivo, y saca la dirección de largo 1 que va hacia él.
-//   2. Si el objetivo está demasiado lejos o demasiado cerca, recorta d entre |l1 − l2| y l1 + l2: la muñeca llega
-//      hasta donde puede, en esa misma dirección.
+//   2. Si el objetivo está demasiado lejos o demasiado cerca, recorta d entre |l1 − l2| + 0.0001 y l1 + l2 − 0.0001:
+//      la muñeca llega hasta donde puede, en esa misma dirección, y el triángulo no se aplasta (build hace igual).
 //   3. El hombro, el codo y la muñeca forman un triángulo de lados l1, l2 y d. La ley de los cosenos da cuánto avanza
 //      el codo a lo largo de la dirección, x = (l1² − l2² + d²) / (2d), y Pitágoras cuánto se separa, h = √(l1² − x²).
 //   4. Hacia qué lado se separa lo dice el polo: toma la flecha del hombro al polo, quítale la parte que va a lo

@@ -75,6 +75,11 @@ function probar(integrar, nombre) {
   near(ult(integrar(t2, t2.map(() => 10))), 30, 1e-6, 'con muestras perdidas siguen siendo 30°');
   ok('si se pierden muestras siguen siendo 30°: Δt sale del reloj');
 
+  // con una tasa que cambia, repartir el tiempo por igual entre las muestras ya no cierra: se ve el hueco
+  const t3 = tiempos.filter((_, k) => !(k > 100 && k < 160));
+  near(ult(integrar(t3, t3.map((t) => (t < 0.5 ? 0 : 20)))), 50, 0.3, 'con un hueco y una tasa que cambia, 0 °/s y después 20 °/s dan 50°');
+  ok('con un hueco y una tasa que cambia también sale bien: cada Δt es el suyo, no el promedio');
+
   const t60 = rango(6001, 100);
   near(ult(integrar(t60, t60.map(() => 0.3))), 18, 1e-6, 'un sesgo de 0.3 °/s en un minuto son 18°');
   ok('un sesgo de 0.3 °/s se vuelve 18° en un minuto (b·t)');

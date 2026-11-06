@@ -231,9 +231,14 @@ const A = [[5.3, 6.9 * Math.cos(75 * GRADO)], [0, 6.9 * Math.sin(75 * GRADO)]]; 
 const det = A[0][0] * A[1][1] - A[0][1] * A[1][0], inv = [[A[1][1] / det, -A[0][1] / det], [-A[1][0] / det, A[0][0] / det]];
 const por = (B, v) => [B[0][0] * v[0] + B[0][1] * v[1], B[1][0] * v[0] + B[1][1] * v[1]];
 near(6.9 / 5.3, 1.3, 0.005, 'la vertical necesita ×1.3');
-for (const v of [[1, 0], [0, 1], [3, -2]]) { const w = por(inv, por(A, v)); near(w[0], v[0], 1e-12, 'la inversa deshace'); near(w[1], v[1], 1e-12, 'la inversa deshace'); }
+// un círculo del dedo: los ángulos que lo hacen son inv·c; el cursor los recibe, y lo que importa es qué tan redondo sale
+const razon = (B) => { const r = Array.from({ length: 3600 }, (_, i) => Math.hypot(...por(B, por(inv, [Math.cos(i * GRADO / 10), Math.sin(i * GRADO / 10)])))); return Math.max(...r) / Math.min(...r); };
+const I2 = [[1, 0], [0, 1]];
+near(razon(I2), 1.46, 0.01, 'hoy el cursor recibe yaw y pitch tal cual: sale elipse');
+near(razon(A), 1, 1e-9, 'con M, el cursor copia el círculo del dedo');
+assert.ok(razon(inv) > razon(I2), 'con la inversa saldría peor que hoy');
 const circulo = Array.from({ length: 360 }, (_, i) => Math.hypot(...por(A, [Math.cos(i * GRADO), Math.sin(i * GRADO)])));
-ok(`con 5.3 y 6.9 mm/° a 75°: ×${(6.9 / 5.3).toFixed(2)} en vertical; un círculo de la muñeca sale con radios de ${Math.min(...circulo).toFixed(1)} a ${Math.max(...circulo).toFixed(1)} mm, y la matriz inversa lo devuelve`);
+ok(`con 5.3 y 6.9 mm/° a 75°: ×${(6.9 / 5.3).toFixed(2)} en vertical; un círculo de la muñeca sale con radios de ${Math.min(...circulo).toFixed(1)} a ${Math.max(...circulo).toFixed(1)} mm, y para copiar el círculo del dedo el cursor tiene que usar M: razón de ejes ${razon(I2).toFixed(2)} hoy, ${razon(A).toFixed(2)} con M, ${razon(inv).toFixed(2)} con la inversa`);
 const cal = fuente('server', 'web', 'calibrate.js');
 dice(cal, 'if (rV > 1.3 && V.reentriesPerTrial <= 0.5 && V.medOvershootW <= 0.5) {', 'calibrate.js');
 dice(cal, "prop('gain_y', val('gain_y') * Math.min(rV, 1.5)", 'calibrate.js');

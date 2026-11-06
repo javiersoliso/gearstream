@@ -24,6 +24,8 @@ function filtro(complementario, nombre) {
   assert.strictEqual(est.length, n, 'devuelve una estimación por muestra');
   // (da igual si out[i] es la estimación antes o después de usar la muestra i: un paso de diferencia)
   near(est[0], 0, 10 / hz + 1e-9, 'arranca donde le dicen');
+  near(run(cte(0), cte(3), 0, 7)[0], 7, 1e-9, 'arranca en th0, no en 0 ni en la primera medida');
+  near(run(cte(0), cte(3), 0, 7)[n - 1], 7, 1e-9, 'con k = 0 y sin giro se queda en th0');
   near(est[n - 1], 600, 10 / hz + 1e-6, 'k = 0: 10 °/s durante 60 s son 600°');
   ok('con k = 0 integra el giroscopio');
 
@@ -31,7 +33,8 @@ function filtro(complementario, nombre) {
   for (const [b, k] of [[0.5, 0.5], [0.5, 2], [2, 1], [-1, 4]]) {
     est = run(cte(b), cte(20), k, 20);
     const e30 = est[30 * hz] - 20, e60 = est[n - 1] - 20;
-    near(e60, b / k, 0.01 * Math.abs(b / k) + 1e-3, `b = ${b} °/s, k = ${k}/s: el error se queda en b/k`);
+    // el orden de avanzar y tirar, o un resorte exacto, corren b/k en un k·Δt: los dos están bien
+    near(e60, b / k, Math.abs(b / k) * (k / hz + 0.01) + 1e-3, `b = ${b} °/s, k = ${k}/s: el error se queda en b/k`);
     near(e30, e60, 0.01 * Math.abs(b / k) + 1e-3, `b = ${b}, k = ${k}: a los 30 s y a los 60 s es el mismo`);
   }
   ok('con sesgo b el error se queda quieto en b/k');

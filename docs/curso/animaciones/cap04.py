@@ -94,7 +94,7 @@ class QueMideElAcelerometro(Scene):
         self.play(y0.animate.set_value(0.8), run_time=1.5, rate_func=rate_functions.ease_in_quad)
         self.wait(1)
         self.play(y0.animate.set_value(0), f.animate.set_value(G), run_time=1)
-        formula = MathTex(r"\text{lectura} = \vec a - \vec g", font_size=38).move_to(RIGHT * 3.6 + UP * 1.5)
+        formula = MathTex(r"\text{lectura} = \vec a + \vec g", font_size=38).move_to(RIGHT * 3.6 + UP * 1.5)
         self.play(Write(formula))
         decir("Siente lo que lo sostiene, no la caída: es la fuerza específica.")
         self.wait(3)
@@ -157,7 +157,7 @@ class ArribaSinIntegrar(Scene):
         self.play(Create(linea(ax, t[::5], giro[::5], ERROR_C, 3)), FadeIn(lg), run_time=2.5)
         lr = texto("la gravedad: no se va, porque no acumula nada", 22, color=GRAV).move_to(ax.c2p(40, 8))
         self.play(Create(linea(ax, t[::5], grav[::5], GRAV, 3)), FadeIn(lr), run_time=2.5)
-        moral = texto("Cada lectura de la gravedad vale por sí sola: no hay nada que se acumule.", 24).to_edge(DOWN, buff=0.2)
+        moral = texto("Con la mano quieta, cada lectura vale por sí sola: nada se acumula.", 24).to_edge(DOWN, buff=0.2)
         self.play(FadeIn(moral))
         self.wait(3)
 

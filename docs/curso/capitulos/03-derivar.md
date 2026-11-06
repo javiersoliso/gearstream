@@ -21,13 +21,13 @@ muestra anterior y la siguiente, la **diferencia central**:
 $$\frac{x[k+1]-x[k-1]}{2\,\Delta t}$$
 
 La central queda centrada en la muestra y cae mucho más cerca de la curva: en la prueba, con una onda de 0.25 Hz, su
-error es 200 veces menor.
+error es unas 190 veces menor.
 
 ## 2. La segunda diferencia
 
-![Tres muestras seguidas: la punteada sigue la pendiente de antes y lo que le falta para llegar a la tercera muestra es la aceleración](../media/cap03/SegundaDiferencia.gif)
+![Tres muestras seguidas: la punteada sigue la pendiente de antes y lo que le falta para llegar a la tercera muestra, dividido por Δt², es la aceleración](../media/cap03/SegundaDiferencia.gif)
 
-Si nada cambiara, la tercera muestra caería siguiendo la recta de las dos primeras. Lo que le falta es la aceleración:
+Si nada cambiara, la tercera muestra caería siguiendo la recta de las dos primeras. Lo que le falta, dividido por $\Delta t^2$, es la aceleración:
 
 $$a[k] = \frac{x[k+1]-2x[k]+x[k-1]}{\Delta t^2}$$
 
@@ -42,8 +42,9 @@ Cada muestra del giroscopio dice qué tan rápido, y entre una y otra pasó $\De
 $$\theta \approx \sum_k \omega[k]\,\Delta t$$
 
 10 °/s durante 3 s dan 30°. $\Delta t$ no se supone: sale del tiempo de cada muestra. Si se pierden muestras, un $\Delta t$
-fijo se queda corto, y el tiempo del reloj cubre el hueco. Por eso `onGyro` de `server/web/game.js` hace
-`dt = (t − S.lastGyroT) / 1000`. `cursorTrack` de `mocapmath.js` hace la misma suma en 9 líneas, con $\Delta t$ fijo
+fijo se queda corto, y el tiempo del reloj cubre el hueco. Es lo que hace `onGyro` de `server/web/game.js`,
+`dt = (t − S.lastGyroT) / 1000`, pero solo hasta 100 ms: con un hueco más largo usa 10 ms y ese tramo se pierde, como con el
+$\Delta t$ fijo. `cursorTrack` de `mocapmath.js` hace la misma suma en 9 líneas, con $\Delta t$ fijo
 porque sus muestras son inventadas y nunca se pierden.
 
 ## 4. Integrar acumula error
@@ -70,7 +71,7 @@ reloj no puede decir dónde está tu mano solo con el acelerómetro.
 Lo que salva es algo que se sabe sin medirlo: **al apoyar y al levantar el dedo está quieto**. La velocidad al final
 tiene que ser cero, así que lo que sobra es error, y se reparte a lo largo del trazo. Es la **velocidad cero** (ZUPT),
 y son dos líneas en `watch_features` de `tools/analyze_drawing.py`. Un sesgo constante se va entero; el ruido, no todo.
-`ArmFilter.step` hace lo mismo cada vez que el brazo se queda quieto.
+`ArmFilter.step` usa la misma idea de otra forma: cada vez que el brazo se queda quieto, frena la velocidad y aprende el sesgo.
 
 ## 6. Suavizar
 
@@ -82,15 +83,15 @@ Suavizar es promediar con lo reciente. La **media móvil** promedia las últimas
 $$y \leftarrow y + \alpha\,(x - y)$$
 
 Los dos dejan pasar lo lento y frenan lo rápido (es un filtro **paso bajo**). Lo que se pierde es tiempo: con α = 0.2
-un salto tarda 0.04 s en llegar, con α = 0.05, 0.19 s, y con α = 0.015, 0.65 s. `game.js` aprende el sesgo del
+un salto tarda 0.04 s en llegar al 63%, con α = 0.05, 0.19 s, y con α = 0.015, 0.65 s. `game.js` aprende el sesgo del
 giroscopio así, con α = 0.002, solo mientras la mano está quieta.
 
 ## 7. Derivar amplifica el ruido
 
-![Una señal con un ruido que no se ve; su derivada directa es casi puro ruido, y suavizar antes de derivar la limpia](../media/cap03/DerivarAmplificaRuido.gif)
+![Una señal con un ruido que no se ve; su derivada directa sale llena de ruido, y suavizar antes de derivar la limpia](../media/cap03/DerivarAmplificaRuido.gif)
 
-Derivar es dividir por un $\Delta t$ chico, y eso agranda cada temblor: el ruido pasa de $\sigma$ a
-$\sigma/(\sqrt2\,\Delta t)$. Un ruido de 0.01, que no se ve, se vuelve 0.7, más o menos lo mismo que la señal. Por eso
+Derivar es dividir por un $\Delta t$ chico, y eso agranda cada temblor: con la diferencia central, el ruido pasa de
+$\sigma$ a $\sigma/(\sqrt2\,\Delta t)$. Un ruido de 0.01, que no se ve, se vuelve 0.7, más o menos lo mismo que la señal. Por eso
 antes de derivar hay que suavizar, pagando un poco de atraso. Integrar hace lo contrario: frena lo rápido y acumula lo
 lento.
 
@@ -125,7 +126,7 @@ $a\sin(2\pi f t)$ da una onda de amplitud
 
 $$\frac{a}{2\pi f}$$
 
-A 100 °/s son ±31.8° a 0.5 Hz, ±8° a 2 Hz y ±2° a 8 Hz. Por eso un temblor rápido se ve enorme en el giroscopio y
+A 100 °/s el ángulo oscila alrededor de su centro ±31.8° a 0.5 Hz, ±8° a 2 Hz y ±2° a 8 Hz. Por eso un temblor rápido se ve enorme en el giroscopio y
 casi no mueve el ángulo.
 
 ---

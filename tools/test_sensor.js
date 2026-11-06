@@ -185,7 +185,7 @@ function grabar(final = 11, reposo = 8) {
     const s = k / 100, t = T0 + k * 10;
     const mov = s < 2 ? 40 * Math.sin(2 * Math.PI * 1.3 * s) : s < 3.5 ? 5 : 0;     // se mueve; gira parejo a 5 °/s
     const g = s >= 6.5 && s < reposo ? 0.09 * (s - 6.5) : 0;                         // gravedad que se va de lado, sin giro
-    const az = s >= 3.5 && s < 5 ? 1.4 : s < 2 ? 3 * Math.sin(2 * Math.PI * 1.3 * s) : 0;   // empuje parejo: |a| lejos de g
+    const az = s >= 3.5 && s < 5 ? 1.4 : 0;                                          // empuje parejo: |a| lejos de g
     const golpe = s >= 5 && s < 6.5 && k % 37 === 0 ? 0.75 : 0;                      // golpecitos: sacudida sin salir de ±1
     giro.push({ t, x: SESGO[0] + mov + 0.25 * normal(), y: SESGO[1] + 0.25 * normal(), z: SESGO[2] + 0.25 * normal() });
     acel.push({ t, x: 0.03 * normal() + golpe, y: 0.03 * normal(), z: G + az + 0.03 * normal() });

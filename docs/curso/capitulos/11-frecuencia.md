@@ -42,16 +42,18 @@ crestas caen siempre del mismo lado y el promedio se aleja del centro; si no, se
 
 $$X(f) = \frac{2}{N}\sum_n x_n\, e^{-2\pi i f t_n}$$
 
-El largo de $X(f)$ es la amplitud de esa onda y su ángulo, la fase. En `analyze` es la función `dft`: 4 líneas.
+Si la onda da vueltas enteras y $f$ no es 0, el largo de $X(f)$ es su amplitud. Su ángulo es la fase menos 90°, porque aquí las
+ondas se escriben con seno; en $H = Y/R$ ese corrimiento se cancela. En `analyze` es la función `dft`: 5 líneas.
 
 ## 4. Vueltas enteras, o fuga
 
 ![Una onda de 3 vueltas en la ventana cae entera en la casilla 3; una de 3.5 vueltas se reparte en las vecinas; la ventana de Hann reduce la fuga](../media/cap11/Fuga.gif)
 
-Si una onda no da vueltas enteras en la ventana, el final no empalma con el comienzo y su energía **se fuga** a las
+Si una onda no da vueltas enteras en la ventana, el final no empalma suave con el comienzo y su energía **se fuga** a las
 frecuencias vecinas. El remedio general es apagar los bordes con una ventana (Hann), que es lo que hace
-`tools/analyze_dataset.py` con los gestos. El sismógrafo no la necesita: elige las ondas para que cada una dé
-vueltas enteras en $T$, y cada una cae justo en su casilla.
+`tools/analyze_dataset.py` con los gestos, aunque con ella el largo de $X$ sale más o menos a la mitad. El sismógrafo elige las
+ondas de la línea para que cada una dé vueltas enteras en $T$, y la línea cae justo en sus casillas. Tu aguja no tiene esa
+suerte: lo lento y lo que cae entre casillas se fuga a ellas.
 
 ## 5. Tu respuesta, onda por onda: $H = Y/R$
 
@@ -62,7 +64,7 @@ Para cada frecuencia de la línea, $H = Y/R$ (tu aguja entre la línea):
 | | qué dice |
 |---|---|
 | $\lvert H \rvert$ | cuánto de esa onda seguiste (1 = toda) |
-| $-\angle H / 2\pi f$ | tu retraso a esa frecuencia |
+| $-\angle H / 2\pi f$ | tu retraso a esa frecuencia, si es de menos de media vuelta de la onda |
 | $\lvert 1 - H \rvert$ | el error que te quedó, relativo a la onda (0 = la borraste) |
 
 Si lo único que te pasa es llegar tarde $\tau$, sigues todo ($\lvert H\rvert = 1$) pero la flecha gira
@@ -88,7 +90,9 @@ por tres puntos. Un $\tau$ negativo quiere decir que te adelantas: pasa cuando v
 ![Tu aguja se separa en la parte que está en las frecuencias de la línea y lo que sobra: temblor, correcciones y deriva](../media/cap11/Remanente.gif)
 
 Lo que moviste que no está en ninguna frecuencia de la línea es tu **remanente**: temblor, correcciones, deriva. El
-juego lo calcula como la parte de la varianza de tu aguja que no explican las ondas de la línea.
+juego lo calcula como la parte de la varianza de tu aguja que no explican las ondas de la línea. Es un piso, no una medida
+exacta: lo que se fuga a esas casillas cuenta como explicado, así que una deriva sola, sin seguir nada, da en el nivel
+tranquilo un remanente de menos de 0.1 y no de 1.
 
 ## 8. Nyquist: lo rápido se disfraza de lento
 
@@ -130,7 +134,7 @@ Juega el Sismógrafo en los tres niveles (bisel), viendo la línea y a ciegas (V
 de cada onda en la tarjeta del final. Preguntas para mirar en tus barras:
 
 - ¿Tu retraso es el mismo en todas las ondas, o crece con la frecuencia?
-- Viendo la línea venir, ¿el retraso se vuelve negativo?
+- Viendo la línea venir, ¿tu retraso global se vuelve negativo? (El de cada onda solo se lee hasta media vuelta: más allá, salta de signo.)
 - ¿Tu remanente baja con la práctica, o lo que baja es el retraso?
 
 ## Ejercicio que se comprueba

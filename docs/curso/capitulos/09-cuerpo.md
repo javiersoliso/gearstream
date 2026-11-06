@@ -139,7 +139,7 @@ no se aparta de la animación más de 1.7° en toda la vuelta.
 
 ![La animación, synth, reconstruct y la comparación: sin ruido el error es de menos de 1°; si el reloj se mece sobre la piel, unos 6°](../media/cap09/PruebaConVerdad.gif)
 
-Ahora hay una verdad contra la cual comparar. `reconstruct` toma solo las lecturas y rearma el antebrazo con la
+Ahora hay una verdad contra la cual comparar. `reconstruct` toma las lecturas y la orientación inicial de la animación, y rearma el antebrazo con la
 fusión del capítulo 8. Caminando, cae a 0.7° de la animación sin ruido y a 0.9° con ruido, de mediana.
 
 ¿Eso prueba que funciona en el mundo real? **No.** Las lecturas salieron del mismo modelo que usa la cuenta: el reloj
@@ -158,16 +158,16 @@ va a $\omega \times r$. Derivando otra vez sale su aceleración, en dos partes:
 
 $$\ddot f = \alpha \times f + \omega \times (\omega \times f)$$
 
-La primera es **tangencial**: aparece si el giro cambia de rapidez ($\alpha$ es la derivada de $\omega$) y va a lo largo
-del círculo. La segunda es **centrípeta**: apunta hacia el eje, y está aunque la rapidez sea pareja, porque la velocidad
+La primera aparece si $\omega$ cambia, en rapidez o en eje ($\alpha$ es su derivada). Con el eje fijo es **tangencial**: va a lo
+largo del círculo y forma ángulo recto con la segunda. La segunda es **centrípeta**: apunta hacia el eje, y está aunque la rapidez sea pareja, porque la velocidad
 cambia de dirección. Crece con $\omega^2$: a 200 °/s, un punto a 25 cm siente 3.05 m/s².
 
 Con esto el filtro hace algo lindo. El reloj está en $p = e + L_w f$, donde $e$ es el codo. Derivando dos veces:
 
 $$\ddot e = \ddot p - L_w\,\ddot f$$
 
-El acelerómetro da $\ddot p$, y el giroscopio da $\ddot f$. Lo que queda, $z$ en `ArmFilter.step`, es **la aceleración del
-codo, medida sin ver el codo**. Y el codo se mueve en una esfera alrededor del hombro, así que su parte a lo largo del
+El acelerómetro da $\ddot p$, y el giroscopio da $\ddot f$. Lo que queda, $z$ en `ArmFilter.step`, es una estimación de **la aceleración del
+codo, medida sin ver el codo**. Sale atrasada, porque $\omega$ pasa por un suavizado: aun sin ruido se aparta un 40 % a velocidad 2.5. Y el codo se mueve en una esfera alrededor del hombro, así que su parte a lo largo del
 brazo tiene que ser su propia centrípeta: $\ddot e \cdot u = -|\dot e|^2/L_u$. Esa ecuación es la pista. Como $\alpha$
 sale de derivar $\omega$, el filtro suaviza $\omega$ antes (`omegaSmooth`), porque derivar agranda el ruido.
 
@@ -194,7 +194,7 @@ adelanta un poco con el antebrazo.
 ![Tres hipótesis sobre una campana: cuanto más grande el residuo, menos creíble; con el brazo rápido σ crece y la campana se abre](../media/cap09/Verosimilitud.gif)
 
 Si una hipótesis fuera cierta, ¿qué tan probable sería la medida que vi? Eso es la **verosimilitud**. La hipótesis
-predice algo, la medida dice otra cosa, y la diferencia es el residuo $r$. Con ruido gaussiano de tamaño $\sigma$:
+predice algo, la medida dice otra cosa, y la diferencia es el residuo $r$. Con ruido gaussiano de tamaño $\sigma$, y sin la constante de la campana, que es igual para todas:
 
 $$p = e^{-r^2/2\sigma^2}$$
 
@@ -218,8 +218,8 @@ cosas con cada **partícula**:
 
 La respuesta es el promedio con pesos, en `_estimate`, y lo disperso de la nube da `spread`. Con una sola hipótesis no
 hay nada que pesar: en la prueba, una se equivoca 32 cm y 400, 10 cm. Contra la regla de reposo, moviendo el brazo a la
-velocidad media el filtro se equivoca 9.7 cm y la regla 14.4 cm. A la velocidad más lenta la mejora casi desaparece:
-11.8 contra 12.8 cm. Es una mejora, no una solución. El filtro también supone el torso quieto y el hombro fijo.
+velocidad media el filtro se equivoca 9.7 cm y la regla 14.4 cm. A la velocidad más lenta la mejora es chica: en 20
+semillas, 11.0 ± 0.7 cm contra 12.8 cm. Es una mejora, no una solución. El filtro también supone el torso quieto y el hombro fijo.
 
 ¿Y con la muñeca quieta? Entonces $z \approx 0$: no hay aceleración que distinga una hipótesis de otra, y el codo puede
 estar en cualquier lugar compatible con el antebrazo. El filtro detecta la quietud, aplica la velocidad cero del
@@ -240,7 +240,7 @@ calculan para nada. Se mide con el **tamaño efectivo**:
 
 $$N_{ef} = \frac{1}{\sum_i w_i^2}$$
 
-Con pesos iguales vale $n$; con dos que mandan, 2; con una sola, 1. Cuando baja de la mitad (200 de 400), `ArmFilter.step`
+Los pesos suman 1. Con pesos iguales vale $n$; con dos que mandan, 2; con una sola, 1. Cuando baja de la mitad (200 de 400), `ArmFilter.step`
 llama a `_resample`, que hace un **remuestreo sistemático**. Pone las partículas en fila, cada una tan ancha como su
 peso, y pasa un peine de $n$ dientes parejos, con un solo número al azar para correrlo. Cada diente clona la partícula
 que toca. Así cada una queda con $n\,w$ clones, redondeado a uno de los dos enteros vecinos: las buenas se multiplican,

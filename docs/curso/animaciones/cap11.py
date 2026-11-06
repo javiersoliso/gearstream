@@ -254,7 +254,7 @@ class Fuga(Scene):
         self.play(FadeIn(fuga))
         corte = Dot(b[0].c2p(T, np.sin(2 * np.pi * 3.5)), color=RED, radius=0.12)
         self.play(Flash(corte, color=RED), FadeIn(corte))
-        salto = texto("el final no empalma con el comienzo", 20, color=RED).next_to(b[0], DOWN, buff=0.1)
+        salto = texto("el final no empalma con el comienzo: salta la pendiente", 20, color=RED).next_to(b[0], DOWN, buff=0.1)
         self.play(FadeIn(salto))
         self.wait(1.5)
 
@@ -266,7 +266,7 @@ class Fuga(Scene):
                   run_time=2)
         menos = texto("menos fuga lejos del pico", 22, color=PURPLE_A).next_to(c[2], UP, buff=0.1)
         self.play(FadeIn(menos))
-        nota = texto("El sismógrafo no la necesita: cada onda da vueltas enteras en T.", 24).to_edge(DOWN)
+        nota = texto("La línea no la necesita: cada una de sus ondas da vueltas enteras en T.", 24).to_edge(DOWN)
         self.play(FadeIn(nota))
         self.wait(3)
 
@@ -416,7 +416,7 @@ class Remanente(Scene):
         self.play(Create(a1), Create(g1), FadeIn(e1), run_time=2)
         self.play(Create(a2), TransformFromCopy(g1, g2), FadeIn(e2), run_time=2)
         self.play(Create(a3), TransformFromCopy(g1, g3), FadeIn(e3), run_time=2)
-        rem = (y - seguido).var() / y.var()
+        rem = 1 - sum(abs(2 / n * (y * np.exp(-2j * np.pi * f * ts)).sum()) ** 2 / 2 for f, _, _ in COMPS) / y.var()    # la cuenta del juego (`analyze`)
         nota = texto(f"temblor, correcciones y deriva: el {rem * 100:.0f} % de tu movimiento. Eso es el remanente.", 24)\
             .to_edge(DOWN, buff=0.3)
         self.play(FadeIn(nota))

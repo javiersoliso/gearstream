@@ -53,7 +53,7 @@ Entonces, ¿por qué el ratón aéreo usa $D\theta$, si $D\tan\theta$ es lo "cor
 
 ![Una flecha de largo 1 que gira con el yaw sobre el piso y se levanta con el pitch; su sombra mide cos pitch](../media/cap07/DosAngulos.gif)
 
-Para ir al revés, de dos ángulos a una flecha en 3D, se usan las **coordenadas esféricas**. En el mundo de las páginas
+Para ir al revés, de dos ángulos a una flecha en 3D, se usan las **coordenadas esféricas**. En el mundo de `game.js` y `dibuja.js`
 $+x$ es la derecha, $+y$ arriba y $-z$ adelante:
 
 $$d = (\sin\text{yaw}\,\cos\text{pitch},\ \ \sin\text{pitch},\ \ -\cos\text{yaw}\,\cos\text{pitch})$$
@@ -61,7 +61,8 @@ $$d = (\sin\text{yaw}\,\cos\text{pitch},\ \ \sin\text{pitch},\ \ -\cos\text{yaw}
 El pitch levanta la flecha: sube $\sin p$ y su sombra en el piso se achica a $\cos p$. El yaw reparte esa sombra entre
 el costado y el frente. Por eso $x$ y $z$ llevan $\cos p$, y por eso $d$ mide 1 siempre. Es `aimDir` de
 `server/web/game.js` (la dirección del dardo) y la flecha de `point3` de `server/web/dibuja.js`, que después la
-multiplica por una profundidad.
+multiplica por una profundidad. (Aquí el yaw positivo va a la derecha, al revés que el de `Wrist.rates` en el capítulo 6, y
+por eso `onGyro` lo resta al acumularlo.)
 
 ## 4. Ganancia: píxeles por grado
 
@@ -92,7 +93,7 @@ con `gain`, `gain_x` y `gain_y` como multiplicadores.
 - La **velocidad máxima**: 4000 px/s en `feed_gyro`. Achica los dos ejes por igual, así que la dirección no cambia.
   `AirMouse._apply_delta` pone otro **tope**, contra el reloj de la laptop.
 - La **mira del juego**: ±30° de yaw y ±18° de pitch en `onGyro` de `server/web/game.js`.
-- Una **pausa de la red**: `feed_gyro` recorta el $\Delta t$ de cada muestra entre 5 y 100 ms.
+- Una **pausa de la red**: `feed_gyro` sube a 5 ms los intervalos más cortos, y una pausa de más de 100 ms la descarta: esa muestra no mueve el cursor.
 - Una **pausa al reproducir**: `timeline` de `server/web/trazos.js` acorta a 400 ms las pausas de un dibujo.
 
 Recortar algo que se va sumando tiene una consecuencia. Si la muñeca sigue 10° contra el tope y vuelve, la mira no
@@ -102,7 +103,7 @@ vuelve al mismo lugar: queda corrida 10°, porque lo recortado no se guarda en n
 
 ![A 3 °/s cada muestra mueve 0.264 píxeles; P guarda los decimales y se manda redondeado; redondear cada paso deja el cursor quieto](../media/cap07/Subpixel.gif)
 
-El cursor vive en píxeles enteros. Si la muñeca gira a 3 °/s, cada muestra mueve 0.264 px. Si cada paso se redondeara,
+El cursor vive en píxeles enteros. Si la muñeca gira a 3 °/s, cada muestra mueve 0.264 px (ya con la zona muerta de la sección 7). Si cada paso se redondeara,
 sería siempre 0 y el cursor no se movería; a 5 °/s, cada paso de 0.504 se volvería 1 y el cursor iría casi al doble.
 
 Por eso los movimientos de **subpíxeles** no se tiran. `AirMouse._apply_delta` suma los decimales en `self.P`, y lo que
@@ -153,10 +154,10 @@ hace el **filtro 1€** (*One Euro*), que es un promedio que olvida con el $\alp
 $$\alpha = \frac{1}{1 + \dfrac{1}{2\pi f_c \Delta t}}, \qquad f_c = f_{min} + \beta\,|\dot x|$$
 
 $f_c$ es la frecuencia de corte: alta, $\alpha$ se acerca a 1 y el filtro casi no toca nada. A 100 muestras por segundo,
-$\alpha$ = 0.112 con 2 Hz y 0.430 con 12 Hz. Y $\dot x$ se calcula con la misma señal, suavizada por su cuenta para que
-el ruido no la dispare (derivar agranda el ruido).
+$\alpha$ = 0.112 con 2 Hz y 0.430 con 12 Hz. Y $\dot x$ es el salto desde la última salida filtrada, $(x - \hat x)/\Delta t$, suavizado por su cuenta para que
+el ruido no lo dispare (derivar agranda el ruido).
 
-Esta es la clase entera, `OneEuro` de `tools/air_mouse.py`:
+Esta es la clase, sin su `reset`, `OneEuro` de `tools/air_mouse.py`:
 
 ```python
 class OneEuro:
@@ -194,7 +195,7 @@ lo que queda con la mano quieta.
 
 ## 10. Calibrar los dos ejes
 
-![Una malla de yaw y pitch se deforma: cada grado de pitch vale 1.3 veces uno de yaw y los ejes se cruzan a 75°, y un círculo sale elipse; la matriz inversa lo devuelve](../media/cap07/MapaLineal.gif)
+![Una malla de yaw y pitch se deforma: cada grado de pitch vale 1.3 veces uno de yaw y los ejes se cruzan a 75°, y un círculo de la muñeca sale elipse en el trazo; para copiarlo, el cursor tendría que usar esa misma matriz](../media/cap07/MapaLineal.gif)
 
 ¿Por qué cuesta más mover el cursor en vertical? Porque la muñeca no es un par de ejes iguales y perpendiculares.
 Medido con el trackpad en postura de escritura (`README.md`), un grado de yaw mueve 5.3 mm de trazo y uno de pitch
@@ -205,9 +206,11 @@ Una **matriz 2×2** guarda esa medida. Cada columna es adónde va un grado:
 $$\begin{pmatrix}x\\y\end{pmatrix} = M\begin{pmatrix}\text{yaw}\\\text{pitch}\end{pmatrix}, \qquad M = \begin{pmatrix}5.30 & 1.79\\0 & 6.66\end{pmatrix}\ \text{mm/°}$$
 
 (Aquí la primera columna se acostó sobre $x$; lo que importa son los largos y el ángulo entre las dos.) Con eso, un
-círculo de la muñeca sale torcido, con radios de 4.9 a 7.2 mm por grado. Para que un círculo salga círculo, el cursor
-tendría que usar $M^{-1}$: un cambio de marco a unos ejes que no forman ángulo recto. El ajuste que da los números
-está en `tools/analyze_drawing.py`.
+círculo de la muñeca sale torcido, con radios de 4.9 a 7.2 mm por grado. Y al revés: hoy el cursor recibe yaw y
+pitch tal cual, así que un círculo hecho con el dedo sale elipse en la pantalla, con ejes a razón 1.46. Para copiar lo que
+hace el dedo, el cursor tendría que usar esa misma matriz, $(x, y) = g\,M\,(\text{yaw}, \text{pitch})$: un cambio a unos ejes
+que no forman ángulo recto. La inversa $M^{-1}$ sirve para lo contrario, pasar de un trazo a los ángulos que lo producen.
+`tools/analyze_drawing.py` imprime los mm por grado; los 75° vienen del `README.md`.
 
 Esto **todavía no está aplicado**. El ratón aéreo tiene `gain_x` y `gain_y`, que arreglan la diagonal pero no el cruce,
 y `suggest` de `server/web/calibrate.js` propone subir `gain_y` cuando la vertical tarda más de ×1.3 sin pasarse.

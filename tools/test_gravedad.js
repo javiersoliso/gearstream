@@ -17,7 +17,7 @@ const R2D = 180 / Math.PI;
 
 // ---------- lo que leen los sensores ----------
 console.log('Lo que leen los sensores');
-const fuerza = (a) => a + G;                 // componente vertical (hacia arriba) de lectura = a − g, con g = −9.81
+const fuerza = (a) => a + G;                 // componente vertical (hacia arriba) de lectura = a + g, con g = 9.81 hacia arriba
 near(fuerza(0), 9.81, 1e-12, 'quieto marca 9.81 hacia arriba');
 near(fuerza(-G), 0, 1e-12, 'cayendo marca 0');
 near(fuerza(3), 12.81, 1e-12, 'subiendo con 3 m/s² marca 12.81');
@@ -67,7 +67,14 @@ function probar(inclinacion, nombre) {
   ok('da igual el largo de g y del eje');
 
   assert.ok(Number.isFinite(inclinacion([1e-9, 0, 1], z)), 'no da NaN cerca de 0°');
-  near(inclinacion([0.1, 0.2, 0.3], [0.1, 0.2, 0.3]), 0, 1e-6, 'un vector consigo mismo da 0, sin NaN por el redondeo');
+  // sin recortar, cerca de un tercio de estos vectores da un coseno de 1.0000000000000002 y arccos devuelve NaN
+  let semilla = 12345;
+  const azar = () => (semilla = (semilla * 1664525 + 1013904223) % 4294967296) / 4294967296 - 0.5;
+  for (let i = 0; i < 2000; i++) {
+    const v = [azar(), azar(), azar()];
+    near(inclinacion(v, v), 0, 1e-5, `el vector ${v} consigo mismo da 0, sin NaN por el redondeo`);
+    near(inclinacion(v, v.map((c) => -c)), 180, 1e-5, `el vector ${v} contra su opuesto da 180, sin NaN por el redondeo`);
+  }
   ok('no da NaN por el redondeo');
 
   const base = F.gravedadLeida(30, 0, 0);

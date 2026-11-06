@@ -46,7 +46,8 @@
       const w = (d - a) / (2 * h), alfa = (d - 2 * c + a) / (h * h);          // °/s y °/s²
       t[k] = tk; verdad[k] = c;
       giro[k] = w + b + sw * gauss();
-      // la muñeca acelera de costado a r·α: el acelerómetro cree que "arriba" se inclinó atan(r·α / g)
+      // un tirón inventado: la muñeca acelera a r·α y el acelerómetro se inclina atan(r·α / g). Esa cuenta es la de verdad solo
+      // con el brazo colgando; aquí se usa en toda postura para tener sacudidas de un tamaño creíble
       acel[k] = c + sac * Math.atan(r * alfa * D2R / G) * R2D + sa * gauss();
     }
     return { hz, n, dur, b, t, verdad, giro, acel };

@@ -564,7 +564,7 @@ class ProductoCruz(Escena3D):
         self.fijo(lambda: VGroup(
             texto(f"θ = {th.get_value():.0f}°", 26),
             texto(f"área = {abs(a[0] * b()[1]):.2f}", 24, color=TEAL),
-            texto(f"|a||b| sen θ = {num(3.0 * np.sin(th.get_value() * GRADO))}", 24),
+            texto(f"|a||b| |sen θ| = {num(3.0 * abs(np.sin(th.get_value() * GRADO)))}", 24),
             texto(f"a × b = {terna(c())}", 24))
             .arrange(DOWN, aligned_edge=LEFT, buff=0.15).move_to(RIGHT * 1.9 + UP * 1.9, aligned_edge=LEFT))
         f = MathTex(r"a\times b = \begin{pmatrix} a_y b_z - a_z b_y\\ a_z b_x - a_x b_z\\ a_x b_y - a_y b_x\end{pmatrix}", font_size=30)\
@@ -654,7 +654,7 @@ class ReglaManoDerecha(Escena3D):
         v1 = texto(f"alrededor de z: +{tasa:.0f} °/s", 24, color=GREEN).to_edge(DOWN, buff=1.0).shift(LEFT * 3.4)
         v2 = texto(f"en el espejo: −{tasa:.0f} °/s", 24, color=RED).to_edge(DOWN, buff=1.0).shift(RIGHT * 3.4)
         self.add_fixed_in_frame_mobjects(v1, v2)
-        self.decir("En el espejo el mismo giro va al revés: cambia el signo de los giros.", RED)
+        self.decir("En el espejo, el giro alrededor de z va al revés: cambia de signo.", RED)
         self.play(FadeIn(v1, v2), t.animate.set_value(2 * PI), run_time=vuelta, rate_func=linear)
         self.wait(2)
 

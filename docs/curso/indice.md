@@ -163,8 +163,8 @@ Los datos: `recordings/` es personal y no se sube. Para que los experimentos fun
 **Cómo sería el capítulo**
 
 - *Intuición visual:* un reloj 3D que se inclina con el tuyo y la flecha de la gravedad dentro de sus ejes; al girarlo sobre la mesa la flecha no se mueve: así se ve lo que la gravedad no ve, el rumbo.
-- *La matemática mínima:* acelerómetro = aceleración − gravedad (la fuerza específica: 9.81 hacia arriba en reposo); `arriba = g/|g|`; la inclinación es `acos(ĝ·eje)` o atan2 de dos componentes; aceleración lineal = acelerómetro − gravedad.
-- *El código:* `Motion.roll_from_gravity` de `tools/air_mouse.py` (9 líneas) y la primera línea de `onAccel` en `server/web/game.js`.
+- *La matemática mínima:* acelerómetro = aceleración + gravedad, con la gravedad hacia arriba, como la lee el sensor (la fuerza específica: 9.81 hacia arriba en reposo); `arriba = g/|g|`; la inclinación es `acos(ĝ·eje)` o atan2 de dos componentes; aceleración lineal = acelerómetro − gravedad.
+- *El código:* `Motion.roll_from_gravity` de `tools/air_mouse.py` (9 líneas) y la primera línea de `onAccel` en `server/web/avatar.js`.
 - *Experimento con datos reales:* girar el reloj despacio por las seis posturas y comparar acelerómetro y gravedad; después moverlo de golpe y ver dónde dejan de coincidir.
 - *Ejercicio que se comprueba:* escribir `inclinacion(g, eje)` y comprobar con las seis posturas (0°, 90°, 180°), y que girar el reloj sobre la mesa no la cambia.
 
@@ -405,7 +405,7 @@ Lo que damos por hecho, lo que ya medimos que falla y lo que falta, cada cosa co
 
 | # | Lo que el código da por hecho sin decirlo | Dónde se explica |
 |---|---|---|
-| 10 | En las páginas (`wrist.js`), todo giro de menos de 2 °/s se aprende como sesgo: un giro lento y parejo hecho a propósito se va borrando. El ratón aéreo lo evita (pide pico a pico < 2.5 °/s y una mediana chica). | [cap. 1](#capítulo-1--qué-es-un-sensor) · `aprender_sesgo` |
+| 10 | En las páginas (`wrist.js`), todo giro de menos de 2 °/s se aprende como sesgo: un giro lento y parejo hecho a propósito se va borrando. El ratón aéreo lo frena solo en parte: al calibrar descarta lo que pasa de 1.5 °/s de mediana, pero por debajo de eso `feed_gyro` también lo aprende, con τ = 20 s: 1 °/s parejo durante 20 s deja unos 0.6 °/s de sesgo. | [cap. 1](#capítulo-1--qué-es-un-sensor) · `aprender_sesgo` |
 | 11 | Con el antebrazo a menos de unos 17° de la vertical (\|g·f\| > 0.95: la mano muy arriba o el brazo colgando), las páginas apagan el pitch y achican el yaw. | [cap. 5](#capítulo-5--rotar) · `singularidad`; [cap. 6](#capítulo-6--del-reloj-al-antebrazo-roll-yaw-y-pitch) · `yaw`, `pitch` |
 | 12 | La misma cuenta está tres veces y no igual: las páginas cortan el giro a cero bajo 0.6 °/s (con un salto), el ratón aéreo resta la zona muerta (sin salto) y el avatar toma el yaw como ω·arriba, sin quitarle la parte de roll. | [cap. 6](#capítulo-6--del-reloj-al-antebrazo-roll-yaw-y-pitch) · `yaw`; [cap. 7](#capítulo-7--de-3d-a-2d-el-cursor) · `zona_muerta` |
 | 13 | En las páginas, un hueco de más de 100 ms entre muestras se integra como si fueran 10 ms: lo que giraste durante una pausa del Wi-Fi se pierde. | [cap. 0](#capítulo-0--un-número-que-cambia) · `marca_de_tiempo`; [cap. 3](#capítulo-3--derivar-e-integrar-con-números) · `integral_discreta` |
@@ -420,7 +420,7 @@ Lo que damos por hecho, lo que ya medimos que falla y lo que falta, cada cosa co
 | # | Lo que ya medimos que falla | Dónde se explica |
 |---|---|---|
 | 1 | El rumbo se va: con el sesgo de un giroscopio real (unas décimas de °/s) el cursor se desvía unos 12 cm en 10 s a 2.4 m de la pantalla. | [cap. 3](#capítulo-3--derivar-e-integrar-con-números) · `error_acumulado`; [cap. 8](#capítulo-8--fusión-de-sensores-y-por-qué-el-rumbo-se-va) · `deriva_del_rumbo` |
-| 2 | Con el brazo colgando, la proyección se rompe: ∫yaw se equivoca 16° de mediana y hasta 79° caminando. El mocap usa Mahony y queda bajo 1°; el ratón aéreo y Dibuja todavía usan la proyección. | [cap. 5](#capítulo-5--rotar) · `singularidad`; [cap. 8](#capítulo-8--fusión-de-sensores-y-por-qué-el-rumbo-se-va) · `metodo_de_proyeccion`, `mahony` |
+| 2 | Con el brazo colgando, la proyección se rompe: ∫yaw se equivoca 16° de mediana y hasta 79° caminando. El mocap usa Mahony y queda en 0.7° de mediana; el ratón aéreo y Dibuja todavía usan la proyección. | [cap. 5](#capítulo-5--rotar) · `singularidad`; [cap. 8](#capítulo-8--fusión-de-sensores-y-por-qué-el-rumbo-se-va) · `metodo_de_proyeccion`, `mahony` |
 | 3 | El pellizco no sirve como clic a 100 Hz: 12 de 20 en las pruebas. El clic de tornillo (~700 °/s) sí se distingue. | [cap. 10](#capítulo-10--gestos) · `aciertos_y_falsas_alarmas`, `clic_de_tornillo`; [cap. 11](#capítulo-11--frecuencia) · `nyquist` |
 | 4 | El muestreo no es tan alto como parece: a 5 ms llegan ~200 muestras por segundo, pero solo ~115 son lecturas nuevas; con la pantalla apagada baja a ~45 Hz o llega en ráfagas. | [cap. 0](#capítulo-0--un-número-que-cambia) · `muestreo`, `lecturas_nuevas` |
 | 5 | El servicio de sensores del reloj se traba si se corta mal ("Listener is already added") y hay que reiniciar el reloj. | Práctico, no matemático ([cap. 1](#capítulo-1--qué-es-un-sensor)). |

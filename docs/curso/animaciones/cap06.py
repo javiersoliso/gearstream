@@ -278,9 +278,13 @@ class Roll(Escena3D):
         self.play(t.animate.set_value(100 * 2.5), run_time=2.5, rate_func=linear)
         self.decir("Positivo: horario visto desde el codo, como apretar un tornillo.", ROLL)
         self.play(t.animate.set_value(100 * 5), run_time=2.5, rate_func=linear)
-        self.decir("A cualquier elevación es lo mismo: f está pegado al reloj.")
+        self.decir("A cualquier elevación, el mismo roll. Subir y bajar solo suma pitch.")
+        P = np.array([0.0, -1.0, 0.0])                      # f × arriba: girar a su alrededor sube el antebrazo
+        omega["fn"] = lambda: 100 * F() + (-50 / 3) * P
         self.play(t.animate.set_value(100 * 8), e.animate.set_value(-35), run_time=3, rate_func=linear)
+        omega["fn"] = lambda: 100 * F() + (65 / 3) * P
         self.play(t.animate.set_value(100 * 11), e.animate.set_value(30), run_time=3, rate_func=linear)
+        omega["fn"] = lambda: 100 * F()
         self.remove(fw)
         self.decir("Si ω apunta a otro lado, el roll es su sombra sobre f.", YELLOW)
         om = rot(F(), [0.2, 1, 0.3], 50 * GRADO) * 100
@@ -380,7 +384,7 @@ class Yaw(Escena3D):
         n1 = texto(f"inclinado {e.get_value():.0f}°, el roll marca a·(g·f) = {60 * np.sin(30 * GRADO):.0f}", 22, color=ROLL)
         en_esquina(n1).shift(DOWN * 1.5)
         self.add_fixed_in_frame_mobjects(n1)
-        self.decir("Con el antebrazo inclinado, el mismo giro también atornilla un poco.", ROLL)
+        self.decir("Con el antebrazo inclinado, ω también tiene una parte a lo largo de f.", ROLL)
         self.play(FadeIn(n1), psi.animate.set_value(270), run_time=1.5, rate_func=linear)
         self.play(psi.animate.set_value(360), run_time=1.5, rate_func=linear)
         om["fn"] = lambda: np.zeros(3)
@@ -546,6 +550,8 @@ class AtornillarNoMueveElCursor(Escena3D):
         b = 100.0
         dt = ts[1] - ts[0]
         naive = np.cumsum(b * np.sin(elev * GRADO)) * dt            # lo que se juntaría usando ω·g como yaw
+        subir = np.gradient(elev, dt)                               # subir la mano es girar alrededor de f × arriba
+        P = np.array([0.0, -1.0, 0.0])
         tt = ValueTracker(0)
         i = lambda: min(len(ts) - 1, int(tt.get_value() / dt))
         F = lambda: brazo(elev[i()])[0]
@@ -553,7 +559,7 @@ class AtornillarNoMueveElCursor(Escena3D):
         self.add(always_redraw(lambda: dibujo_brazo(F(), d(), codo)))
         fw = always_redraw(lambda: flecha(codo + 3.0 * F(), codo + 4.1 * F(), ROLL, 8))
         self.add(fw)
-        self.fijo(lambda: en_esquina(barras(rates(*lectura(b * F(), F(), d())))))
+        self.fijo(lambda: en_esquina(barras(rates(*lectura(b * F() + subir[i()] * P, F(), d())))))
         pantalla = Rectangle(width=4.6, height=1.5, color=GREY_B, stroke_width=3).move_to(RIGHT * 4.4 + DOWN * 0.55)
         lp = texto("el cursor", 20).next_to(pantalla, UP, buff=0.08)
         self.add_fixed_in_frame_mobjects(pantalla, lp)
@@ -561,7 +567,7 @@ class AtornillarNoMueveElCursor(Escena3D):
 
         def cursores():
             c = pantalla.get_center()
-            return VGroup(Dot(c + UP * 0.32, color=GREEN, radius=0.11), Dot(c + DOWN * 0.32 + LEFT * (naive[i()] * escala), color=RED, radius=0.11),
+            return VGroup(Dot(c + UP * (0.1 + 0.3 * elev[i()] / 60), color=GREEN, radius=0.11), Dot(c + DOWN * 0.32 + LEFT * (naive[i()] * escala), color=RED, radius=0.11),
                           texto("yaw y pitch de rates", 18, color=GREEN).move_to(c + UP * 0.58), texto("usando ω·g", 18, color=RED).move_to(c + DOWN * 0.6))
 
         self.fijo(cursores)
@@ -570,7 +576,7 @@ class AtornillarNoMueveElCursor(Escena3D):
                   .arrange(DOWN, aligned_edge=LEFT, buff=0.1).to_corner(UL).shift(DOWN * 0.85))
         self.decir("100 °/s de atornillar mientras el antebrazo sube y baja.", ROLL)
         self.play(tt.animate.set_value(T / 4), run_time=3, rate_func=linear)
-        self.decir("Yaw y pitch siguen en cero: atornillar no tiene nada de ellos.", GREEN)
+        self.decir("El yaw sigue en cero y el pitch es solo lo que subió la mano.", GREEN)
         self.play(tt.animate.set_value(T / 2), run_time=3, rate_func=linear)
         self.decir("ω·g sin corregir sí se mueve, y arrastraría el cursor.", RED)
         self.play(tt.animate.set_value(3 * T / 4), run_time=3, rate_func=linear)

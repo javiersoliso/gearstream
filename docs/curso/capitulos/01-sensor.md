@@ -125,8 +125,9 @@ $$\text{medida} = \text{verdad} + \text{sesgo} + \text{ruido}$$
 compensado de fábrica, unos 0.07 °/s.
 
 **Si marca 0.4 °/s, ¿es la Tierra que gira o es el sensor?** La Tierra da una vuelta al día: 0.0042 °/s, unas 96 veces
-menos que 0.4. Y hay una prueba directa: da vuelta el reloj sobre la mesa. Lo de la Tierra cambia de signo, porque es
-un giro de afuera; el sesgo no, porque es del sensor y se mueve con él.
+menos que 0.4. Y hay una prueba directa: si miras el eje z, pon el reloj boca abajo. Lo de la Tierra cambia de signo en ese
+eje, porque es un giro de afuera; el sesgo no, porque es del sensor y se mueve con él. (El giro tiene que ser alrededor de
+otro eje: dar la vuelta alrededor del eje que miras no cambia nada.)
 
 ## 8. Umbral
 
@@ -152,19 +153,20 @@ saber que estaba quieta, porque un giro lento y parejo también se ve tranquilo.
 | Prueba | Debe dar menos de | Qué descarta |
 |---|---|---|
 | Pico a pico del giroscopio, por eje | 2.5 °/s (`--calib-p2p`) | Movimiento |
-| Mediana del giroscopio, en valor absoluto | 1.5 °/s (`--bias-max`) | Un giro lento y parejo |
-| Diferencia entre $\|a\|$ y $g$ | 1 m/s² | Que algo esté acelerando el reloj |
+| Mediana del giroscopio, en valor absoluto | 1.5 °/s (`--bias-max`) | Un giro parejo de más de 1.5 °/s |
+| Diferencia entre $\|a\|$ y $g$ | 1 m/s² | Un empuje a lo largo de la gravedad (uno de lado casi no cambia el largo) |
 | Salto del acelerómetro entre dos muestras | 0.6 m/s² | Sacudidas |
 | Pico a pico de la dirección de la gravedad | 0.05 (unos 3°) | Que la mano se esté ladeando |
 
+Un giro parejo más lento que eso pasa las cinco pruebas y queda guardado como sesgo: ninguna lo distingue de un reloj quieto.
 Hacen falta al menos 80 muestras en ese segundo. `Motion._calibrate` toma la primera ventana que pasa todo y guarda sus
 medianas. Si ninguna pasa, no inventa: sigue esperando. (El comentario de la función todavía habla de 1 °/s, pero el valor
 por defecto es 2.5: la ayuda explica que una muñeca apoyada late 1 o 2 °/s, y la mediana no se deja arrastrar por eso.)
 
 **Si el sesgo cambia con la temperatura, ¿cada cuánto hay que volver a medirlo?** No hay que volver a medirlo: se sigue
 solo. Cada rato quieto, `Motion.feed_gyro` lo corrige de a poco. Un error chico se cierra como un promedio de 20 s
-(`--bias-tau`): en 20 s corrige el 63%. Y nunca se mueve más de 0.05 °/s por segundo, para que un movimiento lento no se
-aprenda como sesgo. Si el error es tan grande que la mano ya no cuenta como quieta, `Motion._recover_bias` lo reemplaza
+(`--bias-tau`): en 20 s corrige el 63%. Y nunca se mueve más de 0.05 °/s por segundo, aunque ese límite frena poco: un giro
+parejo de 1 °/s hecho a propósito también se aprende, y en 20 s deja unos 0.6 °/s de sesgo. Si el error es tan grande que la mano ya no cuenta como quieta, `Motion._recover_bias` lo reemplaza
 cuando el giroscopio crudo lleva 3 s pareciendo reposo.
 
 Las páginas lo hacen más simple. `Wrist.rates` aprende con un promedio que olvida, $\alpha$ = 0.002, mientras el

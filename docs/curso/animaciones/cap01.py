@@ -575,7 +575,7 @@ class Sesgo(Escena):
         lt = texto("la Tierra", 22, color=GREEN).next_to(ax.c2p(1.7, 0.0), UP, buff=0.1)
         self.play(Create(tierra), FadeIn(lt))
         self.wait(2)
-        self.decir("A esta escala la Tierra cae sobre el cero. Y si das vuelta el reloj, cambia de signo;", espera=2.5)
+        self.decir("A esta escala la Tierra cae sobre el cero. Con el reloj boca abajo, en z cambia de signo;", espera=2.5)
         self.decir("el sesgo no, porque es del sensor y se mueve con él.", espera=3)
 
 
