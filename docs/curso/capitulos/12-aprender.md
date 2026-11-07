@@ -224,7 +224,7 @@ $$W \leftarrow W - \alpha\,\nabla E$$
 α es el tamaño del paso. Muy chico, no llega. ¿Y muy grande? En la dirección más empinada del valle, el error es una
 parábola $E = \tfrac12 c\,u^2$, donde $u$ es lo que falta hasta el fondo y $c$ la curvatura, la segunda derivada. Su
 derivada es $c\,u$, así que un paso deja $u - \alpha c\,u = (1 - \alpha c)\,u$. Se achica si $|1 - \alpha c| < 1$, o sea si
-$\alpha < 2/c$. Si α pasa de 2 dividido por la curvatura más fuerte del valle (0.56 en la animación), cada paso se pasa
+$\alpha < 2/c$. Si α pasa de 2/c con la curvatura más fuerte del valle (0.56 en la animación, donde c ≈ 3.6), cada paso se pasa
 y el error crece. Con un valle largo hay que ir despacio por culpa de su lado empinado:
 por eso se estandariza. La prueba comprueba que el **descenso por gradiente** llega al mismo $W$ que resolver el sistema.
 

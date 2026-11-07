@@ -668,7 +668,7 @@
   {
    "id": "deriva_del_rumbo",
    "nombre": "Por qué el rumbo se va",
-   "definicion": "El sesgo alrededor de la vertical no tiene quién lo corrija (la gravedad no lo ve): unos 12 cm en 10 s a 2.4 m de la pantalla.",
+   "definicion": "El sesgo alrededor de la vertical no tiene quién lo corrija (la gravedad no lo ve): con unas décimas de °/s, unos 16 cm en 10 s a 2.4 m de la pantalla.",
    "prerrequisitos": ["mahony", "metodo_de_proyeccion", "error_acumulado"],
    "terminos": ["deriva del rumbo"],
    "codigo": ["server/web/mocapmath.js:cursorTrack", "server/web/avatar.js:autoCenterStep", "server/web/fusionmath.js:giroVertical", "server/web/fusionmath.js:erroresAntebrazo", "server/web/fusionmath.js:derivaPredicha", "server/web/fusion.js:mesaPaso"]

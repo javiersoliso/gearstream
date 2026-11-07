@@ -114,7 +114,7 @@ $$y \leftarrow y + \alpha\,(x - y)$$
 
 En cada muestra se acerca una parte $\alpha$ de lo que le falta. Los dos dejan pasar lo lento y frenan lo rápido (es un
 filtro **paso bajo**). Lo que se pierde es tiempo: con α = 0.2
-un salto tarda 0.04 s en llegar al 63%, con α = 0.05, 0.19 s, y con α = 0.015, 0.65 s. `game.js` aprende el sesgo del
+un salto tarda 0.04 s en llegar al 63%, con α = 0.05, 0.19 s, y con α = 0.015, 0.66 s. `game.js` aprende el sesgo del
 giroscopio así, con α = 0.002, solo mientras la mano está quieta. Por qué justo el 63% es la sección que sigue.
 
 ## 8. La exponencial y la constante de tiempo
@@ -139,8 +139,10 @@ $$(1-\alpha)^{t/\Delta t} \approx e^{-t/\tau}$$
 
 En un $\tau$ se cierra el 63% ($1 - 1/e$), en dos el 86% y en tres el 95%. De ahí sale el 63% del capítulo 1:
 `Wrist.rates`, con α = 0.002 a 100 Hz, tiene τ = 5 s, y `Motion.feed_gyro`, que se acerca $\Delta t$ / 20 s por muestra,
-τ = 20 s. Contando muestras, con α = 0.2 el 63% llega a los 0.04 s y no a los 0.05 de $\tau$: $(1-\alpha)^n$ y
-$e^{-t/\tau}$ se parecen tanto más cuanto más chico es $\alpha$. `OneEuro.alpha` de `tools/air_mouse.py` va al revés:
+τ = 20 s. Contando muestras, con α = 0.2 el 63% llega en la quinta después del salto: a los 0.04 s si la del salto es
+$t$ = 0, una muestra antes que $\tau$ = 0.05 s, y esa muestra de diferencia es la misma con cualquier $\alpha$. Lo que sí
+depende de $\alpha$ es el parecido: con α = 0.2, $(1-\alpha)^n$ se apaga como una exponencial de 0.045 s, no de 0.05;
+cuanto más chico es $\alpha$, más se acercan. `OneEuro.alpha` de `tools/air_mouse.py` va al revés:
 recibe un $f_c$ y devuelve $\alpha = \Delta t / (\Delta t + \tfrac{1}{2\pi f_c})$, un $\tau$ de $\Delta t + 1/(2\pi f_c)$
 (capítulo 7).
 

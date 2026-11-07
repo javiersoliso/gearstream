@@ -423,7 +423,7 @@ Lo que damos por hecho, lo que ya medimos que falla y lo que falta, cada cosa co
 
 | # | Lo que ya medimos que falla | Dónde se explica |
 |---|---|---|
-| 1 | El rumbo se va: con el sesgo de un giroscopio real (unas décimas de °/s) el cursor se desvía unos 12 cm en 10 s a 2.4 m de la pantalla. | [cap. 3](#capítulo-3--derivar-e-integrar-con-números) · `error_acumulado`; [cap. 8](#capítulo-8--fusión-de-sensores-y-por-qué-el-rumbo-se-va) · `deriva_del_rumbo` |
+| 1 | El rumbo se va: con el sesgo de un giroscopio real (unas décimas de °/s) el cursor se desvía unos 16 cm en 10 s a 2.4 m de la pantalla. | [cap. 3](#capítulo-3--derivar-e-integrar-con-números) · `error_acumulado`; [cap. 8](#capítulo-8--fusión-de-sensores-y-por-qué-el-rumbo-se-va) · `deriva_del_rumbo` |
 | 2 | Con el brazo colgando, la proyección se rompe: ∫yaw se equivoca 16° de mediana y hasta 79° caminando. El mocap usa Mahony y queda en 0.7° de mediana; el ratón aéreo y Dibuja todavía usan la proyección. | [cap. 5](#capítulo-5--rotar) · `singularidad`; [cap. 8](#capítulo-8--fusión-de-sensores-y-por-qué-el-rumbo-se-va) · `metodo_de_proyeccion`, `mahony` |
 | 3 | El pellizco no sirve como clic a 100 Hz: 12 de 20 en las pruebas. El clic de tornillo (~700 °/s) sí se distingue. | [cap. 10](#capítulo-10--gestos) · `aciertos_y_falsas_alarmas`, `clic_de_tornillo`; [cap. 11](#capítulo-11--frecuencia) · `nyquist` |
 | 4 | El muestreo no es tan alto como parece: a 5 ms llegan ~200 muestras por segundo, pero solo ~115 son lecturas nuevas; con la pantalla apagada baja a ~45 Hz o llega en ráfagas. | [cap. 0](#capítulo-0--un-número-que-cambia) · `muestreo`, `lecturas_nuevas` |

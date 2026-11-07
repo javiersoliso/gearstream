@@ -95,7 +95,7 @@
   <div class="box">
     <p><b>Por qué b/k.</b> El error <i>e</i> = θ − θ<sub>verdad</sub> cambia por dos razones: el sesgo lo empuja <i>b</i> grados por segundo, y el resorte lo devuelve <i>k·e</i> grados por segundo. Mientras <i>b</i> sea más grande que <i>k·e</i>, el error crece. Se queda quieto cuando los dos tirones se empatan:</p>
     <div class="eq">e′ = b − k·e  &nbsp;⇒&nbsp;  e → b / k</div>
-    <p>No llega de golpe: <i>e</i>(<i>t</i>) = (<i>b/k</i>)·(1 − e<sup>−<i>kt</i></sup>), así que tarda unos 3/<i>k</i> segundos. Con <i>k</i> = 0.01/s no llega en un minuto.</p>
+    <p>No llega de golpe: <i>e</i>(<i>t</i>) = (<i>b/k</i>)·(1 − exp(−<i>kt</i>)), así que tarda unos 3/<i>k</i> segundos. Con <i>k</i> = 0.01/s no llega en un minuto.</p>
     <p>Un sesgo de 0.5 °/s con <i>k</i> = 1/s deja medio grado de error. Para siempre, y el sesgo solo no deja más que eso.</p>
   </div>
   <p>Esto se llama <b>filtro complementario</b>, porque de cada testigo toma lo que al otro le falta: lo rápido del giroscopio y lo lento del acelerómetro. Juntar dos medidas así, para que cada una tape el defecto de la otra, es la <b>fusión de sensores</b>.</p>
@@ -190,7 +190,7 @@
   <details><summary>¿Qué significa "tirar suavemente" hacia la gravedad? ¿Qué tan fuerte, y qué pasa si tiro demasiado?</summary>
     <p>Es <i>k</i>, la rapidez del resorte: en 1/<i>k</i> segundos cierra casi dos tercios de la diferencia. Muy fuerte y la estimación copia los saltos del acelerómetro; muy suave y el error va hacia <i>b/k</i>, grande, y solo llega si hay tiempo. El mejor está en el fondo del valle, y depende de cuánto miente cada testigo.</p></details>
   <details><summary>¿Por qué la fusión corrige la inclinación pero nunca el rumbo?</summary>
-    <p>Porque girar alrededor de la vertical no cambia la gravedad. La corrección <i>e</i> = ĝ<sub>medido</sub> × ĝ<sub>predicho</sub> es siempre un eje horizontal: inclina, y nada más.</p></details>
+    <p>Porque girar alrededor de la vertical no cambia la gravedad. La corrección <i>e</i> = ĝ<sub>medido</sub> × ĝ<sub>predicho</sub> es un eje casi horizontal: inclina, pero no agrega giro alrededor de la vertical, así que no puede frenar la deriva del rumbo.</p></details>
   <details><summary>¿Por qué el método de proyección se pierde al caminar y la fusión no?</summary>
     <p>Caminando, el brazo cuelga: el antebrazo es casi vertical y su rumbo no existe (es la singularidad del capítulo 5). La proyección necesita ese rumbo en cada muestra; Mahony guarda la orientación entera en un cuaternión, que no tiene ese hueco. En las pruebas: 16° de mediana contra menos de 1°, sin ruido y en la muñeca izquierda.</p></details>
   <details><summary>Si la gravedad del reloj ya es una cuenta de Samsung que junta sensores, ¿estoy fusionando una fusión?</summary>
@@ -200,7 +200,7 @@
   <details><summary>¿Cuándo conviene recentrar, y cómo se hace sin que el usuario lo note?</summary>
     <p>Lo ideal es cuando la mano descansa: si está quieta, nadie nota que el frente se mueve un poco. <code>autoCenterStep</code> del avatar lo hace de a poco, pero siempre, sin esperar al reposo: tira del rumbo hacia el frente con τ = 12 s (con 90° fuera, unos 7.5 °/s), así que también se come los giros que dejas puestos. La otra forma es un botón.</p></details>
   <details><summary>¿Por qué un error de unas décimas de °/s se ve en el cursor como centímetros?</summary>
-    <p>A 2.4 m de la pantalla, un grado son 2.4 m × π/180 ≈ 4.2 cm. Un sesgo de 0.3 °/s en 10 s son 3°: unos 13 cm.</p></details>
+    <p>A 2.4 m de la pantalla, un grado son 2.4 m × π/180 ≈ 4.2 cm. En la simulación, la parte del sesgo alrededor de la vertical es de unos 0.38 °/s: en 10 s son 3.8°, unos 16 cm.</p></details>
 
   <p style="margin-top:40px"><a href="/">← volver al tablero</a></p>
 </main>

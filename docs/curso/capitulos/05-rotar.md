@@ -64,8 +64,8 @@ Es la fórmula de Rodrigues, y es `rot` en `mocapmath.js`: 3 líneas.
 
 Y no hace falta más: **todo giro en 3D, por raro que sea, es girar un ángulo alrededor de un solo eje**, la flecha
 que el giro no mueve. ¿Cómo se encuentra? Como el eje no se mueve, forma el mismo ángulo con una flecha cualquiera y
-con donde esa flecha fue a parar: está en el plano que parte a las dos por la mitad. Con otra flecha sale otro plano, y
-en 3D dos planos que pasan por el centro siempre se cortan en una recta. Esa recta es el eje. En el plano no hay
+con donde esa flecha fue a parar: está en el plano que parte a las dos por la mitad. Con otra flecha, que no esté en el eje ni dé el
+mismo plano, sale otro plano, y en 3D dos planos distintos que pasan por el centro siempre se cortan en una recta. Esa recta es el eje. En el plano no hay
 dónde: las dos mitades son rectas, y solo se cruzan en el centro.
 
 ## 4. La matriz de rotación

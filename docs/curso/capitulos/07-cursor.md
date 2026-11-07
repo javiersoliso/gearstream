@@ -158,10 +158,11 @@ hace el **filtro 1€** (*One Euro*), que es un promedio que olvida con el $\alp
 
 $$\alpha = \frac{1}{1 + \dfrac{1}{2\pi f_c \Delta t}}, \qquad f_c = f_{min} + \beta\,|\dot x|$$
 
-$f_c$ es la **frecuencia de corte**: lo que oscila más lento que $f_c$ pasa casi entero, y lo más rápido se achica. Es
-otra forma de dar la constante de tiempo del capítulo 3, $\tau = 1/(2\pi f_c)$, y la fórmula de $\alpha$ es
-$\alpha = \Delta t/(\tau + \Delta t)$: con $\Delta t$ chico, casi el $\Delta t/\tau$ del capítulo 3, y nunca pasa de 1.
-Con 2 Hz, $\tau$ = 80 ms: en un $\tau$ se cierra el 63 % (capítulo 3). Con $f_c$ alto, $\alpha$ se acerca a 1 y el filtro
+$f_c$ es la **frecuencia de corte**: una oscilación justo a $f_c$ pasa a cerca del 70 %, lo mucho más lento pasa casi
+entero y lo más rápido se achica. Con $\tau_c = 1/(2\pi f_c)$, la fórmula de $\alpha$ es
+$\alpha = \Delta t/(\tau_c + \Delta t)$: con $\Delta t$ chico, casi el $\Delta t/\tau$ del capítulo 3, y nunca pasa de 1.
+Con 2 Hz, $\tau_c$ = 80 ms; a 100 muestras por segundo, el $\tau = \Delta t/\alpha$ del capítulo 3 es
+$\Delta t + \tau_c$ = 90 ms. Contando muestras, un salto pasa el 63 % en la novena, 80 ms después de la del salto. Con $f_c$ alto, $\alpha$ se acerca a 1 y el filtro
 casi no toca nada. A 100 muestras por segundo, $\alpha$ = 0.112 con 2 Hz y 0.430 con 12 Hz. Y $\dot x$ es el salto desde la última salida filtrada, $(x - \hat x)/\Delta t$, suavizado por su cuenta para que
 el ruido no lo dispare (derivar agranda el ruido).
 
@@ -282,11 +283,12 @@ Y `AirMouse._apply_delta` lo suma en `P`, con decimales, recorta contra el borde
 
 ![El ¡hola! que guardó la página, en cian; encima, en coral, el mismo trazo rehecho solo desde el giroscopio y la gravedad grabados; de frente y desde arriba caen casi encima](../media/cap07/ElHolaRehecho.gif)
 
-Dibuja 3D tiene una cadena más corta: sin filtro 1€, sin curva de aceleración y sin ganancia. `onGyro` saca el sesgo y
+Dibuja 3D tiene una cadena más corta: sin filtro 1€, sin curva de aceleración y sin ganancia, pero con la zona muerta
+de 0.6 °/s de `Wrist.rates` y el umbral de 1 °/s del roll. `onGyro` saca el sesgo y
 parte el giro con `Wrist.rates`, y suma cada tasa por su $\Delta t$; `point3` convierte los dos ángulos en una dirección
 (sección 3) y la multiplica por la profundidad que da el roll (capítulo 6). Repetir esas dos funciones sobre el
 giroscopio y la gravedad que grabó el reloj durante el «¡hola!» del índice da los 880 puntos que guardó la página con
-4.1 cm de error mediano, menos de 5.9 cm en el 90 % y 11.4 cm en el peor, en un dibujo de 165 cm de ancho. Solo se
+4.1 cm de error mediano, menos de 6 cm en el 90 % y 11.4 cm en el peor, en un dibujo de 165 cm de ancho. Solo se
 alinea el primer punto, porque la página no guarda con qué ángulos empezó. Los puntos de los dos trazos están en
 `docs/curso/animaciones/datos_hola.json`.
 

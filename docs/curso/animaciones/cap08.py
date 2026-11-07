@@ -539,7 +539,9 @@ class DerivaDelRumbo(Scene):
         self.wait(2)
         self.play(*[FadeOut(x) for x in [ax, yl, xl, rumbo, pred, lr, lp, n]])
 
-        # en el cursor: 0.3 °/s durante 10 s, con la pantalla a 2.4 m
+        # en el cursor: la deriva de la simulación durante 10 s, con la pantalla a 2.4 m
+        a10 = float(np.interp(10.0, t, d["pred"]))            # ∫ b·ĝ dt a los 10 s, en grados
+        tasa = a10 / 10.0
         esc = 2.4                                  # unidades de Manim por metro
         yo = LEFT * 3.0 + DOWN * 0.6
         pant = Line(yo + RIGHT * esc * 2.4 + UP * 1.6, yo + RIGHT * esc * 2.4 + DOWN * 1.6, color=GREY_A, stroke_width=6)
@@ -551,13 +553,13 @@ class DerivaDelRumbo(Scene):
                                           color=ACEL, stroke_width=3))
         bien = DashedLine(yo, yo + RIGHT * esc * 2.4, color=WHITE, stroke_opacity=0.6)
         cursor = always_redraw(lambda: Dot(rayo.get_end(), color=ACEL, radius=0.1))
-        reloj = always_redraw(lambda: texto(f"{th.get_value() / 0.29:.1f} s  →  {th.get_value():.1f}°  →  "
+        reloj = always_redraw(lambda: texto(f"{th.get_value() / tasa:.1f} s  →  {th.get_value():.1f}°  →  "
                                             f"{240 * np.tan(np.radians(th.get_value())):.0f} cm", 26)
                               .next_to(titulo, DOWN, buff=0.5))
         self.play(Create(pant), FadeIn(pl, p, plb), Create(bien), Create(rayo), FadeIn(cursor))
         self.add(reloj)
-        self.play(th.animate.set_value(2.9), run_time=6, rate_func=linear)
-        moral = texto("Unas décimas de °/s que nadie corrige: unos 12 cm de cursor en 10 s.", 24).to_edge(DOWN, buff=0.3)
+        self.play(th.animate.set_value(a10), run_time=6, rate_func=linear)
+        moral = texto(f"Unas décimas de °/s que nadie corrige: unos {240 * np.tan(np.radians(a10)):.0f} cm de cursor en 10 s.", 24).to_edge(DOWN, buff=0.3)
         self.play(FadeIn(moral))
         self.wait(3)
 

@@ -70,6 +70,18 @@ function probar(detectar, nombre) {
   assert.strictEqual(conEspera.length, 1, `con 90 ms, el rebote no cuenta (contó ${conEspera.length})`);
   ok('el rebote cuenta sin espera y no cuenta con 90 ms: periodo refractario');
 
+  // dos casos que el enunciado pide y las señales de arriba no tocan: cada 10 ms, umbrales 200 y 100
+  const cada10 = Array.from({ length: 61 }, (_, i) => 10 * i);
+  const vuelta = cada10.map((s) => (s < 50 ? 0 : s <= 150 ? 3 * (s - 50) : s <= 250 ? -300 + 3 * (s - 150) : 0));
+  const conVuelta = detectar(cada10, vuelta, { ...umbrales, refractario: 0 });
+  assert.strictEqual(conVuelta.length, 2, `si x salta de +300 a −300 sin bajar de salir, son dos picos (contó ${conVuelta.length})`);
+  assert.deepStrictEqual(conVuelta.map((p) => p.signo), [1, -1], 'el segundo pico es negativo');
+  ok('el pico se cierra cuando x cambia de signo, aunque |x| no baje de salir');
+  const lento = cada10.map((s) => (s < 50 ? 0 : s <= 100 ? 8 * (s - 50) : s < 200 ? 400 - 3.5 * (s - 100) : s <= 230 ? 50 + 250 * (s - 200) / 30 : Math.max(0, 300 - 5 * (s - 230))));
+  const desdeElMaximo = detectar(cada10, lento, { ...umbrales, refractario: 90 });
+  assert.strictEqual(desdeElMaximo.length, 2, `la espera se cuenta desde el máximo del pico, no desde que se cerró (contó ${desdeElMaximo.length})`);
+  ok('el periodo refractario se cuenta desde el máximo del último pico');
+
   assert.strictEqual(detectar(t, x.map((v) => v / 100), opc).length, 0, 'si nada pasa el umbral, no hay picos');
   ok('si nada pasa el umbral, no hay picos');
 }

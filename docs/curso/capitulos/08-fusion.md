@@ -41,7 +41,7 @@ cuando los dos tirones se empatan:
 
 $$e' = b - k\,e \quad\Rightarrow\quad e \to b/k$$
 
-No llega de golpe: $e(t) = (b/k)(1 - e^{-kt})$, la exponencial del capítulo 3 con constante de tiempo $1/k$, así que
+No llega de golpe: $e(t) = (b/k)\,(1 - \exp(-kt))$, la exponencial del capítulo 3 con constante de tiempo $1/k$, así que
 tarda unos $3/k$ segundos; con $k$ = 0.01/s no llega en un minuto. Por eso $k$ va en "por segundo": **en $1/k$
 segundos el resorte cierra casi dos tercios de la diferencia** (el 63 % del capítulo 3). Un sesgo de 0.5 °/s con
 $k$ = 1/s deja medio grado de error, para siempre, y el sesgo solo no deja más que eso.
@@ -84,14 +84,15 @@ El mocap guarda la orientación del reloj en un cuaternión (capítulo 5) y en c
 giroscopio más esa corrección: $q \leftarrow q \otimes \exp((\omega + K_p e)\,\Delta t/2)$. El $\exp$ de una flecha $u$ es
 $(\cos|u|,\ \hat u\,\sin|u|)$, el cuaternión del capítulo 5: girar $|\omega + K_p e|\,\Delta t$ alrededor de
 $\omega + K_p e$. Las dos flechas "arriba" son casi verticales, así que su producto cruz $e$ es casi horizontal: **la
-corrección inclina y nunca toca el rumbo**. Y como Mahony guarda la orientación entera, no necesita el rumbo del
+corrección inclina, pero no agrega ni quita giro alrededor de la vertical**, así que no puede frenar
+la deriva del rumbo. Y como Mahony guarda la orientación entera, no necesita el rumbo del
 antebrazo en cada muestra: no tiene el hueco de la proyección cuando el brazo cuelga.
 
 **Por qué el rumbo se va.** Con Kp = 2 el rumbo se va igual, y casi exactamente ∫ b·ĝ dt (el ruido suma un paseo de unas décimas de grado): la parte del sesgo que gira
-alrededor de la vertical. Unas décimas de °/s son unos 12 cm de cursor en 10 s, con la pantalla a 2.4 m, porque ahí un
-grado son 2.4 m × π/180 ≈ 4.2 cm (capítulo 7).
+alrededor de la vertical. En la animación esa parte es de unos 0.38 °/s: en 10 s son 3.8°, unos 16 cm de cursor con la pantalla a 2.4 m,
+porque ahí un grado son 2.4 m × π/180 ≈ 4.2 cm (capítulo 7).
 
-![El error de rumbo de la fusión encima de la curva predicha ∫ b·ĝ dt, y el rayo a la pantalla que se corre 12 cm en 10 s](../media/cap08/DerivaDelRumbo.gif)
+![El error de rumbo de la fusión encima de la curva predicha ∫ b·ĝ dt, y el rayo a la pantalla que se corre unos 16 cm en 10 s](../media/cap08/DerivaDelRumbo.gif)
 
 **Ningún Kp arregla la deriva**: Kp solo tira de la inclinación. Desde Kp = 0.5 la inclinación queda entre unas
 décimas y un par de grados, y el rumbo sigue la punteada casi exacto. Ojo: en la animación el arriba medido no miente,
@@ -118,8 +119,8 @@ también los giros que dejas puestos. La otra forma es el botón, o la tecla R.
 ## La matemática
 
 - El filtro complementario: `θ ← θ + ω·Δt + k·Δt·(θ_acel − θ)`.
-- Por qué b/k: `e′ = b − k·e`, que deja de crecer cuando `e = b/k`; llega como `e(t) = (b/k)(1 − e^(−kt))`, en unos 3/k segundos.
-- El acelerómetro se inclina con cada tirón: una muñeca a r del codo que acelera su giro a α empuja de costado con r·α (la aceleración de un punto que gira se ve en el capítulo 9, sección 9). Con el brazo colgando, el acelerómetro cree que arriba se inclinó `atan(r·α / g)`; con el brazo horizontal ese tirón no inclina la elevación, y en medio el efecto cambia. La simulación usa esa fórmula en toda postura: es un modelo inventado, para tener sacudidas de un tamaño creíble, no la física de cada postura. Con la física completa el valle sigue ahí.
+- Por qué b/k: `e′ = b − k·e`, que deja de crecer cuando `e = b/k`; llega como `e(t) = (b/k)(1 − exp(−kt))`, en unos 3/k segundos.
+- El acelerómetro se inclina con cada tirón: una muñeca a r del codo que acelera su giro a α empuja de costado con r·α (la aceleración de un punto que gira se ve en el capítulo 9, sección 10). Con el brazo colgando, el acelerómetro cree que arriba se inclinó `atan(r·α / g)`; con el brazo horizontal ese tirón no inclina la elevación, y en medio el efecto cambia. La simulación usa esa fórmula en toda postura: es un modelo inventado, para tener sacudidas de un tamaño creíble, no la física de cada postura. Con la física completa el valle sigue ahí.
 - Mahony: `e = ĝ_medido × ĝ_predicho` y `q ← q ⊗ exp((ω + Kp·e)·Δt/2)`.
 - La deriva del rumbo: `∫ b·ĝ dt`, la parte del sesgo que gira alrededor de la vertical.
 - En el ¡hola! del índice no hay fusión: Dibuja suma el giroscopio solo, así que sus ángulos se van con el sesgo que

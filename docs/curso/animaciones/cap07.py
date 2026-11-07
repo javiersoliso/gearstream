@@ -540,15 +540,16 @@ class Filtro1Euro(Escena):
         self.play(Write(titulo))
         f = MathTex(r"\alpha = \frac{1}{1 + \frac{1}{2\pi f_c \Delta t}}", r"\qquad f_c = f_{min} + \beta\,|\dot x|", font_size=34).next_to(titulo, DOWN, buff=0.12)
         self.play(Write(f))
-        # el α del filtro es el promedio que olvida del capítulo 3 con τ = 1/(2π f_c): α = Δt / (τ + Δt)
+        # el α del filtro es el promedio que olvida del capítulo 3 con τ_c = 1/(2π f_c): α = Δt / (τ_c + Δt),
+        # así que su τ = Δt/α es Δt + τ_c
         tau = 1 / (2 * np.pi * 2.0)
         assert np.isclose(OneEuro.alpha(2.0, DT), DT / (tau + DT))
-        f2 = MathTex(r"\tau = \frac{1}{2\pi f_c} \quad\Rightarrow\quad \alpha = \frac{\Delta t}{\tau + \Delta t}", font_size=32)\
+        f2 = MathTex(r"\tau_c = \frac{1}{2\pi f_c} \quad\Rightarrow\quad \alpha = \frac{\Delta t}{\tau_c + \Delta t}", font_size=32)\
             .next_to(f, DOWN, buff=0.15)
         self.decir("Corte f_c: lo más lento que f_c pasa; lo más rápido se achica")
         self.wait(1.5)
         self.play(Write(f2))
-        self.decir(f"τ es la constante de tiempo del capítulo 3: a 2 Hz, {1000 * tau:.0f} ms")
+        self.decir(f"A 2 Hz, τ_c = {1000 * tau:.0f} ms; el τ = Δt/α del cap. 3 es Δt + τ_c = {1000 * (DT + tau):.0f} ms")
         self.wait(2)
         rng = np.random.default_rng(11)
         n = 200
@@ -814,6 +815,7 @@ class ElHolaRehecho(Escena):
         P = np.array(HOLA["puntos"], float)
         trazos = [P[P[:, 0] == i] for i in sorted(set(P[:, 0]))]
         err = HOLA["error_cm"]
+        p90 = float(np.percentile(100 * np.linalg.norm(P[:, 2:5] - P[:, 5:8], axis=1), 90))
         titulo = texto("El ¡hola!, rehecho con números", 34).to_edge(UP)
         self.play(Write(titulo))
         fr = ejes([-1.6, 0.2, 0.4], [-0.3, 1.6, 0.4], ancho=5.0, alto=5.28, numeros=False).move_to([-3.4, -0.3, 0])
@@ -861,7 +863,7 @@ class ElHolaRehecho(Escena):
         self.wait(0.5)
 
         cifra = VGroup(texto(f"error mediano: {err['mediano']} cm", 24, color=REHECHO),
-                       texto(f"el 90 %, a menos de {err['p90']} cm", 22),
+                       texto(f"el 90 %, a menos de {np.ceil(p90):.0f} cm", 22),
                        texto(f"el peor punto: {err['maximo']} cm", 22),
                        texto(f"de un dibujo de {HOLA['ancho_cm']} cm de ancho", 22)).arrange(DOWN, aligned_edge=LEFT, buff=0.14)
         cifra.move_to([3.4, -2.0, 0])

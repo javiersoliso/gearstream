@@ -37,7 +37,7 @@ ok(`derivar vuelve un ruido de ${sigma} en ${tamano(derRuido).toFixed(2)} (σ/(�
 
 const olvida = (x, a) => { const y = [x[0]]; for (let k = 1; k < x.length; k++) y.push(y[k - 1] + a * (x[k] - y[k - 1])); return y; };
 const escalon = t.map((s) => (s >= 5 ? 1 : 0));
-const llega = (a) => olvida(escalon, a).findIndex((v) => v > 0.63) / hz - 5;
+const llega = (a) => olvida(escalon, a).findIndex((v) => v > 1 - Math.exp(-1)) / hz - 5;
 assert.ok(llega(0.05) > llega(0.2) && llega(0.015) > llega(0.05), 'cuanto más suave, más tarde llega');
 assert.ok(tamano(olvida(ruido, 0.05)) < tamano(ruido) / 3, 'suavizar frena el ruido');
 ok(`cuanto más suave, más tarde: α = 0.2 llega en ${llega(0.2).toFixed(2)} s, α = 0.05 en ${llega(0.05).toFixed(2)} s, α = 0.015 en ${llega(0.015).toFixed(2)} s`);
