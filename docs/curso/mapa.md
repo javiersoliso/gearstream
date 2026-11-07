@@ -2,7 +2,7 @@
 
 > Generado por `python -I tools/check_curso.py --escribir` a partir de [conceptos.json](conceptos.json) y del orden de [indice.md](indice.md). No lo edites a mano: cambia esos dos y vuelve a generarlo.
 
-136 conceptos en 13 capítulos · 131 funciones de 19 archivos · 282 términos en el glosario.
+141 conceptos en 13 capítulos · 131 funciones de 19 archivos · 292 términos en el glosario.
 
 En `conceptos.json` cada concepto dice qué necesita. En los diagramas la flecha va al revés, en el sentido en que se aprende: de lo que necesitas a lo que te deja entender. Para que se lean, solo están las flechas directas (si A lleva a B y B lleva a C, la de A a C no se dibuja). Los recuadros punteados son conceptos de capítulos anteriores.
 
@@ -98,6 +98,7 @@ flowchart TD
   k_sensor_gravedad["El sensor de gravedad"]
   k_ruido["Ruido"]
   k_tamano_tipico["Tamaño típico: RMS y desviación estándar"]
+  k_varianza["Varianza: sumar azares"]
   k_sesgo["Sesgo"]
   k_umbral["Umbral"]
   k_aprender_sesgo["Aprender el sesgo en reposo"]
@@ -110,6 +111,7 @@ flowchart TD
   k_giroscopio --> k_sensor_gravedad
   k_resumir_ventana --> k_ruido
   k_ruido --> k_tamano_tipico
+  k_tamano_tipico --> k_varianza
   k_giroscopio --> k_sesgo
   k_ruido --> k_sesgo
   k_unidades --> k_umbral
@@ -127,6 +129,7 @@ flowchart TD
 | **El sensor de gravedad** `sensor_gravedad` | No es un sensor: es una cuenta interna de Samsung que da la dirección de arriba en los ejes del reloj (y que no podemos auditar). | `acelerometro`, `giroscopio` | `air_mouse.py:Motion.gravity_measurement` |
 | **Ruido** `ruido` | La parte de la medida que cambia al azar aunque nada se mueva. | `senal`, `resumir_ventana` | `mocapmath.js:synth`, `air_mouse.py:Motion._rest_window`, `fusionmath.js:normal` |
 | **Tamaño típico: RMS y desviación estándar** `tamano_tipico` | √(promedio de x²): el tamaño de algo que va y viene; restando antes el promedio es la desviación estándar. | `ruido`, `resumir_ventana` | `sismomath.js:analyze`, `analyze_dataset.py:window_features`, `analyze_dataset.py:event_features` |
+| **Varianza: sumar azares** `varianza` | σ², el promedio de los cuadrados de lo que se aparta del centro. Los azares que no dependen uno del otro suman sus varianzas, no sus tamaños: por eso el tamaño de una suma crece como una raíz. | `tamano_tipico` | `sismomath.js:analyze` |
 | **Sesgo** `sesgo` | Un error que no se va: con la mano quieta el giroscopio no marca cero sino unas décimas de °/s. | `giroscopio`, `ruido`, `resumir_ventana` | `mocapmath.js:synth`, `wrist.js:Wrist.rates` |
 | **Umbral** `umbral` | Una línea que separa: por debajo cuenta como quieto (o nada), por encima pasó algo. | `senal`, `unidades` | `air_mouse.py:Motion._rest_window`, `air_mouse.py:DwellDetector.feed` |
 | **Aprender el sesgo en reposo** `aprender_sesgo` | Si la muñeca está quieta (poco pico a pico, \|a\| ≈ g, gravedad estable), la mediana del giroscopio es el sesgo; después se sigue de a poco. | `sesgo`, `umbral`, `tamano_tipico`, `acelerometro` | `air_mouse.py:Motion._rest_window`, `air_mouse.py:Motion._calibrate`, `air_mouse.py:Motion._recover_bias`, `air_mouse.py:Motion.feed_gyro`, `wrist.js:Wrist.rates`, `reconstruct_drawing.py:main` |
@@ -184,15 +187,17 @@ flowchart TD
   k_marca_de_tiempo["Marca de tiempo · cap. 0"]:::fuera
   k_interpolacion_lineal["Interpolación lineal · cap. 0"]:::fuera
   k_ruido["Ruido · cap. 1"]:::fuera
-  k_tamano_tipico["Tamaño típico: RMS y desviación estándar · cap. 1"]:::fuera
+  k_varianza["Varianza: sumar azares · cap. 1"]:::fuera
   k_sesgo["Sesgo · cap. 1"]:::fuera
   k_trigonometria["Seno, coseno, tangente y atan2 · cap. 2"]:::fuera
   k_derivada_discreta["Derivar con números"]
   k_segunda_derivada["Segunda diferencia"]
   k_integral_discreta["Integrar con números"]
+  k_notacion_derivada_integral["Cómo se escriben la derivada y la integral"]
   k_error_acumulado["Integrar acumula error"]
   k_doble_integral_zupt["Integrar dos veces y velocidad cero"]
   k_suavizar["Suavizar"]
+  k_exponencial["La exponencial y la constante de tiempo"]
   k_derivar_amplifica_ruido["Derivar amplifica el ruido"]
   k_paso_alto["Quitar lo lento"]
   k_curva_suave["Curva suave"]
@@ -201,15 +206,19 @@ flowchart TD
   k_marca_de_tiempo --> k_derivada_discreta
   k_derivada_discreta --> k_segunda_derivada
   k_marca_de_tiempo --> k_integral_discreta
+  k_derivada_discreta --> k_notacion_derivada_integral
+  k_integral_discreta --> k_notacion_derivada_integral
   k_integral_discreta --> k_error_acumulado
   k_sesgo --> k_error_acumulado
-  k_tamano_tipico --> k_error_acumulado
+  k_varianza --> k_error_acumulado
   k_error_acumulado --> k_doble_integral_zupt
   k_segunda_derivada --> k_doble_integral_zupt
   k_marca_de_tiempo --> k_suavizar
   k_ruido --> k_suavizar
+  k_suavizar --> k_exponencial
   k_derivada_discreta --> k_derivar_amplifica_ruido
   k_suavizar --> k_derivar_amplifica_ruido
+  k_varianza --> k_derivar_amplifica_ruido
   k_suavizar --> k_paso_alto
   k_interpolacion_lineal --> k_curva_suave
   k_derivada_discreta --> k_curva_suave
@@ -224,10 +233,12 @@ flowchart TD
 | **Derivar con números** `derivada_discreta` | (x[k+1] − x[k]) / Δt: cuánto cambia por segundo; la diferencia central usa la muestra anterior y la siguiente. | `marca_de_tiempo`, `senal` | `mocapmath.js:synth`, `armfilter.js:ArmFilter.step`, `air_mouse.py:TapDetector.feed_accel`, `reconstruct_drawing.py:stroke_data`, `air_mouse.py:Motion.feed_accel` |
 | **Segunda diferencia** `segunda_derivada` | (x[k+1] − 2x[k] + x[k−1]) / Δt²: la aceleración a partir de tres posiciones seguidas. | `derivada_discreta` | `mocapmath.js:synth` |
 | **Integrar con números** `integral_discreta` | Sumar tasa × Δt muestra a muestra (la suma acumulada) da cuánto cambió en total. | `marca_de_tiempo`, `senal` | `mocapmath.js:cursorTrack`, `flick.js:FlickDetector.update`, `dibuja.js:onGyro`, `game.js:onGyro`, `analyze_drawing.py:watch_features` |
-| **Integrar acumula error** `error_acumulado` | Un sesgo b se vuelve un error b·t que no para de crecer (la deriva); el ruido suma como un paseo al azar, que crece como √t. | `integral_discreta`, `sesgo`, `ruido`, `tamano_tipico` | `mocapmath.js:cursorTrack`, `armfilter.js:ArmFilter.step`, `fusionmath.js:soloGiro` |
+| **Cómo se escriben la derivada y la integral** `notacion_derivada_integral` | x′, ẋ y dx/dt dicen lo mismo: la diferencia dividida por Δt, con Δt muy chico; ∫x dt es la suma de x·Δt, con Δt muy chico. | `derivada_discreta`, `integral_discreta` | `mocapmath.js:cursorTrack` |
+| **Integrar acumula error** `error_acumulado` | Un sesgo b se vuelve un error b·t que no para de crecer (la deriva); el ruido suma como un paseo al azar, que crece como √t. | `integral_discreta`, `sesgo`, `ruido`, `tamano_tipico`, `varianza` | `mocapmath.js:cursorTrack`, `armfilter.js:ArmFilter.step`, `fusionmath.js:soloGiro` |
 | **Integrar dos veces y velocidad cero** `doble_integral_zupt` | De aceleración a velocidad a posición: el error crece como t², así que se fuerza la velocidad a cero cuando se sabe que está quieto (ZUPT). | `error_acumulado`, `segunda_derivada` | `analyze_drawing.py:watch_features`, `armfilter.js:ArmFilter.step` |
 | **Suavizar** `suavizar` | Promediar con lo reciente: media móvil o un promedio que olvida, y ← y + α(x − y); deja pasar lo lento y frena lo rápido (paso bajo). | `resumir_ventana`, `marca_de_tiempo`, `ruido` | `analyze_dataset.py:movavg`, `armfilter.js:ArmFilter.step`, `air_mouse.py:OneEuro.alpha`, `air_mouse.py:OneEuro.__call__`, `wrist.js:Wrist.rates`, `reconstruct_drawing.py:stroke_data` |
-| **Derivar amplifica el ruido** `derivar_amplifica_ruido` | Dividir por un Δt chico agranda cada temblor: antes de derivar hay que suavizar. | `derivada_discreta`, `ruido`, `suavizar` | `armfilter.js:ArmFilter.step`, `reconstruct_drawing.py:stroke_data` |
+| **La exponencial y la constante de tiempo** `exponencial` | Repetir y ← y + α(x − y) deja de lo que faltaba (1 − α)^n, que se apaga como e^(−t/τ) con τ = Δt/α: en un τ se cierra el 63 % (1 − 1/e), en tres τ casi todo. | `suavizar` | `air_mouse.py:OneEuro.alpha` |
+| **Derivar amplifica el ruido** `derivar_amplifica_ruido` | Dividir por un Δt chico agranda cada temblor: antes de derivar hay que suavizar. | `derivada_discreta`, `ruido`, `suavizar`, `varianza` | `armfilter.js:ArmFilter.step`, `reconstruct_drawing.py:stroke_data` |
 | **Quitar lo lento** `paso_alto` | La señal menos su promedio reciente deja solo los cambios rápidos: un golpe se ve aunque la mano se mueva despacio (paso alto). | `suavizar` | `analyze_dataset.py:signals`, `analyze_drawing.py:main`, `air_mouse.py:TapDetector.decide` |
 | **Curva suave** `curva_suave` | 3u² − 2u³ va de 0 a 1 con pendiente cero en los dos extremos: une dos tramos sin saltos ni golpes (smoothstep). | `interpolacion_lineal`, `derivada_discreta` | `mocapmath.js:smooth`, `mocapmath.js:env`, `sismomath.js:targetAt`, `mocapmath.js:aimPath` |
 | **Una onda** `onda_seno` | a·sen(2πft + φ): amplitud a, frecuencia f (vueltas por segundo) y fase φ; lo más simple que va y viene. | `trigonometria`, `muestreo` | `sismomath.js:wave`, `mocapmath.js:ANIMS` |
@@ -285,6 +296,7 @@ flowchart TD
   k_inclinacion["Inclinación · cap. 4"]:::fuera
   k_rumbo["Rumbo · cap. 4"]:::fuera
   k_rotacion_2d["Rotar en el plano"]
+  k_producto_de_matrices["Multiplicar matrices, transponer e invertir"]
   k_eje_y_angulo["Eje y ángulo"]
   k_matriz_de_rotacion["Matriz de rotación"]
   k_orden_no_conmuta["El orden importa"]
@@ -295,10 +307,11 @@ flowchart TD
   k_cuaternion["Cuaternión"]
   k_integrar_orientacion["Integrar la orientación"]
   k_trigonometria --> k_rotacion_2d
+  k_cambio_de_marco --> k_producto_de_matrices
   k_rotacion_2d --> k_eje_y_angulo
   k_producto_cruz --> k_eje_y_angulo
-  k_cambio_de_marco --> k_matriz_de_rotacion
   k_eje_y_angulo --> k_matriz_de_rotacion
+  k_producto_de_matrices --> k_matriz_de_rotacion
   k_matriz_de_rotacion --> k_orden_no_conmuta
   k_giroscopio --> k_velocidad_angular
   k_eje_y_angulo --> k_velocidad_angular
@@ -317,9 +330,10 @@ flowchart TD
 | Concepto | Qué es | Necesita | En el código |
 |---|---|---|---|
 | **Rotar en el plano** `rotacion_2d` | (x, y) → (x cos θ − y sen θ, x sen θ + y cos θ): girar una flecha sin cambiar su largo. | `trigonometria`, `vector` | `armfilter.js:ArmFilter.rotateY` |
+| **Multiplicar matrices, transponer e invertir** `producto_de_matrices` | Multiplicar dos matrices es aplicar una y después la otra (la de la derecha primero); la transpuesta cambia filas por columnas; la identidad I no hace nada y la inversa deshace. | `cambio_de_marco` | `avatar.js:rotationRows` |
 | **Eje y ángulo** `eje_y_angulo` | Todo giro en 3D es girar un ángulo alrededor de un eje; la fórmula de Rodrigues lo aplica a cualquier vector. | `rotacion_2d`, `producto_cruz`, `producto_punto`, `vector_unitario` | `mocapmath.js:rot`, `avatar.js:onGyro` |
-| **Matriz de rotación** `matriz_de_rotacion` | Sus columnas son los ejes del reloj vistos en el mundo; es ortonormal: su inversa es su transpuesta. | `cambio_de_marco`, `eje_y_angulo` | `mocapmath.js:qcols`, `mocapmath.js:qfromCols`, `avatar.js:rotationRows`, `armfilter.js:ArmFilter.step` |
-| **El orden importa** `orden_no_conmuta` | Girar en x y luego en y no da lo mismo que en y y luego en x: los giros no conmutan. | `matriz_de_rotacion` | `mocapmath.js:build` |
+| **Matriz de rotación** `matriz_de_rotacion` | Sus columnas son los ejes del reloj vistos en el mundo; es ortonormal: su inversa es su transpuesta. | `cambio_de_marco`, `eje_y_angulo`, `producto_de_matrices` | `mocapmath.js:qcols`, `mocapmath.js:qfromCols`, `avatar.js:rotationRows`, `armfilter.js:ArmFilter.step` |
+| **El orden importa** `orden_no_conmuta` | Girar en x y luego en y no da lo mismo que en y y luego en x: los giros no conmutan. | `matriz_de_rotacion`, `producto_de_matrices` | `mocapmath.js:build` |
 | **Velocidad angular** `velocidad_angular` | Un vector ω: su dirección es el eje del giro y su largo, la rapidez; el giroscopio da sus tres componentes en el marco del reloj. | `giroscopio`, `eje_y_angulo`, `derivada_discreta` | `mocapmath.js:synth`, `avatar.js:onGyro` |
 | **Un punto que gira** `velocidad_de_un_punto_que_gira` | Un punto pegado a algo que gira con ω se mueve a ω × r; un vector fijo en el mundo, visto desde el reloj, cambia a −ω × v. | `velocidad_angular`, `producto_cruz` | `air_mouse.py:Motion.feed_gyro`, `armfilter.js:ArmFilter.step` |
 | **Ángulos de Euler** `angulos_de_euler` | Tres giros seguidos, cada uno alrededor de un eje que dejó el anterior (rumbo, inclinación, giro): fáciles de leer, pero el orden y el punto de partida importan. | `eje_y_angulo`, `orden_no_conmuta`, `rumbo`, `inclinacion` | `mocapmath.js:build` |
@@ -479,6 +493,7 @@ flowchart TD
 flowchart TD
   classDef fuera stroke-dasharray: 4 3
   k_unidades["Unidades · cap. 0"]:::fuera
+  k_ruido["Ruido · cap. 1"]:::fuera
   k_tamano_tipico["Tamaño típico: RMS y desviación estándar · cap. 1"]:::fuera
   k_sesgo["Sesgo · cap. 1"]:::fuera
   k_vector["Vector · cap. 2"]:::fuera
@@ -500,6 +515,7 @@ flowchart TD
   k_esqueleto["Esqueleto"]
   k_cinematica_directa["Cinemática directa"]
   k_trayectorias["Trayectorias de una animación"]
+  k_probabilidad["Probabilidad"]
   k_ley_de_cosenos["Ley de los cosenos"]
   k_cinematica_inversa["Cinemática inversa de dos huesos"]
   k_ruido_gaussiano["Fabricar ruido"]
@@ -517,12 +533,14 @@ flowchart TD
   k_cinematica_directa --> k_trayectorias
   k_curva_suave --> k_trayectorias
   k_onda_seno --> k_trayectorias
+  k_ruido --> k_probabilidad
   k_producto_punto --> k_ley_de_cosenos
   k_cinematica_directa --> k_cinematica_inversa
   k_ley_de_cosenos --> k_cinematica_inversa
   k_tamano_tipico --> k_ruido_gaussiano
   k_trigonometria --> k_ruido_gaussiano
   k_potencias_y_logaritmos --> k_ruido_gaussiano
+  k_probabilidad --> k_ruido_gaussiano
   k_trayectorias --> k_sintetizar_imu
   k_velocidad_angular --> k_sintetizar_imu
   k_ruido_gaussiano --> k_sintetizar_imu
@@ -549,14 +567,15 @@ flowchart TD
 | **Esqueleto** `esqueleto` | Huesos de largo fijo unidos por articulaciones; la pose son los ángulos de cada una. | `vector`, `unidades` | `mocapmath.js:build`, `mocapmath.js:hand` |
 | **Cinemática directa** `cinematica_directa` | De los ángulos de cada articulación a las posiciones, encadenando giros desde el tronco hacia la mano. | `esqueleto`, `eje_y_angulo`, `orden_no_conmuta`, `angulos_de_euler` | `mocapmath.js:build` |
 | **Trayectorias de una animación** `trayectorias` | Cómo se mueve la pose en el tiempo: una fase periódica para caminar, curvas suaves entre íconos, un círculo. | `cinematica_directa`, `curva_suave`, `onda_seno` | `mocapmath.js:aimPath`, `mocapmath.js:ANIMS` |
+| **Probabilidad** `probabilidad` | Qué fracción de las veces pasa algo, de 0 a 1. Si dos cosas no dependen una de la otra, la probabilidad de que pasen las dos es el producto. | `ruido` | `armfilter.js:ArmFilter.step` |
 | **Ley de los cosenos** `ley_de_cosenos` | c² = a² + b² − 2ab cos C: con los tres lados de un triángulo se saben sus ángulos. | `trigonometria`, `producto_punto` | `mocapmath.js:ik` |
 | **Cinemática inversa de dos huesos** `cinematica_inversa` | Dado dónde debe ir la muñeca, el codo sale de la ley de los cosenos y de un polo que dice hacia dónde se dobla. | `cinematica_directa`, `ley_de_cosenos`, `vector_unitario` | `mocapmath.js:ik` |
-| **Fabricar ruido** `ruido_gaussiano` | Números al azar con forma de campana (Box–Muller, a partir de dos uniformes) y una semilla fija para que el azar se repita. | `ruido`, `tamano_tipico`, `trigonometria`, `potencias_y_logaritmos` | `mocapmath.js:rng`, `armfilter.js:mulberry32`, `armfilter.js:ArmFilter.randn` |
+| **Fabricar ruido** `ruido_gaussiano` | Números al azar con forma de campana (Box–Muller, a partir de dos uniformes) y una semilla fija para que el azar se repita. | `ruido`, `tamano_tipico`, `trigonometria`, `potencias_y_logaritmos`, `probabilidad` | `mocapmath.js:rng`, `armfilter.js:mulberry32`, `armfilter.js:ArmFilter.randn` |
 | **Sintetizar lo que leería el reloj** `sintetizar_imu` | De la animación: ω por el giro relativo entre muestras, el acelerómetro por segunda diferencia más la gravedad, y encima ruido y sesgo. | `cinematica_directa`, `trayectorias`, `matriz_de_rotacion`, `velocidad_angular`, `fuerza_especifica`, `ruido_gaussiano`, `sesgo`, `antebrazo_eje_x` | `mocapmath.js:synth`, `mocapmath.js:watchOf` |
 | **Probar contra la verdad** `prueba_con_verdad` | Si lo reconstruido desde lecturas sintetizadas cae encima de la animación, la cuenta tiene sentido; no prueba el mundo real. | `sintetizar_imu`, `mahony`, `metodo_de_proyeccion` | `mocapmath.js:reconstruct`, `mocapmath.js:cursorTrack` |
 | **Aceleración de un punto que gira** `aceleracion_de_un_punto_que_gira` | Un punto a distancia L acelera α × f·L (tangencial) más ω × (ω × f)·L (centrípeta, hacia el eje). | `velocidad_de_un_punto_que_gira`, `segunda_derivada` | `armfilter.js:ArmFilter.step` |
 | **Límites del cuerpo** `limites_articulares` | El codo no se dobla más de 150° ni hacia atrás, el brazo no atraviesa el torso: lo imposible pesa casi cero. | `esqueleto`, `producto_punto`, `producto_cruz` | `armfilter.js:feasible`, `armfilter.js:defaultPrior`, `armfilter.js:ArmFilter._init` |
-| **Verosimilitud** `verosimilitud` | Qué tan probable es la medida si una hipótesis fuera cierta; con ruido gaussiano de tamaño σ, exp(−r²/2σ²) para un residuo r. | `ruido_gaussiano` | `armfilter.js:ArmFilter.step` |
+| **Verosimilitud** `verosimilitud` | Qué tan probable es la medida si una hipótesis fuera cierta; con ruido gaussiano de tamaño σ, exp(−r²/2σ²) para un residuo r. | `ruido_gaussiano`, `probabilidad` | `armfilter.js:ArmFilter.step` |
 | **Filtro de partículas** `filtro_de_particulas` | Muchas hipótesis del codo a la vez, cada una con un peso: se mueven con el modelo, se pesan con la medida y vuelven al reposo cuando nada las distingue. | `verosimilitud`, `aceleracion_de_un_punto_que_gira`, `limites_articulares`, `doble_integral_zupt`, `aceleracion_lineal` | `armfilter.js:ArmFilter.step`, `armfilter.js:ArmFilter._init`, `armfilter.js:ArmFilter._estimate`, `armfilter.js:defaultPrior` |
 | **Tamaño efectivo y remuestreo** `remuestreo_de_particulas` | Cuando pocos pesos dominan (N_ef = 1/Σw² chico) se clonan las partículas buenas y se olvidan las malas (remuestreo sistemático). | `filtro_de_particulas` | `armfilter.js:ArmFilter._resample`, `armfilter.js:ArmFilter.step` |
 
@@ -644,7 +663,9 @@ flowchart TD
   k_cuantizar["Cuantizar · cap. 0"]:::fuera
   k_latencia["Latencia · cap. 0"]:::fuera
   k_tamano_tipico["Tamaño típico: RMS y desviación estándar · cap. 1"]:::fuera
+  k_varianza["Varianza: sumar azares · cap. 1"]:::fuera
   k_producto_punto["Producto punto · cap. 2"]:::fuera
+  k_exponencial["La exponencial y la constante de tiempo · cap. 3"]:::fuera
   k_onda_seno["Una onda · cap. 3"]:::fuera
   k_rotacion_2d["Rotar en el plano · cap. 5"]:::fuera
   k_potencias_y_logaritmos["Potencias y logaritmos · cap. 7"]:::fuera
@@ -668,6 +689,7 @@ flowchart TD
   k_latencia --> k_retraso_por_correlacion
   k_interpolacion_lineal --> k_retraso_por_correlacion
   k_rotacion_2d --> k_numeros_complejos
+  k_exponencial --> k_numeros_complejos
   k_producto_punto --> k_dft
   k_numeros_complejos --> k_dft
   k_suma_de_senos --> k_dft
@@ -678,7 +700,7 @@ flowchart TD
   k_funcion_de_transferencia --> k_retraso_puro
   k_retraso_por_correlacion --> k_retraso_puro
   k_dft --> k_remanente
-  k_tamano_tipico --> k_remanente
+  k_varianza --> k_remanente
   k_onda_seno --> k_ritmo_y_armonia
   k_cuantizar --> k_ritmo_y_armonia
   k_ritmo_y_armonia --> k_octavas
@@ -690,14 +712,14 @@ flowchart TD
 | **Suma de senos** `suma_de_senos` | Varias ondas juntas: con fases al azar parece imprevisible, pero se repite cada T si cada onda da vueltas enteras en T. | `onda_seno` | `sismomath.js:makeTarget`, `sismomath.js:wave`, `sismomath.js:targetAt` |
 | **Correlación** `correlacion` | El producto punto de dos señales centradas, dividido por sus tamaños: 1 es la misma forma, 0 nada que ver. | `producto_punto`, `tamano_tipico` | `sismomath.js:analyze`, `reconstruct_drawing.py:shape_sim` |
 | **Retraso por correlación** `retraso_por_correlacion` | Desplazar la línea τ y quedarse con el τ que más se parece a tu aguja; una parábola por tres puntos afina entre muestras. | `correlacion`, `latencia`, `interpolacion_lineal` | `sismomath.js:analyze` |
-| **Números complejos** `numeros_complejos` | Flechas del plano que se multiplican: el largo se multiplica y los ángulos se suman; dividir dos ondas compara su tamaño y su atraso. | `vector`, `trigonometria`, `rotacion_2d` | `sismomath.js:analyze` |
+| **Números complejos** `numeros_complejos` | Flechas del plano que se multiplican: el largo se multiplica y los ángulos se suman; dividir dos ondas compara su tamaño y su atraso. | `vector`, `trigonometria`, `rotacion_2d`, `exponencial` | `sismomath.js:analyze` |
 | **Transformada de Fourier discreta** `dft` | Multiplicar la señal por una onda de prueba y sumar dice cuánto de esa frecuencia hay, con su amplitud y su fase. | `onda_seno`, `producto_punto`, `numeros_complejos`, `suma_de_senos` | `sismomath.js:analyze`, `analyze_dataset.py:window_features` |
 | **Fuga y ventana de Hann** `fuga_y_ventana` | Si una onda no da vueltas enteras en la ventana, su energía se reparte en las frecuencias vecinas; apagar los bordes (Hann) lo reduce. | `dft` | `analyze_dataset.py:window_features`, `sismomath.js:makeTarget` |
 | **Frecuencia dominante** `frecuencia_dominante` | La frecuencia del pico más alto del espectro: el ritmo principal de un movimiento. | `dft` | `analyze_dataset.py:window_features`, `analyze_dataset.py:main` |
 | **Lo que el muestreo no ve** `nyquist` | Con f_s muestras por segundo no se distingue nada más rápido que f_s/2 (Nyquist); lo más rápido se disfraza de lento (aliasing). | `muestreo`, `onda_seno`, `dft` | `analyze_dataset.py:window_features` |
 | **Respuesta por frecuencia** `funcion_de_transferencia` | H = Y/R para cada onda: \|H\| cuánto de ella seguiste, −∠H/(2πf) tu retraso a esa frecuencia y \|1 − H\| el error que te quedó. | `dft`, `numeros_complejos` | `sismomath.js:analyze` |
 | **Un retraso puro** `retraso_puro` | Llegar tarde τ deja \|H\| = 1 y gira la fase 2πfτ; su error \|1 − H\| = 2\|sen(πfτ)\| crece con la frecuencia. | `funcion_de_transferencia`, `retraso_por_correlacion` | `sismomath.js:analyze` |
-| **Remanente** `remanente` | La parte de tu movimiento que no está en ninguna frecuencia de la línea: temblor y correcciones. Es un piso: lo muy lento se fuga a las ondas y cuenta como seguido. | `dft`, `tamano_tipico` | `sismomath.js:analyze` |
+| **Remanente** `remanente` | La parte de tu movimiento que no está en ninguna frecuencia de la línea: temblor y correcciones. Es un piso: lo muy lento se fuga a las ondas y cuenta como seguido. | `dft`, `tamano_tipico`, `varianza` | `sismomath.js:analyze` |
 | **Ritmo y armonía** `ritmo_y_armonia` | Pulsos a f₀, a·f₀, b·f₀… coinciden cada 1/f₀; lentos son un polirritmo y pasando de ~20 por segundo se oyen como un acorde de armónicos. | `onda_seno`, `cuantizar` | `musica.js:Pulsos.process`, `musica.js:ratio`, `musica.js:unit` |
 | **Octavas y semitonos** `octavas` | Subir una octava es multiplicar la frecuencia por 2; un semitono, por 2^(1/12): la nota m suena a 440·2^((m − 69)/12) Hz. | `ritmo_y_armonia`, `potencias_y_logaritmos` | `musica.js:midiHz`, `musica.js:Musica.f0`, `musica.js:Musica.pulse`, `musica.js:Musica.harp` |
 
@@ -710,9 +732,9 @@ flowchart TD
   k_interpolacion_lineal["Interpolación lineal · cap. 0"]:::fuera
   k_tamano_tipico["Tamaño típico: RMS y desviación estándar · cap. 1"]:::fuera
   k_umbral["Umbral · cap. 1"]:::fuera
-  k_cambio_de_marco["Cambiar de marco · cap. 2"]:::fuera
   k_derivada_discreta["Derivar con números · cap. 3"]:::fuera
   k_error_acumulado["Integrar acumula error · cap. 3"]:::fuera
+  k_producto_de_matrices["Multiplicar matrices, transponer e invertir · cap. 5"]:::fuera
   k_correlacion["Correlación · cap. 11"]:::fuera
   k_rasgos["Rasgos"]
   k_segmentar["Segmentar"]
@@ -733,8 +755,8 @@ flowchart TD
   k_umbral --> k_segmentar
   k_marca_de_tiempo --> k_segmentar
   k_tamano_tipico --> k_estandarizar
-  k_cambio_de_marco --> k_minimos_cuadrados
   k_tamano_tipico --> k_minimos_cuadrados
+  k_producto_de_matrices --> k_minimos_cuadrados
   k_minimos_cuadrados --> k_r_cuadrado
   k_r_cuadrado --> k_validacion_cruzada
   k_rasgos --> k_ventana_de_retardos
@@ -763,7 +785,7 @@ flowchart TD
 | **Rasgos** `rasgos` | Describir un trozo de señal con pocos números (máximos, RMS, giros, postura) para poder compararlo con otros. | `resumir_ventana`, `tamano_tipico` | `analyze_dataset.py:event_features`, `analyze_dataset.py:window_features`, `reconstruct_drawing.py:stroke_data`, `analyze_dataset.py:signals` |
 | **Segmentar** `segmentar` | Cortar una grabación en trazos, letras o tomas por huecos y pausas. | `umbral`, `marca_de_tiempo` | `analyze_drawing.py:strokes_from`, `analyze_drawing.py:groups_by_pause`, `export_mocap.py:windows`, `export_mocap.py:gap_free`, `trazos.js:fromRescue` |
 | **Estandarizar** `estandarizar` | Restar el promedio y dividir por la desviación estándar, para que cada rasgo pese parecido. | `tamano_tipico` | `reconstruct_drawing.py:Ridge.fit`, `reconstruct_drawing.py:MLP.fit`, `analyze_dataset.py:knn_loo` |
-| **Mínimos cuadrados** `minimos_cuadrados` | Elegir los números de un modelo lineal que hacen más chica la suma de los errores al cuadrado (una regresión). | `coordenadas_en_una_base`, `cambio_de_marco`, `tamano_tipico` | `analyze_drawing.py:r2`, `analyze_drawing.py:main` |
+| **Mínimos cuadrados** `minimos_cuadrados` | Elegir los números de un modelo lineal que hacen más chica la suma de los errores al cuadrado (una regresión). | `coordenadas_en_una_base`, `cambio_de_marco`, `tamano_tipico`, `producto_de_matrices` | `analyze_drawing.py:r2`, `analyze_drawing.py:main` |
 | **R²** `r_cuadrado` | La fracción de la variación que el modelo explica: 1 es toda, 0 es nada. | `minimos_cuadrados` | `analyze_drawing.py:r2` |
 | **Validación cruzada y prueba justa** `validacion_cruzada` | Medir siempre con datos que el modelo no vio: dejar uno fuera, grupos de trazos, letras nunca vistas; si no, el modelo memoriza (sobreajuste). | `minimos_cuadrados`, `r_cuadrado` | `reconstruct_drawing.py:main`, `analyze_dataset.py:knn_loo`, `reconstruct_drawing.py:MLP.fit` |
 | **Rasgos con retardos** `ventana_de_retardos` | Los rasgos de ±240 ms alrededor de cada instante (cada 40 ms) dejan ver el antes y el después del movimiento. | `rasgos`, `interpolacion_lineal` | `reconstruct_drawing.py:stroke_data` |
@@ -802,6 +824,7 @@ flowchart TD
     k_sensor_gravedad["El sensor de gravedad"]
     k_ruido["Ruido"]
     k_tamano_tipico["Tamaño típico: RMS y desviación estándar"]
+    k_varianza["Varianza: sumar azares"]
     k_sesgo["Sesgo"]
     k_umbral["Umbral"]
     k_aprender_sesgo["Aprender el sesgo en reposo"]
@@ -823,9 +846,11 @@ flowchart TD
     k_derivada_discreta["Derivar con números"]
     k_segunda_derivada["Segunda diferencia"]
     k_integral_discreta["Integrar con números"]
+    k_notacion_derivada_integral["Cómo se escriben la derivada y la integral"]
     k_error_acumulado["Integrar acumula error"]
     k_doble_integral_zupt["Integrar dos veces y velocidad cero"]
     k_suavizar["Suavizar"]
+    k_exponencial["La exponencial y la constante de tiempo"]
     k_derivar_amplifica_ruido["Derivar amplifica el ruido"]
     k_paso_alto["Quitar lo lento"]
     k_curva_suave["Curva suave"]
@@ -841,6 +866,7 @@ flowchart TD
   end
   subgraph c5 ["5 · Rotar"]
     k_rotacion_2d["Rotar en el plano"]
+    k_producto_de_matrices["Multiplicar matrices, transponer e invertir"]
     k_eje_y_angulo["Eje y ángulo"]
     k_matriz_de_rotacion["Matriz de rotación"]
     k_orden_no_conmuta["El orden importa"]
@@ -885,6 +911,7 @@ flowchart TD
     k_esqueleto["Esqueleto"]
     k_cinematica_directa["Cinemática directa"]
     k_trayectorias["Trayectorias de una animación"]
+    k_probabilidad["Probabilidad"]
     k_ley_de_cosenos["Ley de los cosenos"]
     k_cinematica_inversa["Cinemática inversa de dos huesos"]
     k_ruido_gaussiano["Fabricar ruido"]
@@ -964,6 +991,7 @@ flowchart TD
   k_giroscopio --> k_sensor_gravedad
   k_resumir_ventana --> k_ruido
   k_ruido --> k_tamano_tipico
+  k_tamano_tipico --> k_varianza
   k_giroscopio --> k_sesgo
   k_ruido --> k_sesgo
   k_unidades --> k_umbral
@@ -985,15 +1013,19 @@ flowchart TD
   k_marca_de_tiempo --> k_derivada_discreta
   k_derivada_discreta --> k_segunda_derivada
   k_marca_de_tiempo --> k_integral_discreta
+  k_derivada_discreta --> k_notacion_derivada_integral
+  k_integral_discreta --> k_notacion_derivada_integral
   k_integral_discreta --> k_error_acumulado
   k_sesgo --> k_error_acumulado
-  k_tamano_tipico --> k_error_acumulado
+  k_varianza --> k_error_acumulado
   k_error_acumulado --> k_doble_integral_zupt
   k_segunda_derivada --> k_doble_integral_zupt
   k_marca_de_tiempo --> k_suavizar
   k_ruido --> k_suavizar
+  k_suavizar --> k_exponencial
   k_derivada_discreta --> k_derivar_amplifica_ruido
   k_suavizar --> k_derivar_amplifica_ruido
+  k_varianza --> k_derivar_amplifica_ruido
   k_suavizar --> k_paso_alto
   k_interpolacion_lineal --> k_curva_suave
   k_derivada_discreta --> k_curva_suave
@@ -1013,10 +1045,11 @@ flowchart TD
   k_arriba_desde_gravedad --> k_rumbo
   k_producto_cruz --> k_rumbo
   k_trigonometria --> k_rotacion_2d
+  k_cambio_de_marco --> k_producto_de_matrices
   k_rotacion_2d --> k_eje_y_angulo
   k_producto_cruz --> k_eje_y_angulo
-  k_cambio_de_marco --> k_matriz_de_rotacion
   k_eje_y_angulo --> k_matriz_de_rotacion
+  k_producto_de_matrices --> k_matriz_de_rotacion
   k_matriz_de_rotacion --> k_orden_no_conmuta
   k_giroscopio --> k_velocidad_angular
   k_eje_y_angulo --> k_velocidad_angular
@@ -1083,12 +1116,14 @@ flowchart TD
   k_cinematica_directa --> k_trayectorias
   k_curva_suave --> k_trayectorias
   k_onda_seno --> k_trayectorias
+  k_ruido --> k_probabilidad
   k_producto_punto --> k_ley_de_cosenos
   k_cinematica_directa --> k_cinematica_inversa
   k_ley_de_cosenos --> k_cinematica_inversa
   k_tamano_tipico --> k_ruido_gaussiano
   k_trigonometria --> k_ruido_gaussiano
   k_potencias_y_logaritmos --> k_ruido_gaussiano
+  k_probabilidad --> k_ruido_gaussiano
   k_trayectorias --> k_sintetizar_imu
   k_velocidad_angular --> k_sintetizar_imu
   k_ruido_gaussiano --> k_sintetizar_imu
@@ -1142,6 +1177,7 @@ flowchart TD
   k_latencia --> k_retraso_por_correlacion
   k_interpolacion_lineal --> k_retraso_por_correlacion
   k_rotacion_2d --> k_numeros_complejos
+  k_exponencial --> k_numeros_complejos
   k_producto_punto --> k_dft
   k_numeros_complejos --> k_dft
   k_suma_de_senos --> k_dft
@@ -1152,7 +1188,7 @@ flowchart TD
   k_funcion_de_transferencia --> k_retraso_puro
   k_retraso_por_correlacion --> k_retraso_puro
   k_dft --> k_remanente
-  k_tamano_tipico --> k_remanente
+  k_varianza --> k_remanente
   k_onda_seno --> k_ritmo_y_armonia
   k_cuantizar --> k_ritmo_y_armonia
   k_ritmo_y_armonia --> k_octavas
@@ -1161,8 +1197,8 @@ flowchart TD
   k_umbral --> k_segmentar
   k_marca_de_tiempo --> k_segmentar
   k_tamano_tipico --> k_estandarizar
-  k_cambio_de_marco --> k_minimos_cuadrados
   k_tamano_tipico --> k_minimos_cuadrados
+  k_producto_de_matrices --> k_minimos_cuadrados
   k_minimos_cuadrados --> k_r_cuadrado
   k_r_cuadrado --> k_validacion_cruzada
   k_rasgos --> k_ventana_de_retardos
@@ -1202,7 +1238,7 @@ Cada función del repo que hace matemática y los conceptos que la explican (con
 | `ArmFilter.randn` | Ruido gaussiano con Box–Muller. | Fabricar ruido (9) |
 | `ArmFilter.rotateY` | Gira todas las partículas alrededor de la vertical cuando el avatar recentra. | Rotar en el plano (5), Recentrar (8) |
 | `ArmFilter._init` | Siembra las partículas alrededor del reposo, solo en posturas posibles. | Límites del cuerpo (9), Filtro de partículas (9) |
-| `ArmFilter.step` | Un paso del filtro: aceleración del codo z = R·a − L·f̈, peso por el residuo centrípeto, predicción con muelle y amortiguación, velocidad cero y sesgo en quietud. | Marco de referencia (2), Cambiar de marco (2), Derivar con números (3), Integrar acumula error (3), Integrar dos veces y velocidad cero (3), Suavizar (3), Derivar amplifica el ruido (3), Matriz de rotación (5), Un punto que gira (5), Aceleración de un punto que gira (9), Verosimilitud (9), Filtro de partículas (9), Tamaño efectivo y remuestreo (9) |
+| `ArmFilter.step` | Un paso del filtro: aceleración del codo z = R·a − L·f̈, peso por el residuo centrípeto, predicción con muelle y amortiguación, velocidad cero y sesgo en quietud. | Marco de referencia (2), Cambiar de marco (2), Derivar con números (3), Integrar acumula error (3), Integrar dos veces y velocidad cero (3), Suavizar (3), Derivar amplifica el ruido (3), Matriz de rotación (5), Un punto que gira (5), Probabilidad (9), Aceleración de un punto que gira (9), Verosimilitud (9), Filtro de partículas (9), Tamaño efectivo y remuestreo (9) |
 | `ArmFilter._resample` | Remuestreo sistemático con un poco de dispersión. | Tamaño efectivo y remuestreo (9) |
 | `ArmFilter._estimate` | Dirección media pesada del brazo y su dispersión. | Filtro de partículas (9) |
 
@@ -1210,7 +1246,7 @@ Cada función del repo que hace matemática y los conceptos que la explican (con
 
 | Función | Qué hace | Conceptos |
 |---|---|---|
-| `rotationRows` | Cuaternión a matriz de rotación, por filas. | Cambiar de marco (2), Matriz de rotación (5) |
+| `rotationRows` | Cuaternión a matriz de rotación, por filas. | Cambiar de marco (2), Multiplicar matrices, transponer e invertir (5), Matriz de rotación (5) |
 | `onGyro` | Integra el cuaternión con el giroscopio y da yaw, pitch y roll en el marco de la gravedad. | Eje y ángulo (5), Velocidad angular (5), Cuaternión (5), Integrar la orientación (5) |
 | `onGravity` | Corrige el cuaternión girándolo hacia la gravedad medida, con una ganancia fija. | Filtro complementario (8), Filtro de Mahony (8) |
 | `onAccel` | Aceleración lineal = acelerómetro − gravedad. | Aceleración lineal (4) |
@@ -1297,7 +1333,7 @@ Cada función del repo que hace matemática y los conceptos que la explican (con
 | `triad` | TRIAD: la orientación completa desde «arriba», el antebrazo y un rumbo supuesto. | TRIAD (8) |
 | `reconstruct` | Reconstruye el antebrazo solo con giroscopio y gravedad: fusión (Mahony con cuaterniones) o proyección (rumbo integrado más TRIAD). | Singularidad de los ángulos (5), Integrar la orientación (5), Fusión de sensores (8), El método de proyección (8), Filtro de Mahony (8), Probar contra la verdad (9) |
 | `headingOf` | Rumbo de un antebrazo con atan2. | Seno, coseno, tangente y atan2 (2), Rumbo (4) |
-| `cursorTrack` | El cursor del ratón aéreo: integra yaw y pitch y multiplica por K = D·π/180 metros por grado. | Integrar con números (3), Integrar acumula error (3), Arco: D·θ (7), El rayo pega en D·tan θ (7), Por qué el rumbo se va (8), Probar contra la verdad (9) |
+| `cursorTrack` | El cursor del ratón aéreo: integra yaw y pitch y multiplica por K = D·π/180 metros por grado. | Integrar con números (3), Cómo se escriben la derivada y la integral (3), Integrar acumula error (3), Arco: D·θ (7), El rayo pega en D·tan θ (7), Por qué el rumbo se va (8), Probar contra la verdad (9) |
 
 ### `server/web/musica.js`
 
@@ -1318,7 +1354,7 @@ Cada función del repo que hace matemática y los conceptos que la explican (con
 | `makeTarget` | Elige las ondas de la línea: frecuencias k/T, amplitudes que bajan con la frecuencia y fases al azar. | Suma de senos (11), Fuga y ventana de Hann (11) |
 | `wave` | Suma de senos en el instante t. | Señal (0), Una onda (3), Suma de senos (11) |
 | `targetAt` | La línea, que entra suave durante los primeros 2 s. | Curva suave (3), Suma de senos (11) |
-| `analyze` | Tu aguja contra la línea: rejilla de 100 Hz, RMS, retraso por correlación con una parábola, DFT en cada onda, H = Y/R y remanente. | Interpolación lineal (0), Tamaño típico: RMS y desviación estándar (1), Correlación (11), Retraso por correlación (11), Números complejos (11), Transformada de Fourier discreta (11), Respuesta por frecuencia (11), Un retraso puro (11), Remanente (11) |
+| `analyze` | Tu aguja contra la línea: rejilla de 100 Hz, RMS, retraso por correlación con una parábola, DFT en cada onda, H = Y/R y remanente. | Interpolación lineal (0), Tamaño típico: RMS y desviación estándar (1), Varianza: sumar azares (1), Correlación (11), Retraso por correlación (11), Números complejos (11), Transformada de Fourier discreta (11), Respuesta por frecuencia (11), Un retraso puro (11), Remanente (11) |
 
 ### `server/web/trazos.js`
 
@@ -1342,7 +1378,7 @@ Cada función del repo que hace matemática y los conceptos que la explican (con
 | `wrap_deg` | Lleva un ángulo a [−180°, 180°). | Ángulos que dan la vuelta (2) |
 | `clamp` | Recorta a un rango (y no deja pasar NaN). | Recortar a un rango (7) |
 | `norm` | Píxel a 0..65535 para el movimiento absoluto de Windows. | Unidades (0), Cuantizar (0), Movimientos de menos de un píxel (7) |
-| `OneEuro.alpha` | α = 1/(1 + 1/(2π f_c Δt)): el paso de un filtro de primer orden con corte f_c. | Suavizar (3), Filtro 1€ (7) |
+| `OneEuro.alpha` | α = 1/(1 + 1/(2π f_c Δt)): el paso de un filtro de primer orden con corte f_c. | Suavizar (3), La exponencial y la constante de tiempo (3), Filtro 1€ (7) |
 | `OneEuro.__call__` | Filtro 1€: suaviza mucho cuando estás quieto y poco cuando te mueves rápido. | Suavizar (3), Filtro 1€ (7) |
 | `Motion.feed_gravity` | Normaliza la gravedad medida. | Vector unitario (2), La gravedad dice dónde es arriba (4) |
 | `Motion.feed_accel` | Largo de la aceleración y sacudón entre muestras. | Acelerómetro (1), Largo de un vector (2), Derivar con números (3) |
@@ -1469,6 +1505,8 @@ El capítulo es donde se define el término: antes de él, el índice no lo usa.
 | RMS | Tamaño típico: RMS y desviación estándar | 1 |
 | desviación estándar | Tamaño típico: RMS y desviación estándar | 1 |
 | raíz cuadrática media | Tamaño típico: RMS y desviación estándar | 1 |
+| varianza | Varianza: sumar azares | 1 |
+| varianzas | Varianza: sumar azares | 1 |
 | sesgo | Sesgo | 1 |
 | sesgos | Sesgo | 1 |
 | umbral | Umbral | 1 |
@@ -1514,6 +1552,7 @@ El capítulo es donde se define el término: antes de él, el índice no lo usa.
 | segunda diferencia | Segunda diferencia | 3 |
 | integr\* | Integrar con números | 3 |
 | suma acumulada | Integrar con números | 3 |
+| dx/dt | Cómo se escriben la derivada y la integral | 3 |
 | deriva | Integrar acumula error | 3 |
 | paseo al azar | Integrar acumula error | 3 |
 | velocidad cero | Integrar dos veces y velocidad cero | 3 |
@@ -1525,6 +1564,8 @@ El capítulo es donde se define el término: antes de él, el índice no lo usa.
 | promedio móvil | Suavizar | 3 |
 | media móvil | Suavizar | 3 |
 | promedio exponencial | Suavizar | 3 |
+| exponencial | La exponencial y la constante de tiempo | 3 |
+| constante de tiempo | La exponencial y la constante de tiempo | 3 |
 | paso alto | Quitar lo lento | 3 |
 | curva suave | Curva suave | 3 |
 | smoothstep | Curva suave | 3 |
@@ -1542,6 +1583,9 @@ El capítulo es donde se define el término: antes de él, el índice no lo usa.
 | rotación | Rotar en el plano | 5 |
 | rotaciones | Rotar en el plano | 5 |
 | rotar | Rotar en el plano | 5 |
+| producto de matrices | Multiplicar matrices, transponer e invertir | 5 |
+| matriz identidad | Multiplicar matrices, transponer e invertir | 5 |
+| matriz inversa | Multiplicar matrices, transponer e invertir | 5 |
 | Rodrigues | Eje y ángulo | 5 |
 | eje y ángulo | Eje y ángulo | 5 |
 | matriz de rotación | Matriz de rotación | 5 |
@@ -1601,6 +1645,8 @@ El capítulo es donde se define el término: antes de él, el índice no lo usa.
 | articulaciones | Esqueleto | 9 |
 | cinemática directa | Cinemática directa | 9 |
 | cinemática | Cinemática directa | 9 |
+| probabilidad | Probabilidad | 9 |
+| probabilidades | Probabilidad | 9 |
 | ley de los cosenos | Ley de los cosenos | 9 |
 | cinemática inversa | Cinemática inversa de dos huesos | 9 |
 | gaussiano | Fabricar ruido | 9 |

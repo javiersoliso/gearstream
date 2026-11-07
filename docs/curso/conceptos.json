@@ -138,6 +138,14 @@
    "codigo": ["server/web/sismomath.js:analyze", "tools/analyze_dataset.py:window_features", "tools/analyze_dataset.py:event_features"]
   },
   {
+   "id": "varianza",
+   "nombre": "Varianza: sumar azares",
+   "definicion": "σ², el promedio de los cuadrados de lo que se aparta del centro. Los azares que no dependen uno del otro suman sus varianzas, no sus tamaños: por eso el tamaño de una suma crece como una raíz.",
+   "prerrequisitos": ["tamano_tipico"],
+   "terminos": ["varianza", "varianzas"],
+   "codigo": ["server/web/sismomath.js:analyze"]
+  },
+  {
    "id": "sesgo",
    "nombre": "Sesgo",
    "definicion": "Un error que no se va: con la mano quieta el giroscopio no marca cero sino unas décimas de °/s.",
@@ -274,10 +282,18 @@
    "codigo": ["server/web/mocapmath.js:cursorTrack", "server/web/flick.js:FlickDetector.update", "server/web/dibuja.js:onGyro", "server/web/game.js:onGyro", "tools/analyze_drawing.py:watch_features"]
   },
   {
+   "id": "notacion_derivada_integral",
+   "nombre": "Cómo se escriben la derivada y la integral",
+   "definicion": "x′, ẋ y dx/dt dicen lo mismo: la diferencia dividida por Δt, con Δt muy chico; ∫x dt es la suma de x·Δt, con Δt muy chico.",
+   "prerrequisitos": ["derivada_discreta", "integral_discreta"],
+   "terminos": ["dx/dt"],
+   "codigo": ["server/web/mocapmath.js:cursorTrack"]
+  },
+  {
    "id": "error_acumulado",
    "nombre": "Integrar acumula error",
    "definicion": "Un sesgo b se vuelve un error b·t que no para de crecer (la deriva); el ruido suma como un paseo al azar, que crece como √t.",
-   "prerrequisitos": ["integral_discreta", "sesgo", "ruido", "tamano_tipico"],
+   "prerrequisitos": ["integral_discreta", "sesgo", "ruido", "tamano_tipico", "varianza"],
    "terminos": ["deriva", "paseo al azar"],
    "codigo": ["server/web/mocapmath.js:cursorTrack", "server/web/armfilter.js:ArmFilter.step", "server/web/fusionmath.js:soloGiro"]
   },
@@ -298,10 +314,18 @@
    "codigo": ["tools/analyze_dataset.py:movavg", "server/web/armfilter.js:ArmFilter.step", "tools/air_mouse.py:OneEuro.alpha", "tools/air_mouse.py:OneEuro.__call__", "server/web/wrist.js:Wrist.rates", "tools/reconstruct_drawing.py:stroke_data"]
   },
   {
+   "id": "exponencial",
+   "nombre": "La exponencial y la constante de tiempo",
+   "definicion": "Repetir y ← y + α(x − y) deja de lo que faltaba (1 − α)^n, que se apaga como e^(−t/τ) con τ = Δt/α: en un τ se cierra el 63 % (1 − 1/e), en tres τ casi todo.",
+   "prerrequisitos": ["suavizar"],
+   "terminos": ["exponencial", "constante de tiempo"],
+   "codigo": ["tools/air_mouse.py:OneEuro.alpha"]
+  },
+  {
    "id": "derivar_amplifica_ruido",
    "nombre": "Derivar amplifica el ruido",
    "definicion": "Dividir por un Δt chico agranda cada temblor: antes de derivar hay que suavizar.",
-   "prerrequisitos": ["derivada_discreta", "ruido", "suavizar"],
+   "prerrequisitos": ["derivada_discreta", "ruido", "suavizar", "varianza"],
    "terminos": [],
    "codigo": ["server/web/armfilter.js:ArmFilter.step", "tools/reconstruct_drawing.py:stroke_data"]
   },
@@ -386,6 +410,14 @@
    "codigo": ["server/web/armfilter.js:ArmFilter.rotateY"]
   },
   {
+   "id": "producto_de_matrices",
+   "nombre": "Multiplicar matrices, transponer e invertir",
+   "definicion": "Multiplicar dos matrices es aplicar una y después la otra (la de la derecha primero); la transpuesta cambia filas por columnas; la identidad I no hace nada y la inversa deshace.",
+   "prerrequisitos": ["cambio_de_marco"],
+   "terminos": ["producto de matrices", "matriz identidad", "matriz inversa"],
+   "codigo": ["server/web/avatar.js:rotationRows"]
+  },
+  {
    "id": "eje_y_angulo",
    "nombre": "Eje y ángulo",
    "definicion": "Todo giro en 3D es girar un ángulo alrededor de un eje; la fórmula de Rodrigues lo aplica a cualquier vector.",
@@ -397,7 +429,7 @@
    "id": "matriz_de_rotacion",
    "nombre": "Matriz de rotación",
    "definicion": "Sus columnas son los ejes del reloj vistos en el mundo; es ortonormal: su inversa es su transpuesta.",
-   "prerrequisitos": ["cambio_de_marco", "eje_y_angulo"],
+   "prerrequisitos": ["cambio_de_marco", "eje_y_angulo", "producto_de_matrices"],
    "terminos": ["matriz de rotación", "ortonormal", "transpuesta"],
    "codigo": ["server/web/mocapmath.js:qcols", "server/web/mocapmath.js:qfromCols", "server/web/avatar.js:rotationRows", "server/web/armfilter.js:ArmFilter.step"]
   },
@@ -405,7 +437,7 @@
    "id": "orden_no_conmuta",
    "nombre": "El orden importa",
    "definicion": "Girar en x y luego en y no da lo mismo que en y y luego en x: los giros no conmutan.",
-   "prerrequisitos": ["matriz_de_rotacion"],
+   "prerrequisitos": ["matriz_de_rotacion", "producto_de_matrices"],
    "terminos": ["conmuta", "conmutan", "conmutativo"],
    "codigo": ["server/web/mocapmath.js:build"]
   },
@@ -674,6 +706,14 @@
    "codigo": ["server/web/mocapmath.js:aimPath", "server/web/mocapmath.js:ANIMS"]
   },
   {
+   "id": "probabilidad",
+   "nombre": "Probabilidad",
+   "definicion": "Qué fracción de las veces pasa algo, de 0 a 1. Si dos cosas no dependen una de la otra, la probabilidad de que pasen las dos es el producto.",
+   "prerrequisitos": ["ruido"],
+   "terminos": ["probabilidad", "probabilidades"],
+   "codigo": ["server/web/armfilter.js:ArmFilter.step"]
+  },
+  {
    "id": "ley_de_cosenos",
    "nombre": "Ley de los cosenos",
    "definicion": "c² = a² + b² − 2ab cos C: con los tres lados de un triángulo se saben sus ángulos.",
@@ -693,7 +733,7 @@
    "id": "ruido_gaussiano",
    "nombre": "Fabricar ruido",
    "definicion": "Números al azar con forma de campana (Box–Muller, a partir de dos uniformes) y una semilla fija para que el azar se repita.",
-   "prerrequisitos": ["ruido", "tamano_tipico", "trigonometria", "potencias_y_logaritmos"],
+   "prerrequisitos": ["ruido", "tamano_tipico", "trigonometria", "potencias_y_logaritmos", "probabilidad"],
    "terminos": ["gaussiano", "gaussiana", "campana de Gauss", "Box-Muller", "Box–Muller", "semilla"],
    "codigo": ["server/web/mocapmath.js:rng", "server/web/armfilter.js:mulberry32", "server/web/armfilter.js:ArmFilter.randn"]
   },
@@ -733,7 +773,7 @@
    "id": "verosimilitud",
    "nombre": "Verosimilitud",
    "definicion": "Qué tan probable es la medida si una hipótesis fuera cierta; con ruido gaussiano de tamaño σ, exp(−r²/2σ²) para un residuo r.",
-   "prerrequisitos": ["ruido_gaussiano"],
+   "prerrequisitos": ["ruido_gaussiano", "probabilidad"],
    "terminos": ["verosimilitud"],
    "codigo": ["server/web/armfilter.js:ArmFilter.step"]
   },
@@ -893,7 +933,7 @@
    "id": "numeros_complejos",
    "nombre": "Números complejos",
    "definicion": "Flechas del plano que se multiplican: el largo se multiplica y los ángulos se suman; dividir dos ondas compara su tamaño y su atraso.",
-   "prerrequisitos": ["vector", "trigonometria", "rotacion_2d"],
+   "prerrequisitos": ["vector", "trigonometria", "rotacion_2d", "exponencial"],
    "terminos": ["número complejo", "números complejos"],
    "codigo": ["server/web/sismomath.js:analyze"]
   },
@@ -949,7 +989,7 @@
    "id": "remanente",
    "nombre": "Remanente",
    "definicion": "La parte de tu movimiento que no está en ninguna frecuencia de la línea: temblor y correcciones. Es un piso: lo muy lento se fuga a las ondas y cuenta como seguido.",
-   "prerrequisitos": ["dft", "tamano_tipico"],
+   "prerrequisitos": ["dft", "tamano_tipico", "varianza"],
    "terminos": ["remanente"],
    "codigo": ["server/web/sismomath.js:analyze"]
   },
@@ -997,7 +1037,7 @@
    "id": "minimos_cuadrados",
    "nombre": "Mínimos cuadrados",
    "definicion": "Elegir los números de un modelo lineal que hacen más chica la suma de los errores al cuadrado (una regresión).",
-   "prerrequisitos": ["coordenadas_en_una_base", "cambio_de_marco", "tamano_tipico"],
+   "prerrequisitos": ["coordenadas_en_una_base", "cambio_de_marco", "tamano_tipico", "producto_de_matrices"],
    "terminos": ["mínimos cuadrados", "regresión", "regresiones"],
    "codigo": ["tools/analyze_drawing.py:r2", "tools/analyze_drawing.py:main"]
   },

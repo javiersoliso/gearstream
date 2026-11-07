@@ -65,7 +65,7 @@ Los datos: `recordings/` es personal y no se sube. Para que los experimentos fun
 
 **Ya está escrito:** su [texto](capitulos/01-sensor.md), con una animación por concepto; las pruebas están en `tools/test_sensor.js` y el ejercicio, en `docs/curso/ejercicios/cap01.js`.
 
-**Conceptos:** `ejes_del_reloj` · `acelerometro` · `giroscopio` · `sensor_gravedad` · `ruido` · `tamano_tipico` · `sesgo` · `umbral` · `aprender_sesgo`
+**Conceptos:** `ejes_del_reloj` · `acelerometro` · `giroscopio` · `sensor_gravedad` · `ruido` · `tamano_tipico` · `varianza` · `sesgo` · `umbral` · `aprender_sesgo`
 
 **Pregunta guía.** ¿Qué siente de verdad el reloj cuando mueves la mano?
 
@@ -119,7 +119,7 @@ Los datos: `recordings/` es personal y no se sube. Para que los experimentos fun
 
 **Ya está escrito:** su [texto](capitulos/03-derivar.md), con una animación por concepto; las pruebas están en `tools/test_derivar.js` y el ejercicio, en `docs/curso/ejercicios/cap03.js`.
 
-**Conceptos:** `derivada_discreta` · `segunda_derivada` · `integral_discreta` · `error_acumulado` · `doble_integral_zupt` · `suavizar` · `derivar_amplifica_ruido` · `paso_alto` · `curva_suave` · `onda_seno` · `integrar_un_seno`
+**Conceptos:** `derivada_discreta` · `segunda_derivada` · `integral_discreta` · `notacion_derivada_integral` · `error_acumulado` · `doble_integral_zupt` · `suavizar` · `exponencial` · `derivar_amplifica_ruido` · `paso_alto` · `curva_suave` · `onda_seno` · `integrar_un_seno`
 
 **Pregunta guía.** Si el giroscopio solo dice qué tan rápido giras, ¿cómo sabes cuánto giraste?
 
@@ -172,7 +172,7 @@ Los datos: `recordings/` es personal y no se sube. Para que los experimentos fun
 
 **Ya está escrito:** su [texto](capitulos/05-rotar.md), con una animación por concepto; las pruebas están en `tools/test_rotar.js` y el ejercicio, en `docs/curso/ejercicios/cap05.js`.
 
-**Conceptos:** `rotacion_2d` · `eje_y_angulo` · `matriz_de_rotacion` · `orden_no_conmuta` · `velocidad_angular` · `velocidad_de_un_punto_que_gira` · `angulos_de_euler` · `singularidad` · `cuaternion` · `integrar_orientacion`
+**Conceptos:** `rotacion_2d` · `producto_de_matrices` · `eje_y_angulo` · `matriz_de_rotacion` · `orden_no_conmuta` · `velocidad_angular` · `velocidad_de_un_punto_que_gira` · `angulos_de_euler` · `singularidad` · `cuaternion` · `integrar_orientacion`
 
 **Pregunta guía.** ¿Cómo se describe un giro en 3D, y por qué los ángulos a veces se rompen?
 
@@ -279,7 +279,7 @@ Los datos: `recordings/` es personal y no se sube. Para que los experimentos fun
 
 **Ya está escrito:** su [texto](capitulos/09-cuerpo.md), con una animación por concepto; las pruebas están en `tools/test_cuerpo.js` y el ejercicio, en `docs/curso/ejercicios/cap09.js`.
 
-**Conceptos:** `esqueleto` · `cinematica_directa` · `trayectorias` · `ley_de_cosenos` · `cinematica_inversa` · `ruido_gaussiano` · `sintetizar_imu` · `prueba_con_verdad` · `aceleracion_de_un_punto_que_gira` · `limites_articulares` · `verosimilitud` · `filtro_de_particulas` · `remuestreo_de_particulas`
+**Conceptos:** `esqueleto` · `cinematica_directa` · `trayectorias` · `probabilidad` · `ley_de_cosenos` · `cinematica_inversa` · `ruido_gaussiano` · `sintetizar_imu` · `prueba_con_verdad` · `aceleracion_de_un_punto_que_gira` · `limites_articulares` · `verosimilitud` · `filtro_de_particulas` · `remuestreo_de_particulas`
 
 **Pregunta guía.** Con un solo reloj en la muñeca, ¿se puede saber dónde está todo el brazo?
 
