@@ -122,6 +122,8 @@ también los giros que dejas puestos. La otra forma es el botón, o la tecla R.
 - El acelerómetro se inclina con cada tirón: una muñeca a r del codo que acelera su giro a α empuja de costado con r·α (la aceleración de un punto que gira se ve en el capítulo 9, sección 9). Con el brazo colgando, el acelerómetro cree que arriba se inclinó `atan(r·α / g)`; con el brazo horizontal ese tirón no inclina la elevación, y en medio el efecto cambia. La simulación usa esa fórmula en toda postura: es un modelo inventado, para tener sacudidas de un tamaño creíble, no la física de cada postura. Con la física completa el valle sigue ahí.
 - Mahony: `e = ĝ_medido × ĝ_predicho` y `q ← q ⊗ exp((ω + Kp·e)·Δt/2)`.
 - La deriva del rumbo: `∫ b·ĝ dt`, la parte del sesgo que gira alrededor de la vertical.
+- En el ¡hola! del índice no hay fusión: Dibuja suma el giroscopio solo, así que sus ángulos se van con el sesgo que
+  quede, y la tecla R los vuelve a poner en cero (`recenter` de `server/web/dibuja.js`).
 
 ## El código
 

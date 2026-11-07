@@ -278,6 +278,18 @@ Lo que le pasa a una muestra del giroscopio en `Motion.feed_gyro`, en orden:
 
 Y `AirMouse._apply_delta` lo suma en `P`, con decimales, recorta contra el borde y manda el redondeo.
 
+### El ¡hola!, rehecho
+
+![El ¡hola! que guardó la página, en cian; encima, en coral, el mismo trazo rehecho solo desde el giroscopio y la gravedad grabados; de frente y desde arriba caen casi encima](../media/cap07/ElHolaRehecho.gif)
+
+Dibuja 3D tiene una cadena más corta: sin filtro 1€, sin curva de aceleración y sin ganancia. `onGyro` saca el sesgo y
+parte el giro con `Wrist.rates`, y suma cada tasa por su $\Delta t$; `point3` convierte los dos ángulos en una dirección
+(sección 3) y la multiplica por la profundidad que da el roll (capítulo 6). Repetir esas dos funciones sobre el
+giroscopio y la gravedad que grabó el reloj durante el «¡hola!» del índice da los 880 puntos que guardó la página con
+4.1 cm de error mediano, menos de 5.9 cm en el 90 % y 11.4 cm en el peor, en un dibujo de 165 cm de ancho. Solo se
+alinea el primer punto, porque la página no guarda con qué ángulos empezó. Los puntos de los dos trazos están en
+`docs/curso/animaciones/datos_hola.json`.
+
 ## Experimento con tus datos
 
 Abre `calibrate.html` con el ratón aéreo andando y haz la prueba de objetivos con dos ajustes distintos: por ejemplo,

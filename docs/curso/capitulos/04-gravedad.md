@@ -42,6 +42,9 @@ dirección también con la mano en movimiento, aunque cuánto se equivoca entonc
 arriba igual que el acelerómetro quieto. `Motion.gravity_measurement` de
 `tools/air_mouse.py` lo usa si llegó hace menos de 500 ms; si no, normaliza el acelerómetro.
 
+**En el ¡hola!** del índice, `Wrist.rates` recibe esta dirección en cada muestra: con ella sabe qué parte del giro levanta
+la mano y cuál la lleva de lado (capítulo 6). Sin la gravedad, el mismo giro del reloj podría ser cualquiera de las dos.
+
 ## 3. La inclinación
 
 ![Un cubo pasa por las seis posturas; la tabla muestra qué eje se lleva la gravedad y la inclinación de z: 0°, 90° o 180°](../media/cap04/SeisPosturas.gif)

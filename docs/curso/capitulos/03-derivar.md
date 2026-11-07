@@ -48,6 +48,9 @@ fijo se queda corto, y el tiempo del reloj cubre el hueco. Es lo que hace `onGyr
 $\Delta t$ fijo. `cursorTrack` de `mocapmath.js` hace la misma suma en 9 líneas, con $\Delta t$ fijo
 porque sus muestras son inventadas y nunca se pierden.
 
+**En el ¡hola!** del índice, `onGyro` de `server/web/dibuja.js` hace esta suma tres veces en cada muestra, una por cada
+forma de girar la muñeca que separa el capítulo 6, con el $\Delta t$ del reloj. El trazo entero son esas tres sumas.
+
 ## 4. Cómo se escriben la derivada y la integral
 
 ![Una cuerda sobre la curva se achica hasta tocarla: la resta sobre Δt se acerca a un número; abajo, barras de tasa × Δt cada vez más finas cuya suma se acerca a cuánto cambió x](../media/cap03/ComoSeEscriben.gif)

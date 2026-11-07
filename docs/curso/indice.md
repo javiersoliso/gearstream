@@ -2,6 +2,10 @@
 
 Un curso de matemática desde lo más básico, al estilo de 3Blue1Brown, contado con lo que hace GearStream: un reloj que manda su acelerómetro, su giroscopio y su gravedad a 100 Hz a la laptop, y con eso mueve el cursor, dibuja en 1D, 2D y 3D, juega y anima un stickman. Cada idea aparece cuando hace falta, y su nombre llega después de la idea.
 
+![Escribiendo «¡hola!» en el aire con el reloj en Dibuja 3D: la muñeca da la dirección, atornillar da la profundidad, y al final la cámara gira y se ve el trazo en 3D](../media/dibuja-hola-3d.gif)
+
+**El ejemplo de todo el curso.** Ese «¡hola!» se escribió en el aire con el reloj, en Dibuja 3D. Cada pieza de la cuenta que lo dibuja tiene su capítulo: la hora de cada muestra (0), el giroscopio y su sesgo (1), sumar tasa × Δt (3), saber dónde es arriba (4), partir el giro de la muñeca en tres (6) y pasar de dos ángulos y una distancia a un punto (7). Al final del capítulo 7 el trazo se rehace solo con lo que grabó el reloj, y queda a 4.1 cm del original, de mediana.
+
 Cada capítulo tiene la misma forma:
 
 1. **Una pregunta**, la guía, y las que salen de ahí: las que haría alguien curioso.

@@ -800,3 +800,83 @@ class LeyDeFitts(Escena):
         self.play(Write(f), FadeIn(panel))
         self.decir("Un número por ajuste: más bits por segundo es mejor, sin decir \"se siente mejor\"")
         self.wait(3)
+
+
+# ---------------------------------------------------------------------------------------------------------
+HOLA = json.load(open(os.path.join(AQUI, "datos_hola.json"), encoding="utf-8"))
+GUARDADO, REHECHO = TEAL, "#FF7F50"
+
+
+class ElHolaRehecho(Escena):
+    """El ¡hola! del índice, rehecho solo con el giroscopio y la gravedad grabados: onGyro + point3."""
+
+    def construct(self):
+        P = np.array(HOLA["puntos"], float)
+        trazos = [P[P[:, 0] == i] for i in sorted(set(P[:, 0]))]
+        err = HOLA["error_cm"]
+        titulo = texto("El ¡hola!, rehecho con números", 34).to_edge(UP)
+        self.play(Write(titulo))
+        fr = ejes([-1.6, 0.2, 0.4], [-0.3, 1.6, 0.4], ancho=5.0, alto=5.28, numeros=False).move_to([-3.4, -0.3, 0])
+        fl = VGroup(texto("de frente (m)", 18, color=GREY_B).next_to(fr, UP, buff=0.08))
+        self.play(Create(fr), FadeIn(fl))
+
+        def curva(ax, pts, color, w=4):
+            return VMobject().set_points_as_corners([ax.c2p(*p) for p in pts]).set_stroke(color, w)
+
+        self.decir("Lo que guardó la página mientras se escribía, visto de frente")
+        g = VGroup(*[curva(fr, t[:, [2, 3]], GUARDADO) for t in trazos if len(t) > 1])
+        self.play(LaggedStart(*[Create(c) for c in g], lag_ratio=0.6), run_time=4)
+        self.wait(0.5)
+
+        pasos = VGroup(*[texto(s, 20) for s in [
+            "1. Δt: la resta de dos marcas del reloj (cap. 0)",
+            "2. menos el sesgo que se aprende quieto (cap. 1)",
+            "3. tasa × Δt, sumada en cada muestra (cap. 3)",
+            "4. el giro partido en yaw, pitch y roll (cap. 6)",
+            "5. dos ángulos dan la dirección (cap. 7)",
+            "6. el roll sumado da la profundidad (cap. 6)"]]).arrange(DOWN, aligned_edge=LEFT, buff=0.16)
+        pasos.move_to([3.4, 0.5, 0])
+        self.decir("Ahora sin la página: solo el giroscopio y la gravedad grabados")
+        self.play(g.animate.set_stroke(opacity=0.45), LaggedStart(*[FadeIn(p) for p in pasos], lag_ratio=0.3), run_time=3)
+
+        k = ValueTracker(0)
+        bordes = np.cumsum([0] + [len(t) for t in trazos])
+
+        def rehecho():
+            n = int(k.get_value())
+            grupo = VGroup()
+            for t, a in zip(trazos, bordes):
+                m = min(len(t), max(0, n - a))
+                if m > 1:
+                    grupo.add(curva(fr, t[:m, [5, 6]], REHECHO, 3))
+            return grupo
+
+        rh = always_redraw(rehecho)
+        punta = always_redraw(lambda: Dot(fr.c2p(*P[min(int(k.get_value()), len(P) - 1), [5, 6]]), radius=0.06,
+                                          color=REHECHO))
+        self.add(rh, punta)
+        self.decir("onGyro y point3 otra vez, muestra por muestra: coral")
+        self.play(k.animate.set_value(len(P)), run_time=9, rate_func=linear)
+        self.remove(punta)
+        self.wait(0.5)
+
+        cifra = VGroup(texto(f"error mediano: {err['mediano']} cm", 24, color=REHECHO),
+                       texto(f"el 90 %, a menos de {err['p90']} cm", 22),
+                       texto(f"el peor punto: {err['maximo']} cm", 22),
+                       texto(f"de un dibujo de {HOLA['ancho_cm']} cm de ancho", 22)).arrange(DOWN, aligned_edge=LEFT, buff=0.14)
+        cifra.move_to([3.4, -2.0, 0])
+        self.decir("Casi encima: las cuentas del curso bastan para rehacerlo")
+        self.play(FadeIn(cifra))
+        self.wait(2)
+
+        arriba = ejes([-1.6, 0.2, 0.4], [2.8, 5.4, 0.4], ancho=3.4, alto=4.91, numeros=False).move_to([3.6, -0.3, 0])
+        al = texto("desde arriba: adelante (m)", 18, color=GREY_B).next_to(arriba, UP, buff=0.08)
+        self.play(FadeOut(pasos), FadeOut(cifra), Create(arriba), FadeIn(al))
+        g2 = VGroup(*[curva(arriba, np.c_[t[:, 2], -t[:, 4]], GUARDADO, 3).set_stroke(opacity=0.45) for t in trazos if len(t) > 1])
+        r2 = VGroup(*[curva(arriba, np.c_[t[:, 5], -t[:, 7]], REHECHO, 3) for t in trazos if len(t) > 1])
+        self.decir("Desde arriba: la profundidad sale de atornillar, y también coincide")
+        self.play(Create(g2), run_time=2)
+        self.play(Create(r2), run_time=3)
+        self.wait(1)
+        self.decir("Solo se alineó el primer punto: la postura de partida no se guarda")
+        self.wait(3)

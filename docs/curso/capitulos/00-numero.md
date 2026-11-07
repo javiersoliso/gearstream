@@ -81,6 +81,10 @@ Cada parte del código decide qué hacer con un hueco:
 - `timeline` de `server/web/trazos.js` usa las marcas al revés: para reproducir un dibujo acorta las pausas largas a
   400 ms.
 
+**En el ¡hola!** del índice, cada punto del trazo sale de una muestra del reloj, y `onGyro` usa la resta de su marca
+con la anterior. En los 14.6 s de letras llegaron 1453 muestras y el hueco más largo fue de 13 ms, así que el atajo de
+10 ms no entró nunca.
+
 ## 5. Entre dos muestras: interpolar
 
 ![Un punto recorre la recta entre dos muestras; después dos sensores con horas distintas se leen en una misma rejilla](../media/cap00/InterpolacionLineal.gif)

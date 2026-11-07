@@ -191,6 +191,9 @@ Ese promedio y su $\alpha$ son la sección 7 del capítulo 3, y de dónde sale e
 va borrando. Y `main` de `tools/reconstruct_drawing.py` toma la mediana de toda la grabación, que supone que casi todo
 el tiempo la muñeca no gira. Las dos cosas son supuestos, y están en el apéndice.
 
+**En el ¡hola!** del índice, Dibuja usa este `Wrist.rates`: cada vez que la mano queda casi quieta entre letra y letra, a
+menos de 2 °/s, el sesgo se sigue aprendiendo.
+
 Una limitación práctica: si la conexión se corta mal, el servicio de sensores del reloj se traba ("Listener is already
 added") y hay que reiniciar el reloj.
 

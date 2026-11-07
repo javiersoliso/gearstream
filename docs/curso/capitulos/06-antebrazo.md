@@ -44,6 +44,11 @@ Positivo es horario visto desde el codo, como apretar un tornillo. Es la regla d
 Como $f$ está pegado al reloj, no hace falta saber nada del mundo. Por eso `FlickDetector.update` de `server/web/flick.js`
 toma directamente $\pm\omega_x$, y `point3` de `server/web/dibuja.js` usa lo acumulado para alejar el lápiz.
 
+**En el ¡hola!** del índice, la profundidad empieza en 3 m, se aleja 0.02 m por cada grado de roll sumado y queda
+entre 0.8 y 9 m. Solo se suma el roll de más de 1 °/s. Esa suma no es el ángulo de la muñeca, que no gira 300° de una
+vez: es un contador que sube al atornillar y baja al desatornillar, como un tornillo que entra y sale. Por eso el lápiz
+llega a 9 m y no pasa: el límite es el de `point3`, no el de tu brazo.
+
 ## 3. Pitch: subir y bajar
 
 ![f × g es horizontal y de costado; girar alrededor de él sube y baja la mano; al levantar el brazo se acorta y hay que dividir por su largo](../media/cap06/Pitch.gif)

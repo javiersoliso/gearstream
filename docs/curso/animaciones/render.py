@@ -33,7 +33,7 @@ ESCENAS = {
     "cap06": ["AntebrazoEsEjeX", "Roll", "Pitch", "Yaw", "BaseTorcida", "CasiVertical", "AtornillarNoMueveElCursor",
              "ManoEquivocada", "TresFlechas"],
     "cap07": ["ArcoDTheta", "RayoTangente", "DosAngulos", "Ganancia", "Recortar", "Subpixel", "ZonaMuerta",
-             "CurvaDeAceleracion", "Filtro1Euro", "MapaLineal", "Potencias", "LeyDeFitts"],
+             "CurvaDeAceleracion", "Filtro1Euro", "MapaLineal", "Potencias", "LeyDeFitts", "ElHolaRehecho"],
     "cap08": ["DosTestigos", "Resorte", "Valle", "GravedadNoVeRumbo", "Triad", "MetodoDeProyeccion", "Mahony",
              "DerivaDelRumbo", "Recentrar"],
     "cap09": ["Esqueleto", "CinematicaDirecta", "Trayectorias", "Probabilidad", "LeyDeCosenos", "CinematicaInversa", "FabricarRuido",
