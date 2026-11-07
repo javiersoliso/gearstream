@@ -84,7 +84,7 @@
   {
    "id": "agrupar_muestras",
    "nombre": "Agrupar muestras por paquete",
-   "definicion": "Si pasa un paquete por ida y vuelta, juntar N muestras por paquete multiplica el caudal por N a cambio de hasta N muestras de retraso.",
+   "definicion": "Si pasa un paquete por ida y vuelta, juntar N muestras por paquete multiplica el caudal por N a cambio de esperar a juntarlas, (N−1)·Δt, más el turno de salir.",
    "prerrequisitos": ["muestreo", "latencia"],
    "terminos": ["ida y vuelta", "paquete", "paquetes", "caudal"],
    "codigo": ["tools/sdb_bridge.py:Bridge.read_sensor", "tools/sdb_bridge.py:Bridge.report"]
@@ -340,7 +340,7 @@
   {
    "id": "fuerza_especifica",
    "nombre": "Lo que mide el acelerómetro",
-   "definicion": "Quieto marca 9.81 m/s² hacia arriba: siente lo que lo sostiene, no la caída (fuerza específica = aceleración − gravedad).",
+   "definicion": "Quieto marca 9.81 m/s² hacia arriba: siente lo que lo sostiene, no la caída (fuerza específica = aceleración + gravedad, con la gravedad hacia arriba, como la lee el sensor).",
    "prerrequisitos": ["acelerometro", "vector", "segunda_derivada"],
    "terminos": ["fuerza específica"],
    "codigo": ["server/web/mocapmath.js:synth", "tools/air_mouse.py:Motion._rest_window"]
@@ -428,7 +428,7 @@
   {
    "id": "angulos_de_euler",
    "nombre": "Ángulos de Euler",
-   "definicion": "Tres giros seguidos alrededor de ejes fijos (rumbo, inclinación, giro): fáciles de leer, pero el orden y el punto de partida importan.",
+   "definicion": "Tres giros seguidos, cada uno alrededor de un eje que dejó el anterior (rumbo, inclinación, giro): fáciles de leer, pero el orden y el punto de partida importan.",
    "prerrequisitos": ["eje_y_angulo", "orden_no_conmuta", "rumbo", "inclinacion"],
    "terminos": ["Euler", "ángulos de Euler"],
    "codigo": ["server/web/mocapmath.js:build"]
@@ -452,7 +452,7 @@
   {
    "id": "integrar_orientacion",
    "nombre": "Integrar la orientación",
-   "definicion": "Cada muestra gira el cuaternión un poquito, q ← q ⊗ exp(ω Δt/2), y se normaliza para que no se deforme.",
+   "definicion": "Cada muestra gira el cuaternión un poquito, q ← q ⊗ (cos(|ω|Δt/2), ω̂ sen(|ω|Δt/2)), y se normaliza para que no se deforme.",
    "prerrequisitos": ["cuaternion", "velocidad_angular", "integral_discreta", "vector_unitario"],
    "terminos": ["mapa exponencial"],
    "codigo": ["server/web/mocapmath.js:reconstruct", "server/web/avatar.js:onGyro"]
@@ -492,7 +492,7 @@
   {
    "id": "giros_independientes",
    "nombre": "Atornillar no mueve el cursor",
-   "definicion": "Un roll puro no tiene nada de yaw ni de pitch, a cualquier inclinación: los tres giros no se pisan.",
+   "definicion": "Un roll puro no tiene nada de yaw ni de pitch, a cualquier inclinación. Al revés no siempre: girar alrededor de la vertical con el antebrazo inclinado también marca roll.",
    "prerrequisitos": ["yaw", "pitch"],
    "terminos": [],
    "codigo": ["tools/air_mouse.py:Motion.feed_gyro"]
@@ -564,7 +564,7 @@
   {
    "id": "filtro_1euro",
    "nombre": "Filtro 1€",
-   "definicion": "Un suavizado cuyo corte sube con la rapidez: quieto suaviza mucho (sin temblor), rápido casi nada (sin retraso).",
+   "definicion": "Un suavizado cuyo corte sube cuando la señal cambia rápido: quieta o pareja suaviza mucho (sin temblor); en un cambio brusco casi nada (sin retraso).",
    "prerrequisitos": ["suavizar", "derivar_amplifica_ruido"],
    "terminos": ["1€", "One Euro"],
    "codigo": ["tools/air_mouse.py:OneEuro.alpha", "tools/air_mouse.py:OneEuro.__call__"]
@@ -604,7 +604,7 @@
   {
    "id": "filtro_complementario",
    "nombre": "Filtro complementario",
-   "definicion": "Integrar el giroscopio y tirar suavemente hacia la medida absoluta: lo rápido de uno y lo lento del otro; con un sesgo b el error queda quieto en b/k.",
+   "definicion": "Integrar el giroscopio y tirar suavemente hacia la medida absoluta: lo rápido de uno y lo lento del otro; con un sesgo b el error va hacia b/k, y llega si hay tiempo (unos 3/k segundos).",
    "prerrequisitos": ["fusion_de_sensores", "suavizar", "integral_discreta", "velocidad_de_un_punto_que_gira"],
    "terminos": ["filtro complementario", "complementario"],
    "codigo": ["tools/air_mouse.py:Motion.feed_gyro", "server/web/avatar.js:onGravity", "server/web/fusionmath.js:paso", "server/web/fusionmath.js:complementario", "server/web/fusionmath.js:errores", "server/web/fusionmath.js:valle", "server/web/fusion.js:onGyro"]
@@ -948,7 +948,7 @@
   {
    "id": "remanente",
    "nombre": "Remanente",
-   "definicion": "La parte de tu movimiento que no está en ninguna frecuencia de la línea: temblor, correcciones, deriva; tu ruido.",
+   "definicion": "La parte de tu movimiento que no está en ninguna frecuencia de la línea: temblor y correcciones. Es un piso: lo muy lento se fuga a las ondas y cuenta como seguido.",
    "prerrequisitos": ["dft", "tamano_tipico"],
    "terminos": ["remanente"],
    "codigo": ["server/web/sismomath.js:analyze"]

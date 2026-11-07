@@ -188,7 +188,7 @@ los relojes están alineados y que la red es estable; está en el apéndice.
 
 ## 11. Agrupar muestras
 
-![Una fila con un paquete cada 60 ms y una muestra adentro, otra con seis adentro; abajo el caudal y el retraso para cada N](../media/cap00/AgruparMuestras.gif)
+![Una fila con un paquete cada 60 ms y una muestra adentro, otra con seis adentro; abajo el caudal y la espera a juntarse para cada N](../media/cap00/AgruparMuestras.gif)
 
 La conexión con el reloj entrega un **paquete** por cada **ida y vuelta** de la red. Con un Wi-Fi lento, como el de un
 teléfono compartiendo datos, son unos 60 ms: 17 paquetes por segundo. Si cada uno trae una muestra, de las 100 por segundo
@@ -198,7 +198,8 @@ $$\text{caudal} = \frac{\text{muestras por paquete}}{\text{ida y vuelta}}$$
 
 Con 6 muestras por paquete pasan justo las 100. Con menos no alcanza: las muestras se van quedando atrás. Con más hay margen
 por si la red empeora, y no pasan más porque no hay más que mandar. El precio es tiempo. La primera del paquete tiene que
-esperar a las otras, $(N-1)\,\Delta t$, y después a que le toque salir: ese es el **retraso**, 60 ms con $N = 6$.
+esperar a las otras, $(N-1)\,\Delta t$, y después a que le toque salir, de 0 a una ida y vuelta: ese es el **retraso**. Con
+$N = 6$ son 50 ms de espera, y 60 ms en total si la red y el reloj van alineados.
 
 Es `--batch` de `sdb_bridge.py`: en `Bridge.read_sensor`, un `awk` corriendo en el reloj junta $N$ líneas antes de
 soltarlas. Y `Bridge.report` dice cuántas muestras viajan por paquete. Una limitación práctica: el reloj acepta una sola

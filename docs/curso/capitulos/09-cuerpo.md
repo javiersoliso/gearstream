@@ -218,8 +218,8 @@ cosas con cada **partícula**:
 
 La respuesta es el promedio con pesos, en `_estimate`, y lo disperso de la nube da `spread`. Con una sola hipótesis no
 hay nada que pesar: en la prueba, una se equivoca 32 cm y 400, 10 cm. Contra la regla de reposo, moviendo el brazo a la
-velocidad media el filtro se equivoca 9.7 cm y la regla 14.4 cm. A la velocidad más lenta la mejora es chica: en 20
-semillas, 11.0 ± 0.7 cm contra 12.8 cm. Es una mejora, no una solución. El filtro también supone el torso quieto y el hombro fijo.
+velocidad media el filtro se equivoca 9.7 cm y la regla 14.4 cm. A la velocidad más lenta la mejora es chica: en varias
+tandas de 20 semillas, de 10.3 a 11 cm de media contra 12.8 cm. Es una mejora, no una solución. El filtro también supone el torso quieto y el hombro fijo.
 
 ¿Y con la muñeca quieta? Entonces $z \approx 0$: no hay aceleración que distinga una hipótesis de otra, y el codo puede
 estar en cualquier lugar compatible con el antebrazo. El filtro detecta la quietud, aplica la velocidad cero del

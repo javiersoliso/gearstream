@@ -270,7 +270,7 @@ Los datos: `recordings/` es personal y no se sube. Para que los experimentos fun
 **Cómo sería el capítulo**
 
 - *Intuición visual:* dos antebrazos, el de verdad y el reconstruido, y un control Kp: en cero se va todo; muy alto, tiembla con cada movimiento brusco; en el medio queda pegado, salvo el rumbo, que se va igual.
-- *La matemática mínima:* el filtro complementario, `θ ← θ + ω·Δt + k·Δt·(θ_medido − θ)`, con un error que se queda en `b/k`; Mahony, `e = ĝ_medido × ĝ_predicho` y `q ← q ⊗ exp((ω + Kp·e)·Δt/2)`; TRIAD con arriba y el antebrazo; la deriva del rumbo es `∫ b_vertical dt`.
+- *La matemática mínima:* el filtro complementario, `θ ← θ + ω·Δt + k·Δt·(θ_medido − θ)`, con un error que va hacia `b/k` y llega si hay tiempo; Mahony, `e = ĝ_medido × ĝ_predicho` y `q ← q ⊗ exp((ω + Kp·e)·Δt/2)`; TRIAD con arriba y el antebrazo; la deriva del rumbo es `∫ b_vertical dt`.
 - *El código:* la rama de fusión de `reconstruct` en `server/web/mocapmath.js` (10 líneas).
 - *Experimento con datos reales:* el reloj quieto 60 s en la mesa: la inclinación de la fusión no se mueve y el rumbo se va con el sesgo; medir cuánto y compararlo con sesgo × tiempo.
 - *Ejercicio que se comprueba:* implementar el filtro complementario para el ángulo de roll y comprobar que con un sesgo constante b el error se queda en b/k en vez de crecer.

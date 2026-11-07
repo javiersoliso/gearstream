@@ -407,8 +407,11 @@ class Remanente(Scene):
         a1, a2, a3 = ejes(), ejes(), ejes()
         VGroup(a1, a2, a3).arrange(DOWN, buff=0.45).next_to(titulo, DOWN, buff=0.35).shift(RIGHT * 1.4)
         g1 = a1.plot_line_graph(ts, y, add_vertex_dots=False, line_color=AGUJA, stroke_width=3)
-        g2 = a2.plot_line_graph(ts, seguido, add_vertex_dots=False, line_color=LINEA, stroke_width=3)
-        g3 = a3.plot_line_graph(ts, y - seguido, add_vertex_dots=False, line_color=ERROR, stroke_width=3)
+        # la parte en las casillas de la línea, como la cuenta `analyze`: lo lento se fuga a ellas y queda adentro
+        coef = [2 / n * (y * np.exp(-2j * np.pi * f * ts)).sum() for f, _, _ in COMPS]
+        proy = sum((c * np.exp(2j * np.pi * f * ts)).real for c, (f, _, _) in zip(coef, COMPS))
+        g2 = a2.plot_line_graph(ts, proy, add_vertex_dots=False, line_color=LINEA, stroke_width=3)
+        g3 = a3.plot_line_graph(ts, y - proy, add_vertex_dots=False, line_color=ERROR, stroke_width=3)
         e1 = texto("tu aguja", 22, color=AGUJA).next_to(a1, LEFT, buff=0.2)
         e2 = texto("sus partes en\n0.05, 0.1, 0.15, 0.2 Hz", 18, color=LINEA).next_to(a2, LEFT, buff=0.2)
         e3 = texto("lo que sobra", 22, color=ERROR).next_to(a3, LEFT, buff=0.2)
@@ -417,7 +420,7 @@ class Remanente(Scene):
         self.play(Create(a2), TransformFromCopy(g1, g2), FadeIn(e2), run_time=2)
         self.play(Create(a3), TransformFromCopy(g1, g3), FadeIn(e3), run_time=2)
         rem = 1 - sum(abs(2 / n * (y * np.exp(-2j * np.pi * f * ts)).sum()) ** 2 / 2 for f, _, _ in COMPS) / y.var()    # la cuenta del juego (`analyze`)
-        nota = texto(f"temblor, correcciones y deriva: el {rem * 100:.0f} % de tu movimiento. Eso es el remanente.", 24)\
+        nota = texto(f"Temblor y correcciones: el {rem * 100:.0f} % de tu movimiento. Eso es el remanente.\nLa deriva lenta casi no entra: se fuga a las ondas.", 22)\
             .to_edge(DOWN, buff=0.3)
         self.play(FadeIn(nota))
         self.wait(3)

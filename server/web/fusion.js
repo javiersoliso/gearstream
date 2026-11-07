@@ -170,7 +170,8 @@ function dibujaC() {
   const v = S.valle, { g, W, H } = fit($('figC'), 230);
   const top = Math.max(...v.map((p) => p.rms)) * 1.1;
   const m = axes(g, W, H, { min: 0.01, max: 50, log: true, label: 'k (1/s)' }, { min: 0, max: top, label: 'error rms (°)' });
-  if (S.b > 0) line(g, m, 200, (i) => 0.01 * Math.pow(5000, i / 199), (i) => S.b / (0.01 * Math.pow(5000, i / 199)), C.ink, 1, [5, 5]);
+  // b/k solo desde k = 0.2/s: más a la izquierda, en un minuto el error no alcanza a llegar
+  if (S.b > 0) line(g, m, 200, (i) => 0.2 * Math.pow(250, i / 199), (i) => S.b / (0.2 * Math.pow(250, i / 199)), C.ink, 1, [5, 5]);
   line(g, m, v.length, (i) => v[i].k, (i) => v[i].rms, C.fus, 2.5);
   const mine = FM.errores(S.fus, S.sim.verdad, 500).rms, best = v.reduce((a, b) => (b.rms < a.rms ? b : a));
   g.fillStyle = C.ink; g.beginPath(); g.arc(m.x(best.k), m.y(best.rms), 3, 0, 2 * Math.PI); g.fill();

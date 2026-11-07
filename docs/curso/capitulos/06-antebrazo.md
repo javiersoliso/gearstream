@@ -26,7 +26,8 @@ es $-x$. Es el giro de 180° del capítulo 2. `forearmOf` de `wrist.js` es esa l
 así.
 
 Eso es un supuesto, no una medida. Con el reloj girado 10° sobre su propio eje $z$, $x$ ya no es el antebrazo, y 100 °/s de atornillar
-dejan al menos 17.4 °/s que el cursor ve, y más con el antebrazo inclinado. Y si el reloj se pone al revés, la izquierda se comporta como la derecha.
+dejan al menos 17.4 °/s que el cursor ve, y más con el antebrazo inclinado, hasta unos 65°: más arriba el cursor deja
+de leer yaw y pitch. Y si el reloj se pone al revés, la izquierda se comporta como la derecha.
 
 Para averiguar el eje, `AirMouse._calib_forearm` usa algo que sí se sabe: con el brazo colgando, el antebrazo apunta abajo, y
 la gravedad queda sobre él. Marca $x = -9.81$ en la izquierda, y dice `usa --forearm +x`.

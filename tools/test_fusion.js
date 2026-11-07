@@ -114,7 +114,7 @@ for (const kp of [0, 2]) {
   } else {
     assert.ok(incl < 1, `con Kp = 2 la inclinación queda quieta (${incl.toFixed(2)}°)`);
     assert.ok(Math.abs(rumbo) > 10, `con Kp = 2 el rumbo se va igual (${rumbo.toFixed(1)}°)`);
-    near(rumbo, pred[n - 1], 1, 'el rumbo se va exactamente ∫ b·ĝ dt');
+    near(rumbo, pred[n - 1], 1, 'el rumbo se va casi exactamente ∫ b·ĝ dt');
     ok(`Kp = 2: inclinación ${incl.toFixed(2)}°, rumbo ${rumbo.toFixed(1)}° (∫ b·ĝ dt = ${pred[n - 1].toFixed(1)}°)`);
   }
 }

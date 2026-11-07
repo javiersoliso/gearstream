@@ -127,7 +127,7 @@ saber si el codo está doblado.
 
 ## 8. La regla de la mano derecha
 
-![Los dedos van de x a y y el pulgar dice z; la otra mano es un giro de 180° y sigue siendo x × y = z; un eje dado vuelta es un espejo y cambia el signo de los giros](../media/cap02/ReglaManoDerecha.gif)
+![Los dedos van de x a y y el pulgar dice z; la otra mano es un giro de 180° y sigue siendo x × y = z; un eje dado vuelta es un espejo y cambia el signo de los giros alrededor de los otros dos](../media/cap02/ReglaManoDerecha.gif)
 
 Hay dos flechas perpendiculares a $a$ y $b$, una para cada lado. ¿Cuál es $a\times b$? Lo decide un acuerdo: la **regla de la
 mano derecha**. Los dedos van de $a$ hacia $b$, y el pulgar marca el resultado. Con eso $x\times y = z$, y $b\times a$ apunta al

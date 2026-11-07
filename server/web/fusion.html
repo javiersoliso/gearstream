@@ -60,7 +60,7 @@
   <h2>Dos testigos que mienten</h2>
   <p>Para saber cuánto tienes la mano levantada, el reloj tiene dos testigos. Los dos mienten, cada uno a su manera.</p>
   <p>El <b class="c-giro">giroscopio</b> dice qué tan rápido sube o baja la mano. Sumando eso muestra a muestra (capítulo 3) sale el ángulo: una curva suave que sigue cada movimiento sin atraso. Pero con la mano quieta no marca cero: marca su sesgo, <i>b</i>. Al sumar, ese <i>b</i> se vuelve un error <i>b·t</i> que nunca deja de crecer.</p>
-  <p>El <b class="c-acel">acelerómetro</b> dice dónde es arriba (capítulo 4), así que no se desvía nunca. Pero no distingue la gravedad de un tirón: cada vez que la mano acelera, cree que arriba se inclinó.</p>
+  <p>El <b class="c-acel">acelerómetro</b> dice dónde es arriba (capítulo 4), así que no se desvía nunca. Pero no distingue la gravedad de un tirón: muchas veces, cuando la mano acelera, cree que arriba se inclinó.</p>
 
   <figure>
     <canvas id="figA"></canvas>
@@ -69,7 +69,7 @@
       <label>sacudidas <input id="sac" type="range" min="0" max="2" step="0.05" value="1"><output id="sacOut"></output></label>
     </div>
     <div class="read" id="readA"></div>
-    <figcaption><span class="key" style="background:var(--verdad)"></span>la verdad <span class="key" style="background:var(--giro)"></span>giroscopio sumado <span class="key" style="background:var(--acel)"></span>acelerómetro · Un minuto de una muñeca inventada: va y viene despacio y cada 6 s sube rápido y vuelve. Sube el sesgo y mira la violeta irse; sube las sacudidas y mira la amarilla saltar.</figcaption>
+    <figcaption><span class="key" style="background:var(--verdad)"></span>la verdad <span class="key" style="background:var(--giro)"></span>giroscopio sumado <span class="key" style="background:var(--acel)"></span>acelerómetro · Un minuto de una muñeca inventada: va y viene despacio y cada 6 s sube rápido y vuelve. El tirón es un modelo inventado, de un tamaño creíble: la cuenta de verdad cambia con la postura. Sube el sesgo y mira la violeta irse; sube las sacudidas y mira la amarilla saltar.</figcaption>
   </figure>
 
   <p>Lo que uno tiene, al otro le falta. El giroscopio es bueno para lo rápido y malo para lo lento; el acelerómetro, al revés. ¿Se puede quedarse con lo bueno de cada uno?</p>
@@ -91,11 +91,12 @@
     <figcaption>Arriba, los antebrazos vistos de costado: <span class="c-verdad">blanco</span> el de verdad, <span class="c-acel">amarillo</span> el que dice el acelerómetro, <span class="c-fus">coral</span> el filtro, atado al amarillo por el resorte. Abajo, el error del filtro durante el minuto; la punteada es <i>b/k</i>.</figcaption>
   </figure>
 
-  <p>Mira el error, abajo. No crece: sube un poco al principio y después se queda quieto, temblando alrededor de la línea punteada, <i>b/k</i>.</p>
+  <p>Mira el error, abajo. No crece sin fin: sube al principio y, si <i>k</i> no es muy chico, se queda quieto, temblando alrededor de la línea punteada, <i>b/k</i>.</p>
   <div class="box">
     <p><b>Por qué b/k.</b> El error <i>e</i> = θ − θ<sub>verdad</sub> cambia por dos razones: el sesgo lo empuja <i>b</i> grados por segundo, y el resorte lo devuelve <i>k·e</i> grados por segundo. Mientras <i>b</i> sea más grande que <i>k·e</i>, el error crece. Se queda quieto cuando los dos tirones se empatan:</p>
     <div class="eq">e′ = b − k·e  &nbsp;⇒&nbsp;  e → b / k</div>
-    <p>Un sesgo de 0.5 °/s con <i>k</i> = 1/s deja medio grado de error. Para siempre, pero nunca más.</p>
+    <p>No llega de golpe: <i>e</i>(<i>t</i>) = (<i>b/k</i>)·(1 − e<sup>−<i>kt</i></sup>), así que tarda unos 3/<i>k</i> segundos. Con <i>k</i> = 0.01/s no llega en un minuto.</p>
+    <p>Un sesgo de 0.5 °/s con <i>k</i> = 1/s deja medio grado de error. Para siempre, y el sesgo solo no deja más que eso.</p>
   </div>
   <p>Esto se llama <b>filtro complementario</b>, porque de cada testigo toma lo que al otro le falta: lo rápido del giroscopio y lo lento del acelerómetro. Juntar dos medidas así, para que cada una tape el defecto de la otra, es la <b>fusión de sensores</b>.</p>
 
@@ -106,7 +107,7 @@
   <figure>
     <canvas id="figC"></canvas>
     <div class="read" id="readC"></div>
-    <figcaption>El error típico del filtro (rms, desde el segundo 5) para cada rigidez, con la misma muñeca de arriba. El punto es tu <i>k</i>. La punteada es <i>b/k</i>: a la izquierda manda el sesgo. A la derecha mandan las sacudidas.</figcaption>
+    <figcaption>El error típico del filtro (rms, desde el segundo 5) para cada rigidez, con la misma muñeca de arriba. El punto es tu <i>k</i>. La punteada es <i>b/k</i>, desde <i>k</i> = 0.2/s: más a la izquierda, en un minuto el error no alcanza a llegar; ahí manda el sesgo. A la derecha mandan las sacudidas.</figcaption>
   </figure>
 
   <p>Prueba quitar las sacudidas (en la primera figura): el fondo se corre a la derecha, porque si el acelerómetro no miente conviene creerle más. Si subes el sesgo, también se corre a la derecha: hay más deriva que frenar. No hay un <i>k</i> bueno para todo; depende de cuánto miente cada testigo.</p>
@@ -143,12 +144,12 @@
       <label>animación <select id="anim"><option value="apuntar">apuntar</option><option value="tablet">usar una tablet</option><option value="caminar">caminar</option></select></label>
     </div>
     <div class="read" id="readE"></div>
-    <figcaption>Un minuto de una animación del mocap, con el ruido y el sesgo de un giroscopio de verdad. <span class="c-fus">Coral</span>: el error de inclinación del antebrazo. <span class="c-rumbo">Azul</span>: el error de rumbo. La punteada es ∫ b·ĝ dt, lo que el sesgo gira alrededor de la vertical. Caminando, el brazo cuelga y por ratos su rumbo no existe: ahí la azul se corta.</figcaption>
+    <figcaption>Un minuto de una animación del mocap, con un ruido y un sesgo inventados: el sesgo es unas diez veces el que deja el reloj de fábrica. <span class="c-fus">Coral</span>: el error de inclinación del antebrazo. <span class="c-rumbo">Azul</span>: el error de rumbo. La punteada es ∫ b·ĝ dt, lo que el sesgo gira alrededor de la vertical. Caminando, el brazo cuelga y por ratos su rumbo no existe: ahí la azul se corta.</figcaption>
   </figure>
 
-  <p>Con <i>K<sub>p</sub></i> = 0 se van los dos. Con cualquier <i>K<sub>p</sub></i> desde 0.5, la inclinación se queda pegada bajo un grado, y el rumbo sigue la punteada casi exacto: se va lo que el sesgo vertical dice, ni más ni menos. Eso es la <b>deriva del rumbo</b>, y ningún <i>K<sub>p</sub></i> la arregla.</p>
-  <p>Las páginas que todavía no usan esto (el ratón aéreo, Dibuja) sacan el rumbo con el <b>método de proyección</b>: rumbo = ∫yaw dt, y lo demás de la gravedad (con TRIAD). Sirve para apuntar, pero con el brazo colgando el antebrazo es casi vertical y su rumbo deja de existir: en las pruebas del mocap, caminando, se equivoca 16° de mediana. Mahony guarda la orientación entera y no tiene ese hueco.</p>
-  <p>¿Qué arreglaría el rumbo? Otra flecha fija en el mundo que no sea vertical: el norte de un magnetómetro, que este reloj no tiene, o algo que se vea, como la pantalla. Sin eso queda <b>recentrar</b>: decidir dónde es el frente y volver ahí, con un botón o de a poco cuando la mano descansa.</p>
+  <p>Con <i>K<sub>p</sub></i> = 0, apuntando o con la tablet, se van los dos; caminando la inclinación casi no se va, pero el rumbo sí. Con <i>K<sub>p</sub></i> desde 0.5 la inclinación se queda entre unas décimas y un par de grados, y el rumbo sigue la punteada casi exacto: se va lo que el sesgo vertical dice. Ojo: aquí el arriba medido no miente, porque es la gravedad de la animación; con el acelerómetro crudo vuelve el valle, y un <i>K<sub>p</sub></i> alto tiembla. Eso es la <b>deriva del rumbo</b>, y ningún <i>K<sub>p</sub></i> la arregla.</p>
+  <p>Las páginas que todavía no usan esto (el ratón aéreo, Dibuja) sacan el rumbo con el <b>método de proyección</b>: rumbo = ∫yaw dt, y lo demás de la gravedad. Sirve para apuntar, pero con el brazo colgando el antebrazo es casi vertical y su rumbo deja de existir: en las pruebas del mocap, caminando, se equivoca 16° de mediana. Mahony guarda la orientación entera y no tiene ese hueco.</p>
+  <p>¿Qué arreglaría el rumbo? Otra flecha fija en el mundo que no sea vertical: el norte de un magnetómetro, que este reloj no entrega, o algo que se vea, como la pantalla. Sin eso queda <b>recentrar</b>: decidir dónde es el frente y volver ahí, con un botón o de a poco cuando la mano descansa.</p>
 
   <!-- ===================================================================== -->
   <h2>Con tu reloj</h2>
@@ -187,19 +188,19 @@
   <details><summary>Si confío 100 % en el giroscopio, ¿qué pasa en un minuto? ¿Y si confío 100 % en la gravedad?</summary>
     <p>Con el giroscopio solo el ángulo se va <i>b·t</i>: con 0.5 °/s, 30° en un minuto (la violeta). Con la gravedad sola no se va nunca, pero cada sacudida la hace saltar decenas de grados (la amarilla).</p></details>
   <details><summary>¿Qué significa "tirar suavemente" hacia la gravedad? ¿Qué tan fuerte, y qué pasa si tiro demasiado?</summary>
-    <p>Es <i>k</i>: la fracción de la diferencia que se corrige por segundo. Muy fuerte y la estimación copia los saltos del acelerómetro; muy suave y queda el error <i>b/k</i>, grande. El mejor está en el fondo del valle, y depende de cuánto miente cada testigo.</p></details>
+    <p>Es <i>k</i>, la rapidez del resorte: en 1/<i>k</i> segundos cierra casi dos tercios de la diferencia. Muy fuerte y la estimación copia los saltos del acelerómetro; muy suave y el error va hacia <i>b/k</i>, grande, y solo llega si hay tiempo. El mejor está en el fondo del valle, y depende de cuánto miente cada testigo.</p></details>
   <details><summary>¿Por qué la fusión corrige la inclinación pero nunca el rumbo?</summary>
     <p>Porque girar alrededor de la vertical no cambia la gravedad. La corrección <i>e</i> = ĝ<sub>medido</sub> × ĝ<sub>predicho</sub> es siempre un eje horizontal: inclina, y nada más.</p></details>
   <details><summary>¿Por qué el método de proyección se pierde al caminar y la fusión no?</summary>
-    <p>Caminando, el brazo cuelga: el antebrazo es casi vertical y su rumbo no existe (es la singularidad del capítulo 5). La proyección necesita ese rumbo en cada muestra; Mahony guarda la orientación entera en un cuaternión, que no tiene ese hueco. En las pruebas: 16° de mediana contra menos de 1°.</p></details>
+    <p>Caminando, el brazo cuelga: el antebrazo es casi vertical y su rumbo no existe (es la singularidad del capítulo 5). La proyección necesita ese rumbo en cada muestra; Mahony guarda la orientación entera en un cuaternión, que no tiene ese hueco. En las pruebas: 16° de mediana contra menos de 1°, sin ruido y en la muñeca izquierda.</p></details>
   <details><summary>Si la gravedad del reloj ya es una cuenta de Samsung que junta sensores, ¿estoy fusionando una fusión?</summary>
-    <p>Sí. El sensor "gravedad" del reloj ya junta el acelerómetro y el giroscopio; por eso tiembla tan poco y en vivo la usamos de referencia. El testigo que tiembla de verdad es el acelerómetro crudo. Mahony con la gravedad de Samsung funciona bien, a cambio de no saber qué rigidez eligió Samsung.</p></details>
+    <p>Sí. El sensor "gravedad" del reloj ya junta el acelerómetro y el giroscopio; por eso tiembla tan poco y en vivo la usamos de referencia. El testigo que tiembla de verdad es el acelerómetro crudo. Con la gravedad de Samsung como medida, Mahony debería andar bien, porque casi no tiembla; no lo hemos medido, y no sabemos qué rigidez eligió Samsung.</p></details>
   <details><summary>¿Qué haría falta para que el rumbo no se fuera nunca?</summary>
     <p>Otra dirección fija en el mundo que no sea vertical: el norte de un magnetómetro (este reloj no lo entrega) o algo que se vea, como una pantalla o una cámara.</p></details>
   <details><summary>¿Cuándo conviene recentrar, y cómo se hace sin que el usuario lo note?</summary>
-    <p>Cuando la mano descansa: si está quieta, nadie nota que el frente se mueve un poco. Se hace de a poco, unos grados por segundo, como <code>autoCenterStep</code> en el avatar, o con un botón cuando el usuario lo pide.</p></details>
+    <p>Lo ideal es cuando la mano descansa: si está quieta, nadie nota que el frente se mueve un poco. <code>autoCenterStep</code> del avatar lo hace de a poco, pero siempre, sin esperar al reposo: tira del rumbo hacia el frente con τ = 12 s (con 90° fuera, unos 7.5 °/s), así que también se come los giros que dejas puestos. La otra forma es un botón.</p></details>
   <details><summary>¿Por qué un error de unas décimas de °/s se ve en el cursor como centímetros?</summary>
-    <p>A 2.4 m de la pantalla, un grado son 2.4 m × π/180 ≈ 4.2 cm. Un sesgo de 0.3 °/s en 10 s son 3°: unos 12 cm.</p></details>
+    <p>A 2.4 m de la pantalla, un grado son 2.4 m × π/180 ≈ 4.2 cm. Un sesgo de 0.3 °/s en 10 s son 3°: unos 13 cm.</p></details>
 
   <p style="margin-top:40px"><a href="/">← volver al tablero</a></p>
 </main>

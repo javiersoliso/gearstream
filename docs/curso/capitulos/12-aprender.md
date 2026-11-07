@@ -325,7 +325,7 @@ se va lejos, y no ayuda en nada con 4 dedos contra 5 dedos. Para esa pareja hay 
 Un 95 % con dejar uno fuera dice algo sobre tus tomas de esa tarde, con tu fuerza, tu correa y tu postura. Las tomas de
 una sesión se parecen entre ellas, y siempre queda alguna gemela adentro. Otra mano cae en otro sitio. En la animación
 un modelo acierta 98 % dejando uno fuera. Con otra persona que tenga 0.9 veces tu fuerza acierta 95 %; con 0.8, 68 %; con
-0.7, 37 %, en este sorteo (con 20 sorteos, 89 %, 64 % y 36 % de media). Aguanta hasta que los gestos cruzan a los vecinos, y
+0.7, 37 %, en este sorteo (con tu sesión fija y 20 sorteos de la otra persona, 89 %, 64 % y 36 % de media). Aguanta hasta que los gestos cruzan a los vecinos, y
 ahí cae rápido.
 
 La prueba justa para eso es dejar afuera a la persona entera, o por lo menos la sesión entera. El repo no la tiene

@@ -1,6 +1,7 @@
 # Capítulo 11 · Frecuencia
 
-**Pregunta guía.** ¿Se puede medir tu tiempo de reacción solo con una línea que se mueve y tu muñeca?
+**Pregunta guía.** ¿Se puede medir con cuánto retraso sigues algo, solo con una línea que se mueve y tu muñeca? (Ese retraso es
+tuyo más el de la cadena del capítulo 0.)
 
 En el Sismógrafo (`sismo.html`) una línea amarilla corre por el papel y tu muñeca mueve la aguja. Al final, el juego
 no solo dice cuánto te saliste: dice **cuánto seguiste cada onda de la línea, con cuánto retraso, y cuánto de lo que
@@ -87,12 +88,12 @@ por tres puntos. Un $\tau$ negativo quiere decir que te adelantas: pasa cuando v
 
 ## 7. Tu ruido: el remanente
 
-![Tu aguja se separa en la parte que está en las frecuencias de la línea y lo que sobra: temblor, correcciones y deriva](../media/cap11/Remanente.gif)
+![Tu aguja se separa en la parte que está en las frecuencias de la línea y lo que sobra: temblor y correcciones; la deriva lenta casi no entra](../media/cap11/Remanente.gif)
 
-Lo que moviste que no está en ninguna frecuencia de la línea es tu **remanente**: temblor, correcciones, deriva. El
+Lo que moviste que no está en ninguna frecuencia de la línea es tu **remanente**: temblor y correcciones. El
 juego lo calcula como la parte de la varianza de tu aguja que no explican las ondas de la línea. Es un piso, no una medida
-exacta: lo que se fuga a esas casillas cuenta como explicado, así que una deriva sola, sin seguir nada, da en el nivel
-tranquilo un remanente de menos de 0.1 y no de 1.
+exacta: lo que se fuga a esas casillas cuenta como explicado, así que una deriva sola, sin seguir nada, no da 1: en el
+nivel tranquilo, una deriva recta como la que deja un sesgo da unas 0.14, y una curva lenta casi 0.
 
 ## 8. Nyquist: lo rápido se disfraza de lento
 
