@@ -106,6 +106,29 @@ const pp = [10, 100, 800].map((n) => picoAPico(e.slice(0, n))), ds = [10, 100, 8
 assert.ok(pp[0] < pp[1] && pp[1] < pp[2], 'el pico a pico crece con la cantidad de muestras');
 near(ds[1], ds[2], 0.05, 'σ no');
 ok(`el pico a pico crece (${pp.map((v) => v.toFixed(1)).join(', ')}) y σ se queda (${ds.map((v) => v.toFixed(2)).join(', ')}) con 10, 100 y 800 muestras`);
+// varianza: dos azares que no dependen uno del otro suman sus varianzas; n muestras sumadas crecen como σ√n
+{
+  const centrar = (x) => { const c = promedio(x); return x.map((v) => v - c); };
+  const a = centrar(resta('gyr', 0)), b = centrar(resta('gyr', 2)), s = a.map((v, k) => v + b[k]);
+  const va = desviacion(a) ** 2, vb = desviacion(b) ** 2, vs = desviacion(s) ** 2, cruz = promedio(a.map((v, k) => v * b[k]));
+  near(vs, va + vb + 2 * cruz, 1e-9, '(a + b)² = a² + b² + 2ab, en promedio');
+  near(cruz, 0, 0.01, 'el término cruzado de dos ruidos que no dependen uno del otro');
+  near(vs, va + vb, 0.02, 'se suman las varianzas');
+  assert.ok(desviacion(s) < 0.75 * (desviacion(a) + desviacion(b)), 'los tamaños no se suman');
+  near(desviacion(a), 0.31, 0.005, 'σ en x'); near(desviacion(b), 0.30, 0.005, 'σ en z'); near(desviacion(s), 0.43, 0.005, 'σ de la suma');
+  ok(`varianzas: ${va.toFixed(3)} + ${vb.toFixed(3)} ≈ ${vs.toFixed(3)}; los tamaños ${desviacion(a).toFixed(2)} y ${desviacion(b).toFixed(2)} dan ${desviacion(s).toFixed(2)}, no ${(desviacion(a) + desviacion(b)).toFixed(2)}`);
+  const largoSucio = columna(M.synth('tablet', 'l', { noise: true, loops: 40 }).gyr, 2);       // 320 s quieto, como datos_cap01.js
+  const largoLimpio = columna(M.synth('tablet', 'l', { loops: 40 }).gyr, 2);
+  const L = centrar(largoSucio.map((v, k) => v - largoLimpio[k]));
+  const s1 = desviacion(L);
+  for (const n of [4, 16, 64]) {
+    const sumas = [], proms = [];
+    for (let i = 0; i + n <= L.length; i += n) { const q = L.slice(i, i + n).reduce((p, v) => p + v, 0); sumas.push(q); proms.push(q / n); }
+    near(desviacion(sumas), s1 * Math.sqrt(n), 0.06 * s1 * Math.sqrt(n), `la suma de ${n} muestras mide σ√n`);
+    near(desviacion(proms), s1 / Math.sqrt(n), 0.06 * s1 / Math.sqrt(n), `el promedio de ${n} muestras tiembla σ/√n`);
+  }
+  ok(`la suma de n muestras de ruido mide σ√n y su promedio σ/√n (n = 4, 16 y 64, con σ = ${s1.toFixed(2)})`);
+}
 // el error de la línea del Sismógrafo: analyze usa la misma raíz del promedio de los cuadrados
 const comps = S.makeTarget(1, () => 0.5), corrida = [];
 for (let t = 0; t <= 23; t += 0.02) corrida.push({ t, y: S.wave(comps, t) + 0.1 });

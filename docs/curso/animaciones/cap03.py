@@ -120,7 +120,13 @@ class SegundaDiferencia(Scene):
         self.play(tt.animate.set_value(5.6), run_time=7, rate_func=linear)
         n2 = texto("Así sale de la animación del mocap lo que leería el acelerómetro del reloj.", 22).to_edge(DOWN, buff=0.15)
         self.play(FadeOut(n1), FadeIn(n2))
-        self.wait(3)
+        self.wait(2.5)
+        # de dónde sale el Δt²: es derivar dos veces
+        f2 = MathTex(r"a[k] = \frac{1}{\Delta t}\left(\frac{x[k+1]-x[k]}{\Delta t} - \frac{x[k]-x[k-1]}{\Delta t}\right)", font_size=28)\
+            .move_to(f, aligned_edge=LEFT)
+        n3 = texto("Es derivar dos veces: la resta de dos rapideces, otra vez sobre Δt. De ahí el Δt².", 22).to_edge(DOWN, buff=0.15)
+        self.play(FadeOut(n2), FadeIn(n3), ReplacementTransform(f, f2))
+        self.wait(3.5)
 
 
 # ---------------------------------------------------------------------------------------------------------
@@ -185,6 +191,82 @@ class IntegrarConNumeros(Scene):
 
 
 # ---------------------------------------------------------------------------------------------------------
+class ComoSeEscriben(Scene):
+    """x′, ẋ y dx/dt son la resta sobre Δt con Δt muy chico; ∫x dt es la suma de x·Δt con Δt muy chico."""
+
+    def construct(self):
+        x = lambda t: 1.1 * np.sin(0.9 * t) + 0.35 * t           # la misma curva que DerivarConNumeros
+        dx = lambda t: 0.99 * np.cos(0.9 * t) + 0.35
+        titulo = texto("Cómo se escriben la derivada y la integral", 32).to_edge(UP)
+        a1 = ejes([0, 6, 1], [-1, 3, 1], ancho=7.2, alto=2.3)
+        a2 = ejes([0, 6, 1], [-1, 2, 1], ancho=7.2, alto=2.0)
+        VGroup(a1, a2).arrange(DOWN, buff=0.45).next_to(titulo, DOWN, buff=0.3).to_edge(LEFT, buff=2.25)
+        l1 = texto("x", 22).next_to(a1, LEFT, buff=0.25)
+        l2 = texto("cuánto cambia\npor segundo", 18).next_to(a2, LEFT, buff=0.15)
+        curva = a1.plot(x, x_range=[0, 6, 0.02], color=ANGULO, stroke_width=3)
+        self.play(Write(titulo), Create(a1), Create(a2), FadeIn(l1, l2), Create(curva))
+
+        def decir(s, viejo=None, size=22):
+            n = texto(s, size).to_edge(DOWN, buff=0.15)
+            self.play(*([FadeOut(viejo)] if viejo else []), FadeIn(n), run_time=0.5)
+            return n
+
+        # la derivada: la resta sobre Δt, con Δt cada vez más chico
+        t0 = 1.0
+        h = ValueTracker(2.0)
+        cuerda = always_redraw(lambda: Line(a1.c2p(t0, x(t0)), a1.c2p(t0 + h.get_value(), x(t0 + h.get_value())), color=ERROR, stroke_width=5))
+        puntos = always_redraw(lambda: VGroup(Dot(a1.c2p(t0, x(t0)), radius=0.08), Dot(a1.c2p(t0 + h.get_value(), x(t0 + h.get_value())), radius=0.08)))
+        pend = lambda: (x(t0 + h.get_value()) - x(t0)) / h.get_value()
+        lect = always_redraw(lambda: VGroup(texto(f"Δt = {h.get_value():.2f} s", 22),
+                                            texto(f"resta / Δt = {pend():.3f}", 22, color=ERROR))
+                             .arrange(DOWN, aligned_edge=LEFT, buff=0.12).move_to(RIGHT * 4.6 + UP * 2.3))
+        self.add(cuerda, puntos, lect)
+        n = decir("La derivada con números: la resta sobre Δt. Achiquemos Δt.")
+        self.play(h.animate.set_value(0.02), run_time=4, rate_func=rate_functions.ease_in_out_sine)
+        tang = Line(a1.c2p(t0 - 0.9, x(t0) - 0.9 * dx(t0)), a1.c2p(t0 + 0.9, x(t0) + 0.9 * dx(t0)), color=WHITE, stroke_width=2)
+        lt = texto(f"se acerca a {dx(t0):.3f}", 22, color=WHITE).move_to(RIGHT * 4.6 + UP * 1.45)
+        self.play(Create(tang), FadeIn(lt))
+        f1 = MathTex(r"x' = \dot x = \frac{dx}{dt}", font_size=40).move_to(RIGHT * 4.6 + UP * 0.45)
+        self.play(Write(f1))
+        n = decir("Tres formas de escribir lo mismo: la resta sobre Δt, con Δt muy chico.", n)
+        self.wait(2)
+        n = decir("dx y dt se leen «un cambio muy chico de x» y «de t».", n)
+        self.wait(2)
+        f2 = MathTex(r"x'' = \ddot x = \frac{d^2x}{dt^2}", font_size=34).next_to(f1, DOWN, buff=0.3)
+        self.play(Write(f2))
+        n = decir("Dos marcas: derivar dos veces. Con otra letra es igual: e′, ė, ë.", n)
+        self.wait(2.5)
+        self.play(FadeOut(lect, lt, f2), f1.animate.scale(0.75).move_to(RIGHT * 4.6 + UP * 2.2))
+
+        # la integral: la suma de tasa × Δt, con Δt cada vez más chico
+        gw = a2.plot(dx, x_range=[0, 6, 0.02], color=TASA, stroke_width=3)
+        self.play(Create(gw))
+        n = decir("Abajo, cuánto cambia x por segundo. Sumemos tasa × Δt desde 0 hasta 6 s.", n)
+        verdad = x(6) - x(0)
+        barras = VGroup()
+        suma_t = VGroup()
+        for paso in (1.0, 0.5, 0.1):
+            ts = np.arange(0, 6 - 1e-9, paso)
+            nuevas = VGroup(*[Polygon(a2.c2p(t, 0), a2.c2p(t + paso, 0), a2.c2p(t + paso, dx(t)), a2.c2p(t, dx(t)),
+                                      stroke_width=1 if paso > 0.2 else 0, stroke_color=BLACK,
+                                      fill_color=TASA if dx(t) >= 0 else ERROR, fill_opacity=0.6) for t in ts])
+            suma = float(sum(dx(t) * paso for t in ts))
+            st = VGroup(texto(f"Δt = {paso} s", 22), texto(f"Σ tasa·Δt = {suma:.3f}", 22, color=TASA))\
+                .arrange(DOWN, aligned_edge=LEFT, buff=0.12).move_to(RIGHT * 4.6 + DOWN * 1.1)
+            self.play(FadeOut(barras), FadeOut(suma_t), FadeIn(nuevas), FadeIn(st), run_time=1)
+            barras, suma_t = nuevas, st
+            self.wait(1.2)
+        lv = texto(f"con Δt muy chico: {verdad:.3f}", 22, color=WHITE).next_to(suma_t, DOWN, aligned_edge=LEFT, buff=0.15)
+        self.play(FadeIn(lv))
+        f3 = MathTex(r"\int_0^6 x'\,dt", font_size=40).move_to(RIGHT * 4.6 + UP * 0.6)
+        self.play(Write(f3))
+        n = decir("∫ es una S alargada: suma. Y dt es el Δt, muy chico.", n)
+        self.wait(2.5)
+        n = decir(f"Sumar lo que cambia por segundo da cuánto cambió: x(6) − x(0) = {verdad:.3f}.", n)
+        self.wait(3)
+
+
+# ---------------------------------------------------------------------------------------------------------
 class ErrorAcumulado(Scene):
     """Un sesgo se vuelve b·t; el ruido, un paseo al azar que crece como √t."""
 
@@ -222,6 +304,19 @@ class ErrorAcumulado(Scene):
             .to_edge(DOWN, buff=0.15)
         self.play(FadeIn(moral))
         self.wait(3)
+        # por qué la raíz: la varianza del capítulo 1
+        n_pasos = 60 / dt
+        assert abs(np.sqrt(n_pasos * (sigma * dt) ** 2) - env[-1]) < 1e-9
+        r1 = texto("¿Por qué la raíz? Cada muestra suma ω·Δt, un azar de varianza (σ·Δt)².", 22).to_edge(DOWN, buff=0.15)
+        self.play(FadeOut(moral), FadeIn(r1))
+        self.wait(3)
+        r2 = texto(f"En t segundos hay t/Δt muestras ({n_pasos:.0f} en un minuto): las varianzas se suman, σ²·t·Δt.", 22)\
+            .to_edge(DOWN, buff=0.15)
+        self.play(FadeOut(r1), FadeIn(r2))
+        self.wait(3)
+        r3 = texto("Su raíz es σ√(t·Δt): sumar azares, como en el capítulo 1.", 22).to_edge(DOWN, buff=0.15)
+        self.play(FadeOut(r2), FadeIn(r3))
+        self.wait(3)
 
 
 # ---------------------------------------------------------------------------------------------------------
@@ -247,12 +342,20 @@ class DosVecesIntegrar(Scene):
         g2 = linea(a2, t, b * t, ORANGE, 4)
         f2 = MathTex(r"b\,t = 0.5", font_size=30, color=ORANGE).move_to(a2.c2p(2.2, 0.45))
         self.play(Create(g2), Write(f2), run_time=2)
+        # la posición es el área bajo la velocidad: un triángulo de base t y altura b·t
+        tri = Polygon(a2.c2p(0, 0), a2.c2p(10, 0), a2.c2p(10, b * 10), stroke_width=0, fill_color=ORANGE, fill_opacity=0.35)
+        area = texto("área = ½ · t · b t", 20, color=ORANGE).move_to(a2.c2p(7.3, 0.12))
+        n1 = texto("Integrar es sumar el área de abajo: la velocidad deja un triángulo, ½ · base · altura.", 22)\
+            .to_edge(DOWN, buff=0.15)
+        self.play(FadeIn(tri), FadeIn(area), FadeIn(n1))
+        self.wait(2.5)
         g3 = linea(a3, t, b * t ** 2 / 2, ANGULO, 4)
         f3 = MathTex(r"\tfrac12 b\,t^2 = 2.5", font_size=30, color=ANGULO).move_to(a3.c2p(2.8, 2.2))
         self.play(Create(g3), Write(f3), run_time=3)
+        assert abs(0.5 * 10 * (b * 10) - b * 10 ** 2 / 2) < 1e-12 and abs(b * 60 ** 2 / 2 - 90) < 1e-9
         moral = texto("Un error que casi no se ve: 2.5 m en 10 s, 90 m en un minuto.", 24)\
             .to_edge(DOWN, buff=0.15)
-        self.play(FadeIn(moral))
+        self.play(FadeOut(n1), FadeIn(moral))
         self.wait(3)
 
 
@@ -353,6 +456,95 @@ class Suavizar(Scene):
         self.wait(3)
 
 
+class LaExponencial(Scene):
+    """Repetir y ← y + α(x − y) deja (1 − α)^n de lo que faltaba: se apaga como e^(−t/τ), con τ = Δt/α."""
+
+    def construct(self):
+        titulo = texto("Lo que falta se apaga: la exponencial", 34).to_edge(UP)
+        self.play(Write(titulo))
+
+        def decir(s, viejo=None, size=22):
+            n = texto(s, size).to_edge(DOWN, buff=0.15)
+            self.play(*([FadeOut(viejo)] if viejo else []), FadeIn(n), run_time=0.5)
+            return n
+
+        # cada paso deja (1 − α) de lo que faltaba
+        alfa, pasos = 0.2, 15
+        y, falta = 0.0, []
+        for _ in range(pasos + 1):
+            falta.append(1 - y)
+            y = y + alfa * (1 - y)                                 # el promedio que olvida, con x = 1
+        assert np.allclose(falta, (1 - alfa) ** np.arange(pasos + 1))
+        ax = ejes([0, pasos, 5], [0, 1, 0.5], ancho=6.0, alto=3.3).move_to(LEFT * 3.2 + DOWN * 0.3)
+        lx = texto("pasos", 18).next_to(ax.x_axis, DOWN, buff=0.35)
+        ly = texto("lo que falta", 20).next_to(ax, UP, buff=0.1).align_to(ax, LEFT)
+        self.play(Create(ax), FadeIn(lx, ly))
+        f1 = MathTex(r"y \leftarrow y + \alpha\,(x - y)", font_size=34).move_to(RIGHT * 3.6 + UP * 2.2)
+        f2 = MathTex(r"x - y \;\leftarrow\; (1-\alpha)\,(x - y)", font_size=34).next_to(f1, DOWN, buff=0.3)
+        self.play(Write(f1))
+        n = decir(f"Con α = {alfa}, cada paso cierra el {alfa:.0%} de lo que falta: queda el {1 - alfa:.0%}.")
+        self.play(Write(f2))
+        barras = VGroup()
+        for k, v in enumerate(falta):
+            barras.add(Rectangle(width=ax.c2p(0.7, 0)[0] - ax.c2p(0, 0)[0], height=ax.c2p(0, v)[1] - ax.c2p(0, 0)[1], stroke_width=0,
+                                 fill_color=ERROR, fill_opacity=0.8).move_to(ax.c2p(k, v / 2)))
+        self.play(LaggedStart(*[FadeIn(b, shift=UP * 0.1) for b in barras], lag_ratio=0.35), run_time=4)
+        f3 = MathTex(r"\text{falta} = (1-\alpha)^n", font_size=34, color=ERROR).next_to(f2, DOWN, buff=0.3)
+        self.play(Write(f3))
+        n = decir("Después de n pasos queda (1 − α)ⁿ: el mismo factor, una y otra vez.", n)
+        self.wait(2)
+
+        # en 1/α pasos queda siempre casi lo mismo: 1/e
+        filas = [(a, round(1 / a), (1 - a) ** round(1 / a)) for a in (0.2, 0.05, 0.01, 0.002)]
+        celdas = [("α", "1/α pasos", "queda", GREY_B)] + [(f"{a}", f"{p}", f"{q:.4f}", WHITE) for a, p, q in filas] + \
+                 [("muy chico", "muchos", f"{np.exp(-1):.4f}", ANGULO)]
+        tabla = VGroup(*[VGroup(*[texto(c, 22, color=col) for c in fila]) for *fila, col in celdas])
+        VGroup(*[m for fila in tabla for m in fila]).arrange_in_grid(rows=len(celdas), cols=3, buff=(0.6, 0.16), col_alignments="lcr")
+        tabla.move_to(RIGHT * 2.9 + DOWN * 0.9)
+        ue = texto("= 1/e", 22, color=ANGULO).next_to(tabla[-1][2], RIGHT, buff=0.15)
+        self.play(FadeOut(f1, f2), f3.animate.move_to(RIGHT * 3.6 + UP * 2.2))
+        n = decir("¿Cuánto queda después de 1/α pasos? Con α = 0.2 son 5 pasos.", n)
+        self.play(FadeIn(tabla[0]), FadeIn(tabla[1]))
+        self.play(Indicate(barras[5], color=ANGULO))
+        n = decir("Con α más chico hacen falta más pasos, y lo que queda se acerca a un número fijo.", n)
+        self.play(LaggedStart(*[FadeIn(f) for f in tabla[2:5]], lag_ratio=0.5), run_time=2)
+        self.play(FadeIn(tabla[5]), FadeIn(ue))
+        n = decir(f"Ese número es 1/e, con e = {np.e:.4f}...: un número fijo, como π.", n)
+        self.wait(3)
+        self.play(*[FadeOut(m) for m in (ax, lx, ly, barras, tabla, ue, f3)])
+
+        # en el tiempo: con Δt entre pasos, 1/α pasos son τ = Δt/α segundos
+        hz, alfa = 100, 0.05
+        dt = 1 / hz
+        tau = dt / alfa
+        t = np.arange(0, 0.81, dt)
+        quedan = (1 - alfa) ** np.arange(len(t))
+        a2 = ejes([0, 0.8, 0.2], [0, 1, 0.25], ancho=8.0, alto=3.6).move_to(LEFT * 1.4 + DOWN * 0.35)
+        lx2 = texto("s", 18).next_to(a2.x_axis, RIGHT, buff=0.1)
+        ly2 = texto(f"lo que falta (α = {alfa}, {hz} muestras/s)", 20).next_to(a2, UP, buff=0.1).align_to(a2, LEFT)
+        f4 = MathTex(r"(1-\alpha)^{t/\Delta t} \approx e^{-t/\tau}", font_size=36).move_to(RIGHT * 4.6 + UP * 2.0)
+        f5 = MathTex(r"\tau = \frac{\Delta t}{\alpha}", font_size=36).next_to(f4, DOWN, buff=0.3)
+        self.play(Create(a2), FadeIn(lx2, ly2))
+        n = decir(f"Ahora en el tiempo: un paso cada Δt = {dt} s, con α = {alfa}.", n)
+        puntos = VGroup(*[Dot(a2.c2p(s, q), radius=0.035, color=ERROR) for s, q in zip(t[::2], quedan[::2])])
+        self.play(LaggedStart(*[FadeIn(p) for p in puntos], lag_ratio=0.05), run_time=2)
+        curva = a2.plot(lambda s: np.exp(-s / tau), x_range=[0, 0.8, 0.005], color=WHITE, stroke_width=3)
+        self.play(Create(curva), Write(f4), Write(f5), run_time=2)
+        n = decir(f"Con un paso cada Δt, 1/α pasos son τ = Δt/α = {tau:.2f} s: la constante de tiempo.", n)
+        self.wait(1.5)
+        marcas = VGroup()
+        for m in (1, 2, 3):
+            q = np.exp(-m)
+            marcas.add(DashedLine(a2.c2p(m * tau, 0), a2.c2p(m * tau, q), color=ANGULO),
+                       Dot(a2.c2p(m * tau, q), radius=0.07, color=ANGULO),
+                       texto(f"{m}τ: queda {q:.0%}, cerró {1 - q:.0%}", 20, color=ANGULO).next_to(a2.c2p(m * tau, q), UR, buff=0.08))
+        self.play(LaggedStart(*[FadeIn(x) for x in marcas], lag_ratio=0.25), run_time=2.5)
+        n = decir("En un τ se cierra el 63%: 1 − 1/e. En tres τ, casi todo.", n)
+        self.wait(2.5)
+        n = decir(f"Wrist.rates, α = 0.002 a 100 Hz: τ = {0.01 / 0.002:.0f} s. Motion.feed_gyro: τ = 20 s.", n)
+        self.wait(3)
+
+
 class DerivarAmplificaRuido(Scene):
     """Dividir por un Δt chico agranda cada temblor: antes de derivar hay que suavizar."""
 
@@ -386,10 +578,17 @@ class DerivarAmplificaRuido(Scene):
             .to_edge(DOWN, buff=0.15)
         self.play(Write(f), FadeIn(n1))
         self.wait(2)
+        # de dónde sale σ/(√2·Δt): la resta de dos muestras con ruidos que no dependen uno del otro
+        resta = x[2:] - x[:-2] - (limpia[2:] - limpia[:-2])
+        n1b = VGroup(texto(f"x[k+1] − x[k−1]: dos ruidos al azar. Varianzas sumadas, 2σ²: mide σ√2 (aquí {resta.std():.4f}).", 22),
+                     texto(f"Sobre 2Δt: σ√2 / (2Δt) = σ / (√2·Δt) = {ruido / (np.sqrt(2) * dt):.2f}.", 22))\
+            .arrange(DOWN, buff=0.08).to_edge(DOWN, buff=0.12)
+        self.play(FadeOut(n1), FadeIn(n1b))
+        self.wait(4)
         self.play(FadeIn(l3), Create(linea(a3, t[1:-1], suave, SUAVE, 3)), run_time=2)
         self.play(Create(linea(a3, t, verdad, WHITE, 2)), run_time=1)
         n2 = texto("Antes de derivar hay que suavizar: se paga con un poco de atraso.", 22).to_edge(DOWN, buff=0.15)
-        self.play(FadeOut(n1), FadeIn(n2))
+        self.play(FadeOut(n1b), FadeIn(n2))
         self.wait(3)
 
 
@@ -487,6 +686,8 @@ class UnaOnda(Scene):
         n = decir("La frecuencia f: cuántas vueltas por segundo.", n)
         self.play(f.animate.set_value(2), run_time=2.5)
         self.play(f.animate.set_value(1), run_time=1.5)
+        n = decir("El 2π: sen pide radianes, y f vueltas por segundo son 2πf radianes.", n)
+        self.wait(3.5)
         n = decir("La fase φ: dónde empieza.", n)
         self.play(ph.animate.set_value(2 * PI), run_time=3, rate_func=linear)
         self.play(ph.animate.set_value(1), run_time=1)
@@ -523,6 +724,18 @@ class IntegrarUnaOnda(Scene):
             self.play(Create(gd), FadeIn(la), run_time=1.3)
         f = MathTex(r"\int a\sin(2\pi f t)\,dt \;\to\; \text{amplitud}\ \frac{a}{2\pi f}", font_size=30).to_edge(DOWN, buff=0.6)
         self.play(Write(f))
+        # de dónde sale a/(2πf): un ángulo que va y viene ±A es la sombra de un punto que da vueltas en un círculo de radio A
+        A, fr = 8.0, 2
+        assert abs(2 * PI * fr * A - 100.53) < 0.01 and abs(a / (2 * PI * 2) - 7.96) < 0.01
+        por_que = [("Un ángulo que va y viene ±A, f veces por segundo, es la sombra", "de un punto que da f vueltas por segundo en un círculo de radio A."),
+                   ("Ese punto recorre 2πA en cada vuelta: 2πf·A por segundo.", "Su sombra nunca va más rápido que eso, y en el centro va así de rápido."),
+                   ("Si la tasa llega a a, el ángulo llega a A = a / (2πf).", f"A 2 Hz: 100 / (2π·2) = {a / (2 * PI * 2):.2f}°.")]
+        viejo = f
+        for s1, s2 in por_que:
+            nuevo = VGroup(texto(s1, 22), texto(s2, 22)).arrange(DOWN, buff=0.08).to_edge(DOWN, buff=0.12)
+            self.play(FadeOut(viejo), FadeIn(nuevo), run_time=0.5)
+            self.wait(3.5)
+            viejo = nuevo
         moral = texto("La misma tasa, 16 veces más rápido: el ángulo es 16 veces más chico.", 22).to_edge(DOWN, buff=0.1)
-        self.play(FadeIn(moral))
+        self.play(FadeOut(viejo), FadeIn(f), FadeIn(moral))
         self.wait(3)

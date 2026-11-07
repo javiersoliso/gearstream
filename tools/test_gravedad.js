@@ -49,6 +49,16 @@ near(giro(0.7).atan2, -giro(-0.7).atan2, 1e-9, 'atan2 sí');
 assert.ok(giro(0.7).atan2 > 0 && giro(-0.7).atan2 < 0, 'atan2 tiene signo');
 ok('arccos da lo mismo a los dos lados; atan2(g_y, g_z) guarda el signo');
 
+// por qué arccos: con los dos de largo 1, el producto punto es el coseno, y arccos vuelve al ángulo
+for (const grados of [0, 30, 90, 135, 180]) {
+  const th = grados / R2D, gh = [0, Math.sin(th), Math.cos(th)];
+  near(len(gh), 1, 1e-12, 'ĝ mide 1');
+  near(dot(gh, [0, 0, 1]), Math.cos(th), 1e-12, `ĝ·z = cos θ a ${grados}°`);
+  near(Math.acos(dot(gh, [0, 0, 1])) * R2D, grados, 1e-6, `arccos vuelve a ${grados}°`);
+}
+near(Math.acos(1) * R2D, 0, 1e-12, 'arccos 1'); near(Math.acos(0) * R2D, 90, 1e-12, 'arccos 0'); near(Math.acos(-1) * R2D, 180, 1e-12, 'arccos −1');
+ok('con ĝ y el eje de largo 1, ĝ·eje = cos θ; arccos 1 = 0°, arccos 0 = 90°, arccos −1 = 180°');
+
 // ---------- la inclinación: lo que tiene que cumplir cualquiera que la escriba ----------
 function inclinacionDelCurso(g, eje) {
   return Math.acos(Math.max(-1, Math.min(1, dot(g, eje) / (len(g) * len(eje))))) * R2D;

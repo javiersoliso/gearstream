@@ -448,6 +448,13 @@ class AngulosQueDanLaVuelta(Escena2D):
         l4 = texto(f"350 + {dif:.0f} / 2 = 360, y wrap(360) = {bien:.0f}°", 24, color=GREEN).next_to(l3, DOWN, buff=0.2)
         self.decir("La diferencia se lleva a [−180°, 180°) antes de usarla: wrap_deg.", GREEN)
         self.play(Write(f))
+        self.wait(1)
+        cociente = (10 - 350 + 180) / 360
+        assert np.floor(1.4) == 1 and np.floor(-0.4) == -1 and np.floor(cociente) == -1
+        self.decir("⌊ ⌋ es redondear hacia abajo: ⌊1.4⌋ = 1 y ⌊−0.4⌋ = −1.")
+        self.wait(2.5)
+        self.decir(f"Con −340: ⌊(−340 + 180) / 360⌋ = ⌊{num(cociente)}⌋ = −1, y −340 − 360·(−1) = {-340 + 360}.", GREEN)
+        self.wait(3)
         self.play(FadeIn(l3))
         correcto = flecha(O, punta(bien), GREEN, 7)
         self.play(FadeIn(l4), GrowArrow(correcto))
@@ -528,6 +535,8 @@ class ProductoPunto(Escena2D):
         self.add(always_redraw(panel))
         self.decir("Multiplicar número a número y sumar da lo mismo que el largo por el coseno.")
         self.wait(2)
+        self.decir("Σ se lee «suma de»: Σᵢ aᵢbᵢ = a₁b₁ + a₂b₂, y en 3D, + a₃b₃.")
+        self.wait(2.5)
         self.play(th.animate.set_value(20), run_time=2.5)
         self.decir("Casi alineadas: casi todo a va en la dirección de b.", GREEN)
         self.wait(1)
@@ -539,6 +548,75 @@ class ProductoPunto(Escena2D):
         self.wait(2)
         self.play(th.animate.set_value(50), run_time=3)
         self.decir("Esa sombra se llama proyección: cuánto de una flecha va en la dirección de otra.")
+        self.wait(3)
+
+
+class PuntoEsCoseno(Escena2D):
+    """Por qué Σ aᵢbᵢ = |a||b| cos θ: escrita con largos no cambia al girar, y con a sobre x es el coseno."""
+
+    def construct(self):
+        titulo = texto("¿Por qué la suma da |a||b| cos θ?", 32).to_edge(UP)
+        self.play(Write(titulo))
+        O = LEFT * 3.8 + DOWN * 0.6
+        la_, lb_, th = 2.4, 2.8, 50 * GRADO
+        phi = ValueTracker(20 * GRADO)                           # hacia dónde apunta b; a va 50° más allá
+        a = lambda: la_ * np.array([np.cos(phi.get_value() + th), np.sin(phi.get_value() + th), 0])
+        b = lambda: lb_ * np.array([np.cos(phi.get_value()), np.sin(phi.get_value()), 0])
+        cruz = VGroup(DashedLine(O + LEFT * 3.0, O + RIGHT * 3.4, stroke_opacity=0.35),
+                      DashedLine(O + DOWN * 2.6, O + UP * 2.9, stroke_opacity=0.35))
+        ex = texto("eje x", 18, color=GREY_B).next_to(O + RIGHT * 3.4, DOWN, buff=0.1)
+        fa = always_redraw(lambda: flecha(O, O + a(), YELLOW, 7))
+        fb = always_redraw(lambda: flecha(O, O + b(), ORANGE, 7))
+        fd = always_redraw(lambda: DashedLine(O + b(), O + a(), color=RED, stroke_width=5))
+        la = always_redraw(lambda: texto("a", 28, color=YELLOW).move_to(O + a() * 1.13))
+        lb = always_redraw(lambda: texto("b", 28, color=ORANGE).move_to(O + b() * 1.1))
+        ld = always_redraw(lambda: texto("a − b", 24, color=RED).move_to(O + (a() + b()) / 2 + 0.45 * unit(a() + b())))
+        self.play(FadeIn(cruz, ex), GrowArrow(fa), GrowArrow(fb), FadeIn(la, lb))
+        self.add(fa, fb, la, lb)
+        self.play(Create(fd), FadeIn(ld))
+        self.add(fd, ld)
+        self.decir("Dos flechas y la que va de la punta de b a la punta de a: a − b.")
+        self.wait(1.5)
+
+        pasos = VGroup(MathTex(r"|a-b|^2 = \sum_i (a_i - b_i)^2", font_size=30),
+                       MathTex(r"= \sum_i a_i^2 + \sum_i b_i^2 - 2\sum_i a_i b_i", font_size=30),
+                       MathTex(r"= |a|^2 + |b|^2 - 2\sum_i a_i b_i", font_size=30))\
+            .arrange(DOWN, aligned_edge=LEFT, buff=0.22).move_to(RIGHT * 3.3 + UP * 1.45)
+        for p in pasos:
+            self.play(Write(p), run_time=1.2)
+        self.decir("El largo de a − b, al cuadrado, desarrollado número a número.")
+        self.wait(2.5)
+        solo = MathTex(r"\sum_i a_i b_i = \tfrac12\left(|a|^2 + |b|^2 - |a-b|^2\right)", font_size=32).move_to(RIGHT * 3.3 + UP * 2.2)
+        self.play(FadeOut(pasos), FadeIn(solo))
+        self.decir("Despejando, la suma queda escrita solo con largos.", YELLOW)
+        self.wait(2.5)
+
+        def panel():
+            va, vb = a(), b()
+            return VGroup(texto(f"a = ({num(va[0])}, {num(va[1])})", 24, color=YELLOW),
+                          texto(f"b = ({num(vb[0])}, {num(vb[1])})", 24, color=ORANGE),
+                          texto(f"a₁b₁ + a₂b₂ = {num(va @ vb)}", 24),
+                          texto(f"|a − b| = {num(np.linalg.norm(va - vb))}", 24, color=RED))\
+                .arrange(DOWN, aligned_edge=LEFT, buff=0.16).move_to(RIGHT * 3.3 + DOWN * 0.4)
+
+        tabla = always_redraw(panel)
+        self.add(tabla)
+        self.decir("Girar las dos juntas cambia sus números, pero no los largos: la suma tampoco cambia.")
+        self.play(phi.animate.set_value(80 * GRADO), run_time=3)
+        self.wait(1)
+        self.play(phi.animate.set_value(-th), run_time=3.5)
+        self.wait(0.5)
+        assert np.allclose(a(), [la_, 0, 0])
+        cuenta = MathTex(r"a = (|a|, 0), \quad b = (|b|\cos\theta,\ |b|\sin\theta)", font_size=28)\
+            .move_to(RIGHT * 3.3 + DOWN * 2.1)
+        self.decir("Con a acostada sobre el eje x, la cuenta es directa.", YELLOW)
+        self.play(Write(cuenta))
+        self.wait(1.5)
+        final = MathTex(r"a_1 b_1 + a_2 b_2 = |a|\,|b|\cos\theta + 0", font_size=34, color=GREEN).move_to(cuenta)
+        self.play(ReplacementTransform(cuenta, final))
+        self.decir(f"|a||b| cos θ = {la_} · {lb_} · cos 50° = {num(la_ * lb_ * np.cos(th))}. Y como girar no la cambia, vale siempre.", GREEN)
+        self.wait(3)
+        self.decir("En 3D, igual: dos flechas que salen del mismo punto siempre caben en un plano.")
         self.wait(3)
 
 

@@ -193,6 +193,16 @@ class SeisPosturas(Escena3D):
         f = MathTex(r"\text{inclinación} = \arccos(\hat g \cdot \text{eje})", font_size=34).to_corner(UL).shift(DOWN * 0.9)
         self.add_fixed_in_frame_mobjects(f)
         self.play(Write(f))
+        # por qué arccos: los dos miden 1, así que el producto punto es el coseno del ángulo
+        f2 = MathTex(r"\hat g \cdot \text{eje} = |\hat g|\,|\text{eje}|\cos\theta = \cos\theta", font_size=28)\
+            .next_to(f, DOWN, buff=0.25, aligned_edge=LEFT)
+        self.add_fixed_in_frame_mobjects(f2)
+        self.play(Write(f2))
+        self.decir("ĝ y el eje miden 1: su producto punto es el coseno del ángulo.")
+        self.wait(2.5)
+        assert np.allclose(np.degrees(np.arccos([1, 0, -1])), [0, 90, 180])
+        self.decir("arccos va al revés: arccos 1 = 0°, arccos 0 = 90°, arccos −1 = 180°.")
+        self.wait(3)
         self.decir("z arriba: toda la gravedad cae en z. Inclinación 0°.")
         self.wait(1.5)
         self.decir("x arriba: ahora toda cae en x. z queda acostado: 90°.")

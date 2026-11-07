@@ -50,7 +50,9 @@ La **inclinación** de un eje del reloj es su ángulo con la vertical, y sale de
 
 $$\text{inclinación} = \arccos(\hat g \cdot \text{eje})$$
 
-Con z arriba toda la gravedad cae en z y la inclinación es 0°; boca abajo es 180°; acostado, 90°.
+¿Por qué un arccos? $\hat g$ y el eje miden 1, así que su producto punto (capítulo 2) es $1\cdot 1\cdot\cos\theta$: el
+coseno del ángulo entre ellos. **arccos** va al revés, del coseno al ángulo: arccos 1 = 0°, arccos 0 = 90° y
+arccos −1 = 180°. Con z arriba toda la gravedad cae en z y la inclinación es 0°; boca abajo es 180°; acostado, 90°.
 
 ![La gravedad gira en los ejes y y z; arccos forma una V sin signo y atan2 una recta con signo](../media/cap04/InclinacionConSigno.gif)
 

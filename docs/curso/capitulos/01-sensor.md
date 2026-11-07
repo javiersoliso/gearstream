@@ -112,7 +112,23 @@ cuanto hay suficientes muestras.
 `analyze` de `server/web/sismomath.js` mide con RMS cuánto te alejaste de la línea. `window_features` y `event_features`
 de `tools/analyze_dataset.py` resumen el giro y la aceleración de un tramo igual.
 
-## 7. Sesgo
+## 7. Varianza: sumar azares
+
+![El ruido del giroscopio en x y en z y su suma; los cuadrados de lado σ suman sus áreas como en Pitágoras; la suma de n muestras crece como σ√n y no como σ·n](../media/cap01/Varianza.gif)
+
+$\sigma^2$, el promedio de los cuadrados de lo que se aparta del centro, es la **varianza**: el área del cuadrado de lado
+$\sigma$. Sirve porque, cuando dos azares no dependen uno del otro, sus varianzas se suman y sus tamaños no:
+
+$$\sigma^2_{a+b} = \sigma^2_a + \sigma^2_b$$
+
+El ruido de `synth` en x y en z mide 0.31 y 0.30 °/s, y su suma no mide 0.61 sino 0.43. La razón está en
+$(a+b)^2 = a^2 + b^2 + 2ab$: $ab$ sale positivo o negativo al azar, y en promedio da casi cero. Sumando $n$ muestras
+de ruido la varianza es $n\sigma^2$, así que el tamaño crece como una raíz, $\sigma\sqrt n$: con cuatro veces más
+muestras, el doble. Y un promedio de $n$ muestras, que es esa suma dividida por $n$, tiembla $\sigma/\sqrt n$.
+El capítulo 3 usa esto para saber cuánto se va el ruido al sumarlo. `analyze` de `server/web/sismomath.js` calcula la
+varianza de tu aguja (`yvar`) para decir qué parte de ella no se explica por la línea que sigues (capítulo 11).
+
+## 8. Sesgo
 
 ![Un zoom de ±300 a ±1.5 °/s: con la mano quieta la lectura tiembla alrededor de algo que no es cero; la Tierra cae sobre el cero](../media/cap01/Sesgo.gif)
 
@@ -129,7 +145,7 @@ menos que 0.4. Y hay una prueba directa: si miras el eje z, pon el reloj boca ab
 eje, porque es un giro de afuera; el sesgo no, porque es del sensor y se mueve con él. (El giro tiene que ser alrededor de
 otro eje: dar la vuelta alrededor del eje que miras no cambia nada.)
 
-## 8. Umbral
+## 9. Umbral
 
 ![La lectura de una mano quieta con dos movimientos lentos y una línea que sube y baja: debajo, qué cuenta como quieto y qué como movimiento](../media/cap01/Umbral.gif)
 
@@ -142,7 +158,7 @@ El número no sale de una fórmula: se elige mirando el ruido y lo que quieres d
 `STILL_DEG` = 1.5 °/s en cada eje y pide 50 muestras seguidas por debajo. `DwellDetector.feed` hace algo parecido con `rho`,
 qué tan rápido apuntas, para saber que la mano se detuvo.
 
-## 9. Aprender el sesgo en reposo
+## 10. Aprender el sesgo en reposo
 
 ![Una ventana de un segundo recorre una grabación mientras se comprueban cinco condiciones; el primer segundo que pasa da el sesgo, y después el sesgo se sigue de a poco](../media/cap01/AprenderSesgo.gif)
 
@@ -164,13 +180,14 @@ medianas. Si ninguna pasa, no inventa: sigue esperando. (El comentario de la fun
 por defecto es 2.5: la ayuda explica que una muñeca apoyada late 1 o 2 °/s, y la mediana no se deja arrastrar por eso.)
 
 **Si el sesgo cambia con la temperatura, ¿cada cuánto hay que volver a medirlo?** No hay que volver a medirlo: se sigue
-solo. Cada rato quieto, `Motion.feed_gyro` lo corrige de a poco. Un error chico se cierra como un promedio de 20 s
-(`--bias-tau`): en 20 s corrige el 63%. Y nunca se mueve más de 0.05 °/s por segundo, aunque ese límite frena poco: un giro
+solo. Cada rato quieto, `Motion.feed_gyro` lo corrige de a poco: en cada muestra se acerca una parte chica,
+$\Delta t$ / 20 s (`--bias-tau`), de lo que le falta. Así un error chico se cierra en 20 s el 63%. Y nunca se mueve más de 0.05 °/s por segundo, aunque ese límite frena poco: un giro
 parejo de 1 °/s hecho a propósito también se aprende, y en 20 s deja unos 0.6 °/s de sesgo. Si el error es tan grande que la mano ya no cuenta como quieta, `Motion._recover_bias` lo reemplaza
 cuando el giroscopio crudo lleva 3 s pareciendo reposo.
 
-Las páginas lo hacen más simple. `Wrist.rates` aprende con un promedio que olvida, $\alpha$ = 0.002, mientras el
-giro corregido sea de menos de 2 °/s: llega al 63% en 5 s a 100 Hz. No mira nada más, así que un giro lento a propósito se
+Las páginas lo hacen más simple. `Wrist.rates` aprende con un promedio que olvida: en cada muestra se acerca
+$\alpha$ = 0.002 de lo que le falta, mientras el giro corregido sea de menos de 2 °/s, y llega al 63% en 5 s a 100 Hz.
+Ese promedio y su $\alpha$ son la sección 7 del capítulo 3, y de dónde sale el 63%, la 8. No mira nada más, así que un giro lento a propósito se
 va borrando. Y `main` de `tools/reconstruct_drawing.py` toma la mediana de toda la grabación, que supone que casi todo
 el tiempo la muñeca no gira. Las dos cosas son supuestos, y están en el apéndice.
 

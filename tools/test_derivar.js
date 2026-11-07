@@ -42,6 +42,48 @@ assert.ok(llega(0.05) > llega(0.2) && llega(0.015) > llega(0.05), 'cuanto más s
 assert.ok(tamano(olvida(ruido, 0.05)) < tamano(ruido) / 3, 'suavizar frena el ruido');
 ok(`cuanto más suave, más tarde: α = 0.2 llega en ${llega(0.2).toFixed(2)} s, α = 0.05 en ${llega(0.05).toFixed(2)} s, α = 0.015 en ${llega(0.015).toFixed(2)} s`);
 
+// la exponencial: después de 1/α pasos queda casi 1/e, y el tiempo que eso toma es τ = Δt/α
+const salto = t.map((_, k) => (k === 0 ? 0 : 1));                              // de 0 a 1 en la segunda muestra
+const quedan = [[0.2, 0.328], [0.05, 0.358], [0.002, 0.3675]].map(([a, q]) => {
+  const pasos = Math.round(1 / a), y = olvida(salto, a);
+  near(1 - y[pasos], (1 - a) ** pasos, 1e-12, `cada paso deja (1 − α) de lo que falta (α = ${a})`);
+  near((1 - a) ** pasos, q, 0.0005, `después de 1/α pasos con α = ${a}`);
+  return (1 - a) ** pasos;
+});
+assert.ok(quedan[0] < quedan[1] && quedan[1] < quedan[2] && quedan[2] < Math.exp(-1), 'se acerca a 1/e desde abajo');
+near((1 - 1e-6) ** 1e6, Math.exp(-1), 1e-6, 'con α muy chico, 1/e');
+near(Math.E, 2.718, 0.0005, 'e');
+near(1 - Math.exp(-1), 0.63, 0.005, 'en un τ se cierra el 63%');
+near(1 - Math.exp(-2), 0.86, 0.005, 'en dos, el 86%');
+near(1 - Math.exp(-3), 0.95, 0.005, 'en tres, el 95%');
+for (const [a, tau, tol] of [[0.002, 5, 0.001], [0.05, 0.2, 0.012]]) {
+  near(dt / a, tau, 1e-9, `τ = Δt/α con α = ${a}`);
+  near(1 - olvida(salto, a)[Math.round(tau / dt)], Math.exp(-1), tol, `con α = ${a} a 100 Hz, en τ = ${tau} s falta casi 1/e`);
+}
+near(dt / (dt / 20), 20, 1e-9, 'Motion.feed_gyro, que se acerca Δt/20 s por muestra: τ = 20 s');
+{
+  const fc = 2, alfa = 1 / (1 + 1 / (2 * Math.PI * fc * dt));                 // OneEuro.alpha de tools/air_mouse.py
+  near(alfa, dt / (dt + 1 / (2 * Math.PI * fc)), 1e-12, 'OneEuro.alpha es Δt/(Δt + 1/(2πf_c))');
+  near(dt / alfa, dt + 1 / (2 * Math.PI * fc), 1e-12, 'su τ es Δt + 1/(2πf_c)');
+}
+ok(`la exponencial: 1/α pasos dejan ${quedan.map((q) => q.toFixed(4)).join(', ')} → 1/e = ${Math.exp(-1).toFixed(4)}; en 1, 2 y 3 τ se cierra el 63%, 86% y 95%`);
+
+// derivar amplifica: la resta de dos muestras con ruidos que no dependen uno del otro mide σ√2
+{
+  const restas = []; for (let k = 1; k < n - 1; k++) restas.push(ruido[k + 1] - ruido[k - 1]);
+  near(tamano(restas), sigma * Math.SQRT2, 0.05 * sigma * Math.SQRT2, 'la resta de dos ruidos mide σ√2');
+  ok(`x[k+1] − x[k−1] con ruido ${sigma} mide ${tamano(restas).toFixed(4)} (σ√2 = ${(sigma * Math.SQRT2).toFixed(4)}); sobre 2Δt, σ/(√2·Δt)`);
+}
+
+// una onda: un ángulo ±A que da f vueltas por segundo cambia a lo sumo 2πf·A por segundo
+for (const [f, A] of [[0.5, 31.83], [2, 7.96], [8, 1.99]]) {
+  let mx = 0;
+  for (let k = 0; k < 4000; k++) { const s = k / 4000 / f; mx = Math.max(mx, Math.abs((A * Math.sin(2 * Math.PI * f * (s + 1e-7)) - A * Math.sin(2 * Math.PI * f * s)) / 1e-7)); }
+  near(mx, 2 * Math.PI * f * A, 0.001 * 2 * Math.PI * f * A, `la tasa más alta de ±${A}° a ${f} Hz es 2πf·A`);
+  near(2 * Math.PI * f * A, 100, 0.1, `±${A}° a ${f} Hz es lo que deja una tasa de 100 °/s`);
+}
+ok('un ángulo ±A a f vueltas por segundo cambia a lo sumo 2πf·A por segundo: con tasa a, A = a/(2πf)');
+
 const media = (x, m, k) => { let s = 0; for (let i = k - m; i < k; i++) s += x[i]; return s / m; };
 const lento = t.map((s) => 3 * Math.sin(2 * Math.PI * 0.4 * s)), golpe = lento.map((v, k) => v + (k === 700 ? 2 : 0));
 const alto = golpe.map((v, k) => (k >= 4 ? v - media(golpe, 4, k) : 0));

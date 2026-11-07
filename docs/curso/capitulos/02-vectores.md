@@ -88,7 +88,8 @@ $[-180°, 180°)$ antes de usarlas:
 
 $$\mathrm{wrap}(a) = a - 360\left\lfloor\frac{a+180}{360}\right\rfloor$$
 
-$10 - 350 = -340$, y `wrap_deg` dice 20: de 350° a 10° hay 20°. Sumando la mitad a 350° da 360°, que es 0°. Por lo mismo,
+$\lfloor\ \rfloor$ es redondear hacia abajo: $\lfloor 1.4\rfloor = 1$ y $\lfloor -0.4\rfloor = -1$. $10 - 350 = -340$, y
+`wrap_deg` dice 20: de 350° a 10° hay 20°. Sumando la mitad a 350° da 360°, que es 0°. Por lo mismo,
 algo que gira parejo 10° por muestra no da un salto de −350° cuando la lectura pasa por 180°. `Motion.feed_gyro` usa
 `wrap_deg` cada vez que resta dos ángulos.
 
@@ -99,6 +100,19 @@ algo que gira parejo 10° por muestra no da un salto de −350° cuando la lectu
 El **producto punto** multiplica número a número y suma. Y eso da, sin que sea obvio, los dos largos por el coseno:
 
 $$a\cdot b = \sum_i a_i b_i = |a|\,|b|\cos\theta$$
+
+$\sum_i$ se lee "suma de": $\sum_i a_i b_i = a_1b_1 + a_2b_2 + a_3b_3$.
+
+![El largo de a − b desarrollado deja la suma escrita solo con largos; las dos flechas giran juntas y la suma no cambia; con a sobre el eje x la suma es |a||b| cos θ](../media/cap02/PuntoEsCoseno.gif)
+
+¿Por qué la suma da el coseno? Desarrollando el largo de $a - b$ número a número,
+$|a-b|^2 = |a|^2 + |b|^2 - 2\sum_i a_i b_i$, así que
+
+$$\sum_i a_i b_i = \tfrac12\left(|a|^2 + |b|^2 - |a-b|^2\right)$$
+
+Ahí solo hay largos, y los largos no cambian si giras las dos flechas juntas: la suma tampoco. Entonces se puede girar
+hasta que $a$ quede sobre el eje x, $a = (|a|, 0)$ y $b = (|b|\cos\theta, |b|\sin\theta)$, y la suma es
+$|a|\,|b|\cos\theta$. En 3D vale igual, porque dos flechas que salen del mismo punto siempre caben en un plano.
 
 Mide cuánto de una flecha va en la dirección de la otra. Si $b$ es unitaria, $a\cdot b$ es la sombra de $a$ sobre $b$, su
 **proyección**. Con ángulo recto da cero porque no hay sombra: $a$ no tiene nada en la dirección de $b$. Esas flechas se

@@ -530,6 +530,96 @@ class TamanoTipico(Escena):
 
 
 # ---------------------------------------------------------------------------------------------------------
+class Varianza(Escena):
+    """σ² es el área del cuadrado de lado σ; dos azares que no dependen uno del otro suman sus áreas, no sus lados."""
+
+    def construct(self):
+        self.titulo("Varianza: los azares suman cuadrados")
+        a, b = EXTRA[0] - EXTRA[0].mean(), EXTRA[2] - EXTRA[2].mean()     # el ruido de synth en x y en z, sin su centro
+        c = a + b
+        va, vb, vc, vab = float(a.var()), float(b.var()), float(c.var()), float(np.mean(a * b))
+        assert abs(vc - (va + vb + 2 * vab)) < 1e-9                     # (a + b)² = a² + b² + 2ab, en promedio
+        sa, sb, sc = math.sqrt(va), math.sqrt(vb), math.sqrt(vc)
+
+        # tres trazos cortos: x, z y su suma
+        hz, n = 100, 200
+        t = np.arange(n) / hz
+        filas = VGroup()
+        for nombre, x, col, s in (("giroscopio x", a, CX, sa), ("giroscopio z", b, CZ, sb), ("x + z", c, MEDIDA, sc)):
+            ax = ejes([0, 2, 1], [-2, 2, 2], ancho=4.6, alto=1.05, numeros=False)
+            ax.y_axis.add_numbers(font_size=16)
+            assert np.abs(x[:n]).max() < 2
+            et = texto(f"{nombre}: σ = {s:.2f}", 20, color=col).next_to(ax, UP, buff=0.06).align_to(ax, LEFT)
+            filas.add(VGroup(ax, et, linea(ax, t, x[:n], col, 1.6)))
+        filas.arrange(DOWN, buff=0.28).move_to(LEFT * 3.6 + DOWN * 0.15)
+        self.play(FadeIn(filas[0][:2]), FadeIn(filas[1][:2]), run_time=0.6)
+        self.play(Create(filas[0][2]), Create(filas[1][2]), run_time=1.5)
+        self.decir("El ruido de dos ejes, sin su centro. No dependen uno del otro.", espera=1.5)
+        self.play(FadeIn(filas[2][:2]), Create(filas[2][2]), run_time=1.5)
+        self.decir(f"Sumados no miden {sa:.2f} + {sb:.2f} = {sa + sb:.2f}. Miden {sc:.2f}: menos.", espera=2.5)
+
+        # los cuadrados: σ² es el área del cuadrado de lado σ, y las áreas sí se suman
+        k = 5.2                                                         # unidades de pantalla por °/s
+        A, B = k * sa, k * sb
+        O = np.array([2.4, -0.8, 0])
+        P1, P2 = O + RIGHT * A, O + UP * B
+        hacia = np.array([B, A, 0])
+        lado_a = Line(O, P1, color=CX, stroke_width=6)
+        lado_b = Line(O, P2, color=CZ, stroke_width=6)
+        hip = Line(P1, P2, color=MEDIDA, stroke_width=6)
+        qa = Polygon(O, P1, P1 + DOWN * A, O + DOWN * A, stroke_color=CX, fill_color=CX, fill_opacity=0.35)
+        qb = Polygon(O, P2, P2 + LEFT * B, O + LEFT * B, stroke_color=CZ, fill_color=CZ, fill_opacity=0.35)
+        qc = Polygon(P1, P2, P2 + hacia, P1 + hacia, stroke_color=MEDIDA, fill_color=MEDIDA, fill_opacity=0.3)
+        ta = texto(f"σ²\n{va:.3f}", 20, color=CX).move_to(qa)
+        tb = texto(f"σ²\n{vb:.3f}", 20, color=CZ).move_to(qb)
+        tc = texto(f"σ² = {vc:.3f}", 22, color=MEDIDA).move_to(qc)
+        assert qc.get_top()[1] < 2.9 and qa.get_bottom()[1] > -2.9 and qb.get_left()[0] > 0.1
+        self.play(Create(lado_a), Create(lado_b))
+        self.play(FadeIn(qa), FadeIn(qb), FadeIn(ta), FadeIn(tb))
+        self.decir("σ² es el área del cuadrado de lado σ: el promedio de los cuadrados. Es la varianza.", espera=2.5)
+        self.play(Create(hip), FadeIn(qc), FadeIn(tc))
+        self.decir(f"La varianza de la suma es casi la de los dos: {va:.3f} + {vb:.3f} = {va + vb:.3f}. Como Pitágoras.", espera=3)
+
+        # por qué: el término cruzado se cancela
+        self.play(FadeOut(filas))
+        f = MathTex(r"(a+b)^2 = a^2 + b^2 + 2ab", font_size=36).move_to(LEFT * 3.7 + UP * 1.3)
+        pr = VGroup(texto("en promedio:", 22),
+                    texto(f"{vc:.3f} = {va:.3f} + {vb:.3f} {'+' if vab >= 0 else '−'} {abs(2 * vab):.3f}", 26, color=MEDIDA))\
+            .arrange(DOWN, aligned_edge=LEFT, buff=0.15).next_to(f, DOWN, buff=0.4)
+        self.play(Write(f))
+        self.decir("¿Por qué? Cada muestra de la suma, al cuadrado, se abre en tres partes.", espera=2)
+        self.play(FadeIn(pr))
+        self.decir("ab sale a veces positivo y a veces negativo, al azar: su promedio es casi cero.", espera=3)
+        self.decir("Si los azares no dependen uno del otro, se suman las varianzas, no los tamaños.", espera=3)
+        self.play(*[FadeOut(m) for m in (f, pr, lado_a, lado_b, hip, qa, qb, qc, ta, tb, tc)])
+
+        # n azares iguales: varianza n·σ², tamaño σ√n
+        L = np.array(D["largo"])
+        L = L - L.mean()
+        s1 = float(L.std())
+        ns = (1, 4, 16, 64)
+        medidos = [float(L[:len(L) // m * m].reshape(-1, m).sum(1).std()) for m in ns]
+        ax = ejes([0, 70, 10], [0, 3, 1], ancho=9.4, alto=3.9).shift(RIGHT * 0.9 + DOWN * 0.15)
+        ey = texto("tamaño de la suma\nde n muestras (°/s)", 19).next_to(ax, LEFT, buff=0.2)
+        ex = texto("n", 20).next_to(ax.x_axis, RIGHT, buff=0.12)
+        self.play(Create(ax), FadeIn(ey, ex))
+        raiz = ax.plot(lambda m: s1 * math.sqrt(m), x_range=[0, 70, 0.25], color=WHITE, stroke_width=3)
+        recta = ax.plot(lambda m: s1 * m, x_range=[0, 3 / s1, 0.05], color=MALO, stroke_width=3)
+        lr = texto("si se sumaran los tamaños: σ·n", 20, color=MALO).next_to(ax.c2p(10, 3), RIGHT, buff=0.15)
+        self.play(Create(recta), FadeIn(lr))
+        self.decir(f"Sumar n muestras de ruido: con σ = {s1:.2f}, ¿crece como σ·n?", espera=1.5)
+        puntos = VGroup(*[Dot(ax.c2p(m, v), radius=0.08, color=MEDIDA) for m, v in zip(ns, medidos)])
+        etiq = VGroup(*[texto(f"{v:.2f}", 18, color=MEDIDA).next_to(p, DOWN + RIGHT * 0.4, buff=0.08) for p, v in zip(puntos, medidos)])
+        self.play(LaggedStart(*[FadeIn(p, scale=2) for p in puntos], lag_ratio=0.3), FadeIn(etiq), run_time=1.5)
+        self.play(Create(raiz), run_time=1.5)
+        fr = MathTex(r"n\,\sigma^2 \;\to\; \sigma\sqrt{n}", font_size=36).move_to(ax.c2p(52, 1.0))
+        self.play(Write(fr))
+        self.decir(f"La varianza crece como n·σ² y el tamaño como σ√n: 4 veces más muestras, el doble.", espera=3)
+        self.decir("Promediar es sumar y dividir por n: el ruido del promedio baja a σ/√n.", espera=3)
+        self.decir("El capítulo 3 suma ruido muestra a muestra: por eso crece como una raíz.", espera=3)
+
+
+# ---------------------------------------------------------------------------------------------------------
 class Sesgo(Escena):
     """Un zoom: con la mano quieta el giroscopio tiembla alrededor de algo que no es cero."""
 

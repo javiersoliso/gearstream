@@ -55,6 +55,9 @@ near((350 + 10) / 2, 180, 1e-12, 'el promedio ingenuo');
 near(wrap(350 + wrap(10 - 350) / 2), 0, 1e-12, 'el promedio con cuidado');
 near((350 + -10) / 2, 170, 1e-12, 'el promedio ingenuo del mismo ángulo');
 ok('wrap_deg: 350° → −10°; de 350° a 10° hay 20°, y su promedio es 0°, no 180°');
+near(Math.floor(1.4), 1, 0, '⌊1.4⌋'); near(Math.floor(-0.4), -1, 0, '⌊−0.4⌋');
+near(Math.floor((10 - 350 + 180) / 360), -1, 0, '⌊(−340 + 180)/360⌋'); near(-340 - 360 * -1, 20, 0, 'wrap(−340)');
+ok('⌊ ⌋ redondea hacia abajo: ⌊1.4⌋ = 1, ⌊−0.4⌋ = −1, y con −340 da −1: −340 + 360 = 20');
 
 // ---------- producto punto ----------
 console.log('Producto punto');
@@ -68,6 +71,19 @@ for (const t of [0, 40, 90, 140, 180]) {
 }
 near(dot([1, 2, 0], [-2, 1, 0]), 0, 1e-12, 'en ángulo recto da cero');
 ok('Σ aᵢbᵢ = |a||b| cos θ; da cero en ángulo recto y negativo pasados los 90°');
+// por qué: |a − b|² desarrollado deja la suma escrita con largos, que no cambian al girar; con a sobre x es el coseno
+near(dot(a, b), (len(a) ** 2 + len(b) ** 2 - len(sub(a, b)) ** 2) / 2, 1e-12, 'Σ aᵢbᵢ = ½(|a|² + |b|² − |a − b|²)');
+for (const [eje, grados] of [[[0, 0, 1], 70], [[1, 2, -1], 133], [[-3, 0.5, 2], -40]]) {
+  const ar = rot(a, unit(eje), grados * D), br = rot(b, unit(eje), grados * D);
+  near(dot(ar, br), dot(a, b), 1e-12, `girar las dos juntas ${grados}° no cambia la suma`);
+  near(len(ar), len(a), 1e-12, 'ni los largos');
+}
+{
+  const la = 2.4, lb = 2.8, th = 50 * D, a2 = [la, 0, 0], b2 = [lb * Math.cos(th), lb * Math.sin(th), 0];
+  near(dot(a2, b2), la * lb * Math.cos(th), 1e-12, 'con a sobre x, la suma es |a||b| cos θ');
+  near(dot(a2, b2), 4.32, 0.005, 'los números de la animación');
+}
+ok('Σ aᵢbᵢ = ½(|a|² + |b|² − |a − b|²): no cambia al girar las dos juntas, y con a sobre x da |a||b| cos θ');
 const sombra = mul(unit(b), dot(a, unit(b)));
 near(dot(sub(a, sombra), b), 0, 1e-12, 'lo que queda es perpendicular');
 ok('a menos su sombra sobre b queda en ángulo recto con b');

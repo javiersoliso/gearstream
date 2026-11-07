@@ -21,6 +21,10 @@ const limpio = M.synth('tablet', 'l', {}), sucio = M.synth('tablet', 'l', { nois
 const resta = (a, b) => Array.from(a, (v, k) => v - b[k]);
 const extra = resta(sucio.gyr, limpio.gyr);
 
+// el mismo reloj quieto, 40 vueltas seguidas (320 s): para sumar muchos azares y ver crecer la suma
+const limpioL = M.synth('tablet', 'l', { loops: 40 }), sucioL = M.synth('tablet', 'l', { noise: true, loops: 40 });
+const extraL = resta(sucioL.gyr, limpioL.gyr);
+
 // una lectura con movimiento: acelerómetro y gravedad en el mismo instante
 const mov = M.synth('apuntar', 'l', { noise: true });
 
@@ -28,6 +32,7 @@ process.stdout.write(JSON.stringify({
   lados,
   sesgo: sucio.bias,
   extra: [0, 1, 2].map((i) => redondear(columna(extra, i))),
+  largo: redondear(columna(extraL, 2)),
   hz: mov.hz,
   acc: [0, 1, 2].map((i) => redondear(columna(mov.acc, i))),
   grav: [0, 1, 2].map((i) => redondear(columna(mov.grav, i))),
