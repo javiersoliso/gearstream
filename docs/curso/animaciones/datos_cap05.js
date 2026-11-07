@@ -17,4 +17,6 @@ process.stdout.write(JSON.stringify({
   qmul: qmul(qb, qa),                                   // primero x, después y
   qcols: qcols(qmul(qb, qa)),
   qcolsDeK: qcols(q(k, 70 * D)),
+  // girar una flecha con el cuaternión: q ⊗ (0, v) ⊗ q*, con q* = (w, −x, −y, −z)
+  qvq: (() => { const qk = q(k, 70 * D), qc = [qk[0], -qk[1], -qk[2], -qk[3]]; return qmul(qmul(qk, [0, ...v]), qc).slice(1); })(),
 }));

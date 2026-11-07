@@ -474,6 +474,9 @@ class Mahony(Scene):
         f2 = MathTex(r"q \leftarrow q \otimes \exp\!\big((\omega + K_p\,e)\,\Delta t/2\big)", font_size=34)\
             .next_to(bl, DOWN, buff=0.35)
         self.play(Create(barra_ax), FadeIn(bl), Write(f2))
+        f3 = MathTex(r"\exp(u) = \big(\cos|u|,\ \hat u\,\sin|u|\big)", font_size=30).next_to(f2, DOWN, buff=0.2)
+        n3 = texto("el cuaternión (cos, sen) del capítulo 5", 18, color=GREY_A).next_to(f3, DOWN, buff=0.1).shift(RIGHT * 0.4)
+        self.play(Write(f3), FadeIn(n3))
         # girar alrededor de e, Kp·|e| por segundo: dθ/dt = −Kp sen θ
         ts, th = [0.0], [np.radians(50)]
         for _ in range(300):
@@ -488,7 +491,7 @@ class Mahony(Scene):
         self.play(tt.animate.set_value(3), run_time=5, rate_func=linear)
         ang.clear_updaters()
         self.wait(1)
-        self.play(*[FadeOut(x) for x in [circ, medido, ml, pred, pl, arco, eje, f1, n1, barra_ax, bl, f2, traza]])
+        self.play(*[FadeOut(x) for x in [circ, medido, ml, pred, pl, arco, eje, f1, n1, barra_ax, bl, f2, f3, n3, traza]])
 
         d = D["mahony"]
         t = np.array(d["t"])

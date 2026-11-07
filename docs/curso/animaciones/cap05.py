@@ -68,6 +68,22 @@ assert np.allclose(np.column_stack(qcols(qmul(_qb, _qa))), np.column_stack(D["qc
 assert np.allclose(matriz(quat(_k, 70 * GRADO)), R_eje(_k, 70 * GRADO))     # el cuaternión y Rodrigues dan lo mismo
 
 
+def conj(q):
+    return np.array([q[0], -q[1], -q[2], -q[3]])
+
+
+def regla(a, b):
+    """La regla de ⊗ escrita con punto y cruz: (a0, a)(b0, b) = (a0 b0 − a·b, a0 b + b0 a + a × b)."""
+    a0, av, b0, bv = a[0], np.asarray(a[1:]), b[0], np.asarray(b[1:])
+    return np.array([a0 * b0 - av @ bv, *(a0 * bv + b0 * av + np.cross(av, bv))])
+
+
+_qk = quat(_k, 70 * GRADO)
+assert np.allclose(qmul(qmul(_qk, [0, *_v]), conj(_qk))[1:], D["qvq"])     # q v q* gira la flecha
+assert np.allclose(D["qvq"], D["rot"])
+assert np.allclose(regla(_qb, _qa), qmul(_qb, _qa)) and np.allclose(regla(_qk, _qa), qmul(_qk, _qa))
+
+
 def Rx(a):
     c, s = np.cos(a), np.sin(a)
     return np.array([[1, 0, 0], [0, c, -s], [0, s, c]])
@@ -185,6 +201,125 @@ class RotarEnElPlano(Scene):
 
 
 # ---------------------------------------------------------------------------------------------------------
+def R2(a):
+    c, s = np.cos(a), np.sin(a)
+    return np.array([[c, -s], [s, c]])
+
+
+def mat2(M, color=WHITE, size=34):
+    filas = r"\\".join(" & ".join(f"{round(float(x), 2) + 0.0:.2f}" for x in fila) for fila in M)
+    return MathTex(r"\begin{pmatrix}" + filas + r"\end{pmatrix}", font_size=size, color=color)
+
+
+class ProductoDeMatrices(Scene):
+    """Multiplicar dos matrices es aplicar una y después la otra; transponer, la identidad y la inversa."""
+
+    def decir(self, s, color=WHITE, size=24):
+        nuevo = texto(s, size, color=color).to_edge(DOWN, buff=0.3).add_background_rectangle(opacity=0.85)
+        viejo = getattr(self, "_rotulo", None)
+        self.play(*([FadeOut(viejo)] if viejo else []), FadeIn(nuevo), run_time=0.6)
+        self._rotulo = nuevo
+
+    def construct(self):
+        titulo = texto("Multiplicar matrices: una y después la otra", 32).to_edge(UP)
+        self.play(Write(titulo))
+        A, B = R2(30 * GRADO), np.array([[1.5, 0], [0, 0.6]])
+        BA, AB = B @ A, A @ B
+        a, b = ValueTracker(0), ValueTracker(0)
+        M = lambda: (np.eye(2) + b.get_value() * (B - np.eye(2))) @ R2(a.get_value() * 30 * GRADO)
+        C = np.array([1.9, -0.7, 0])
+        P = lambda v: C + np.array([v[0], v[1], 0])
+
+        def malla(T, n=3):
+            g = VGroup()
+            for i in range(-n, n + 1):
+                g.add(Line(P(T @ (i, -n)), P(T @ (i, n)), color=BLUE_D, stroke_width=1.5, stroke_opacity=0.7))
+                g.add(Line(P(T @ (-n, i)), P(T @ (n, i)), color=BLUE_D, stroke_width=1.5, stroke_opacity=0.7))
+            return g
+
+        v = np.array([2.0, 1.0])
+        red = always_redraw(lambda: malla(M(), 2))
+        fi = always_redraw(lambda: flecha(P((0, 0)), P(M() @ (1, 0)), CY, 7))
+        fj = always_redraw(lambda: flecha(P((0, 0)), P(M() @ (0, 1)), CX, 7))
+        fv = always_redraw(lambda: flecha(P((0, 0)), P(M() @ v), YELLOW, 7))
+        lv = always_redraw(lambda: MathTex("v", color=YELLOW, font_size=34).next_to(P(M() @ v), UR, buff=0.08))
+        self.play(FadeIn(red, fi, fj, fv, lv), run_time=1)
+
+        def caja(nombre, Mx, nota, y):
+            g = VGroup(MathTex(nombre + " =", font_size=34), mat2(Mx)).arrange(RIGHT, buff=0.15)
+            return VGroup(g, texto(nota, 20, color=GREY_A).next_to(g, DOWN, buff=0.1)).move_to([-4.6, y, 0])
+
+        cA = caja("A", A, "girar 30°", 1.8)
+        self.play(FadeIn(cA))
+        self.decir("Primero A: girar 30°. Cada flecha va a A v.")
+        self.play(a.animate.set_value(1), run_time=2)
+        cB = caja("B", B, "estirar x, achicar y", 0.15)
+        self.play(FadeIn(cB))
+        self.decir("Después B: estirar x y achicar y. Queda B (A v).")
+        self.play(b.animate.set_value(1), run_time=2)
+        cBA = VGroup(MathTex(r"B(Av) = (BA)\,v", font_size=32),
+                     VGroup(MathTex("BA =", font_size=34), mat2(BA, YELLOW)).arrange(RIGHT, buff=0.15))\
+            .arrange(DOWN, buff=0.2).move_to([-4.6, -1.65, 0])
+        self.play(FadeIn(cBA))
+        self.decir("Los dos pasos juntos son una sola matriz: BA.", YELLOW)
+        self.wait(1)
+        self.decir(f"La verde terminó en ({BA[0, 0]:.2f}, {BA[1, 0]:.2f}): la primera columna de BA.", CY)
+        self.play(Indicate(fi, color=CY, scale_factor=1.15))
+        self.decir("Cada número de BA es una fila de B por una columna de A.")
+        self.wait(2)
+        self.decir("De derecha a izquierda: en BA va primero A; en R_y R_x, R_x.")
+        self.wait(2)
+        alreves = VGroup(MathTex("AB =", font_size=34), mat2(AB), MathTex(r"\neq BA", font_size=34))\
+            .arrange(RIGHT, buff=0.15).move_to([-4.0, -1.65, 0]).add_background_rectangle(opacity=0.85)
+        self.play(FadeOut(cBA), FadeIn(alreves))
+        self.decir("Al revés, AB (primero estirar y después girar), da otra matriz.")
+        self.wait(2.5)
+        self.remove(red, fi, fj, fv, lv)
+        self.play(*[FadeOut(x) for x in (cA, cB, alreves, self._rotulo)])
+        self._rotulo = None
+
+        # transponer, la identidad y la inversa
+        titulo2 = texto("Transponer, la identidad y la inversa", 32).to_edge(UP)
+        self.play(ReplacementTransform(titulo, titulo2))
+        R = R2(30 * GRADO)
+        th = ValueTracker(0)
+        C = np.array([3.6, -0.5, 0])
+        red2 = always_redraw(lambda: malla(R2(th.get_value()), 2))
+        gi = always_redraw(lambda: flecha(P((0, 0)), P(R2(th.get_value()) @ (1.4, 0)), CY, 7))
+        gj = always_redraw(lambda: flecha(P((0, 0)), P(R2(th.get_value()) @ (0, 1.4)), CX, 7))
+        self.play(FadeIn(red2, gi, gj), run_time=0.8)
+        cR = VGroup(MathTex("R =", font_size=36), mat2(R)).arrange(RIGHT, buff=0.15).move_to([-4.2, 1.75, 0])
+        self.play(FadeIn(cR))
+        self.decir("Un giro de 30°: sus columnas son adónde van las flechas de base.")
+        self.play(th.animate.set_value(30 * GRADO), run_time=2)
+        self.wait(0.5)
+        cRt = VGroup(MathTex(r"R^{\mathsf T} =", font_size=36), mat2(R.T)).arrange(RIGHT, buff=0.15).move_to([-4.2, 0.2, 0])
+        self.play(TransformFromCopy(cR, cRt), run_time=1.5)
+        self.decir("Transponer: la primera fila pasa a ser la primera columna.")
+        self.wait(1.5)
+        assert np.allclose(R.T @ R, np.eye(2))
+        tabla = VGroup(MathTex(r"R^{\mathsf T}R = \begin{pmatrix} c_1\cdot c_1 & c_1\cdot c_2 \\ c_2\cdot c_1 & c_2\cdot c_2 \end{pmatrix}", font_size=32),
+                       MathTex(r"= \begin{pmatrix} 1 & 0 \\ 0 & 1 \end{pmatrix} = I", font_size=32))\
+            .arrange(RIGHT, buff=0.15).move_to([-3.1, -1.35, 0])
+        self.play(Write(tabla[0]))
+        self.decir("Cada número de la tabla: una columna de R por otra.")
+        self.wait(1.5)
+        self.play(Write(tabla[1]))
+        self.decir("Largo 1 y en ángulo recto: 1 en la diagonal y 0 afuera. Es I.")
+        self.wait(1.5)
+        self.decir("I, la identidad, no hace nada: I v = v.")
+        self.wait(1.5)
+        inv = MathTex(r"R^{-1} R = I \quad\Rightarrow\quad R^{-1} = R^{\mathsf T}", font_size=34, color=YELLOW)\
+            .move_to([-3.1, -2.6, 0])
+        self.play(Write(inv))
+        self.decir("La inversa deshace R. Para un giro es la transpuesta: girar −30°.", YELLOW)
+        self.play(th.animate.set_value(0), run_time=2)
+        self.wait(0.5)
+        self.decir("En 3D es lo mismo con tres columnas: nueve productos punto.")
+        self.wait(2.5)
+
+
+# ---------------------------------------------------------------------------------------------------------
 class EjeYAngulo(Escena3D):
     """Rodrigues: la parte de v a lo largo del eje se queda; la otra gira como en el plano."""
 
@@ -251,9 +386,38 @@ class TodoGiroEsUnEje(Escena3D):
         R = Rz(60 * GRADO) @ Rx(90 * GRADO)
         ang = np.arccos((np.trace(R) - 1) / 2)
         k = unit([R[2, 1] - R[1, 2], R[0, 2] - R[2, 0], R[1, 0] - R[0, 1]])
-        eje = Line(cb - 1.6 * k, cb + 1.6 * k, color=YELLOW, stroke_width=5)
-        self.decir("A la derecha: el eje que ese giro deja quieto (R k = k).", YELLOW)
+        # cómo encontrarlo: el eje forma el mismo ángulo con una flecha y con donde fue a parar, así que está en el
+        # plano que las parte por la mitad (perpendicular a la resta). Con dos flechas, dos planos: se cortan en el eje.
+        ex, ey = np.eye(3)[0], np.eye(3)[1]
+        n1, n2 = ex - R @ ex, ey - R @ ey
+        assert np.isclose(abs(unit(np.cross(n1, n2)) @ k), 1)
+
+        def plano(n, color):
+            n = unit(n)
+            u = unit(np.cross(n, [0.3, 0.5, 0.8]))
+            w = np.cross(n, u)
+            return Polygon(*[cb + 1.7 * (s1 * u + s2 * w) for s1, s2 in [(1, 1), (-1, 1), (-1, -1), (1, -1)]],
+                           color=color, fill_opacity=0.22, stroke_width=1.5)
+
+        fx, fRx = flecha(cb, cb + 1.8 * ex, RED, 6), flecha(cb, cb + 1.8 * R @ ex, PINK, 6)
+        fy, fRy = flecha(cb, cb + 1.8 * ey, GREEN, 6), flecha(cb, cb + 1.8 * R @ ey, GREEN_A, 6)
+        self.decir("El eje es la flecha que el giro no mueve. ¿Dónde está?", YELLOW)
+        self.wait(1)
+        self.decir("Rojo: el eje x del cubo, antes y después del giro.", RED)
+        self.play(GrowArrow(fx), GrowArrow(fRx))
+        p1 = plano(n1, RED)
+        self.decir("Igual ángulo con las dos: el eje está en el plano que las parte.", RED)
+        self.play(FadeIn(p1))
+        self.wait(0.5)
+        p2 = plano(n2, GREEN)
+        self.decir("Lo mismo con el eje y del cubo: otro plano.", GREEN)
+        self.play(GrowArrow(fy), GrowArrow(fRy), FadeIn(p2))
+        self.wait(0.5)
+        eje = Line(cb - 1.9 * k, cb + 1.9 * k, color=YELLOW, stroke_width=5)
+        self.decir("Dos planos por el centro siempre se cortan en una recta: el eje.", YELLOW)
         self.play(Create(eje))
+        self.wait(1)
+        self.play(FadeOut(p1, p2, fx, fRx, fy, fRy))
         self.decir(f"Un solo giro de {np.degrees(ang):.1f}° alrededor de él deja el cubo igual.", YELLOW)
         self.play(Rotate(B, ang, axis=k, about_point=cb), run_time=3)
         self.wait(1)
@@ -591,6 +755,14 @@ class Cuaternion(Escena3D):
         self.decir("Componer giros es multiplicar: x y luego y es q_y ⊗ q_x, igual que R_y R_x.")
         self.play(Write(prod))
         self.wait(1)
+        assert np.allclose(regla(qy, qx), qq)
+        ley = MathTex(r"(a_0,\ \vec a)\otimes(b_0,\ \vec b) = \big(a_0 b_0 - \vec a\cdot\vec b,\ \ "
+                      r"a_0\,\vec b + b_0\,\vec a + \vec a\times\vec b\big)", font_size=30)\
+            .to_edge(DOWN, buff=1.05).add_background_rectangle(opacity=0.85)
+        self.add_fixed_in_frame_mobjects(ley)
+        self.decir("La regla de qmul usa el producto punto y el producto cruz.")
+        self.play(Write(ley))
+        self.wait(3)
         self.decir("Cuatro números de largo 1: tres libres, como el giro, y nunca se traban.")
         self.wait(3)
 

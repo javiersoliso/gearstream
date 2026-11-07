@@ -86,6 +86,26 @@ const tranquilo = F.valle(F.inclinacion({ sacudidas: 0 }), 30, 500).reduce((a, b
 assert.ok(tranquilo.k > 2 * fondo.k, `sin sacudidas el mejor k crece (${tranquilo.k.toFixed(2)} contra ${fondo.k.toFixed(2)})`);
 ok(`sin sacudidas el mejor k pasa de ${fondo.k.toFixed(2)} a ${tranquilo.k.toFixed(2)}`);
 
+// más sesgo también corre el valle a la derecha: hay más deriva que frenar
+const sesgado = F.valle(F.inclinacion({ b: 2 }), 30, 500).reduce((a, b) => (b.rms < a.rms ? b : a));
+assert.ok(sesgado.k > fondo.k, `con más sesgo el mejor k crece (${sesgado.k.toFixed(2)} contra ${fondo.k.toFixed(2)})`);
+ok(`con b = 2 °/s en vez de 0.5 el mejor k pasa de ${fondo.k.toFixed(2)} a ${sesgado.k.toFixed(2)}`);
+
+// cómo llega a b/k: e(t) = (b/k)(1 − e^(−kt)); en 1/k segundos cierra casi dos tercios, en 3/k casi todo
+{
+  const hz = 100, n = 6000, quieta = (b, k) => Array.from(F.complementario(new Float64Array(n).fill(b), new Float64Array(n).fill(20), hz, k, 20)).map((x) => x - 20);
+  for (const [b, k] of [[0.5, 1], [0.5, 0.25], [2, 4]]) {
+    const e = quieta(b, k);
+    for (const t of [0.5, 1 / k, 3 / k]) near(e[Math.round(t * hz)], (b / k) * (1 - Math.exp(-k * t)), 0.02 * b / k, `b = ${b}, k = ${k}: e(${t.toFixed(2)} s)`);
+    near(e[Math.round(hz / k)] / (b / k), 1 - Math.exp(-1), 0.02, 'en 1/k segundos, casi dos tercios');
+    assert.ok(e[Math.round(3 * hz / k)] / (b / k) > 0.94, 'en 3/k segundos, casi todo');
+  }
+  const lento = quieta(0.5, 0.01);
+  assert.ok(lento[n - 1] < 0.5 * 0.5 / 0.01, 'con k = 0.01/s no llega en un minuto');
+  near(quieta(0.5, 1)[n - 1], 0.5, 0.01, 'un sesgo de 0.5 °/s con k = 1/s deja medio grado');
+  ok(`e(t) = (b/k)(1 − e^(−kt)): en 1/k s cierra el 63 %, en 3/k s el 95 %; con k = 0.01/s, en un minuto ${(100 * lento[n - 1] / 50).toFixed(0)} % de b/k`);
+}
+
 // la gravedad no ve el rumbo: cambiarlo no mueve ni una cifra de lo que lee el reloj
 for (const [i, r, t] of [[0, 0, 0], [30, 0, 0], [-50, 0, 40], [80, 0, -120]]) {
   const a = F.gravedadLeida(i, r, t);
@@ -105,6 +125,13 @@ const imu = M.synth('apuntar', 'l', { noise: true, loops: 6 });
 const X0 = v3(imu.truth.X), Z0 = v3(imu.truth.Z), frame0 = [X0, M.vec.cross(Z0, X0), Z0], psi0 = M.headingOf(v3(imu.truth.F));
 const media = (a, i0, i1) => { let s2 = 0, c = 0; for (let i = i0; i < i1; i++) if (!Number.isNaN(a[i])) { s2 += Math.abs(a[i]); c++; } return s2 / c; };
 const pred = F.derivaPredicha(imu), n = imu.n;
+for (const kp of [0.5, 8]) {           // ningún Kp arregla la deriva: la inclinación queda, el rumbo se va igual
+  const e = F.erroresAntebrazo(imu.truth.F, M.reconstruct(imu, 'l', { kp, frame0, psi0 }).F);
+  const incl = media(e.incl, n - 500, n);
+  assert.ok(incl < 2, `con Kp = ${kp} la inclinación queda en un par de grados (${incl.toFixed(2)}°)`);
+  near(e.rumbo[n - 1], pred[n - 1], 1.5, `con Kp = ${kp} el rumbo se va ∫ b·ĝ dt igual`);
+  ok(`Kp = ${kp}: inclinación ${incl.toFixed(2)}°, rumbo ${e.rumbo[n - 1].toFixed(1)}° (∫ b·ĝ dt = ${pred[n - 1].toFixed(1)}°)`);
+}
 for (const kp of [0, 2]) {
   const e = F.erroresAntebrazo(imu.truth.F, M.reconstruct(imu, 'l', { kp, frame0, psi0 }).F);
   const incl = media(e.incl, n - 500, n), rumbo = e.rumbo[n - 1];
@@ -124,4 +151,19 @@ near(F.subida([0, -30, 0], [0, 0, 9.8], [1, 0, 0]), 30, 1e-9, 'subir la mano es 
 near(F.subida([0, 30, 0], [0, 0, 9.8], [-1, 0, 0]), 30, 1e-9, 'en la derecha también');
 near(F.giroVertical([3, 4, 5], [0, 0, 9.8]), 5, 1e-9, 'el giro vertical es la parte de ω a lo largo de arriba');
 ok('las tasas en vivo tienen el signo de wrist.js');
+
+// recentrar de a poco: autoCenterStep (avatar.js corre en el navegador; aquí, su texto y su cuenta)
+const avatar = require('fs').readFileSync(path.join(web, 'avatar.js'), 'utf8');
+for (const frase of ['const CENTER_TAU_S = 12;', 'if (!S.autoCenter) return;', 'const ang = -th * Math.min(1, dt / CENTER_TAU_S);',
+  'AF.rotateY(ang);', 'autoCenter: true,']) assert.ok(avatar.includes(frase), `avatar.js ya no dice: ${frase}`);
+assert.ok(/function frame[\s\S]*?autoCenterStep\(dt\);/.test(avatar), 'autoCenterStep corre en cada cuadro, quieta o no la mano');
+{
+  let th = 90; const dt = 1 / 60, v0 = th * Math.min(1, dt / 12) / dt;
+  for (let i = 0; i < 60 * 12; i++) th += -th * Math.min(1, dt / 12);
+  near(v0, 7.5, 0.01, 'con 90° fuera, 7.5 °/s');
+  near(th / 90, Math.exp(-1), 0.01, 'en τ = 12 s cierra el 63 %');
+  ok(`autoCenterStep: siempre que está prendido, con τ = 12 s; con 90° fuera, ${v0.toFixed(1)} °/s`);
+}
+near(2.4 * Math.PI / 180 * 100, 4.2, 0.05, 'un grado a 2.4 m');
+ok('a 2.4 m de la pantalla un grado son 4.2 cm');
 console.log('\nTodo pasa.');

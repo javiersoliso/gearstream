@@ -22,6 +22,7 @@ Cada escena tiene una frase que, una vez vista la figura, tiene que parecer obvi
 Una por concepto, para ver la idea antes de mover los controles de la página. Salen de
 [`animaciones/cap08.py`](../animaciones/cap08.py) (Manim), con los números de `fusionmath.js` y `mocapmath.js`:
 [`animaciones/datos_cap08.js`](../animaciones/datos_cap08.js) los calcula con la misma cuenta que la página y las pruebas.
+Debajo de cada una va la teoría que cuenta la página.
 
 **Fusión de sensores.** El giroscopio sumado se va b·t (30° en un minuto); el acelerómetro no se va, pero salta con
 cada sacudida. Juntos, ni se va ni salta.
@@ -33,17 +34,38 @@ el resorte tira más cuanto más se aleja, hasta que los dos se igualan en e = b
 
 ![La estimación atada a la medida con un resorte; el error sube y se queda quieto en b/k, más bajo cuanto más rígido el resorte](../media/cap08/Resorte.gif)
 
-**Qué tan fuerte tirar.** A la izquierda del valle manda el giroscopio y el error va hacia b/k, y llega si hay tiempo: $e(t) = (b/k)(1 - e^{-kt})$; a la derecha manda el
-acelerómetro y salta con él. Sin sacudidas, el fondo se corre a la derecha.
+En cada muestra la estimación avanza lo que dice el giroscopio, y el resorte la tira un poquito hacia la medida. El
+error es $e = \theta - \theta_{\text{verdad}}$, y cambia por dos razones: el sesgo lo corre $b$ grados por segundo, y el
+resorte lo devuelve $k\,e$ grados por segundo. Mientras $b$ sea más grande que $k\,e$, el error crece; se queda quieto
+cuando los dos tirones se empatan:
+
+$$e' = b - k\,e \quad\Rightarrow\quad e \to b/k$$
+
+No llega de golpe: $e(t) = (b/k)(1 - e^{-kt})$, la exponencial del capítulo 3 con constante de tiempo $1/k$, así que
+tarda unos $3/k$ segundos; con $k$ = 0.01/s no llega en un minuto. Por eso $k$ va en "por segundo": **en $1/k$
+segundos el resorte cierra casi dos tercios de la diferencia** (el 63 % del capítulo 3). Un sesgo de 0.5 °/s con
+$k$ = 1/s deja medio grado de error, para siempre, y el sesgo solo no deja más que eso.
+
+Se llama **complementario** porque de cada testigo toma lo que al otro le falta: lo rápido del giroscopio y lo lento
+del acelerómetro. Juntar dos medidas así, para que cada una tape el defecto de la otra, es la fusión de sensores.
+
+**Qué tan fuerte tirar.** A la izquierda del valle manda el giroscopio y el error va hacia b/k, y llega si hay tiempo;
+a la derecha manda el acelerómetro y salta con él. Sin sacudidas, el fondo se corre a la derecha, porque si el
+acelerómetro no miente conviene creerle más. Con más sesgo también se corre a la derecha: hay más deriva que frenar.
+No hay un k bueno para todo; depende de cuánto miente cada testigo.
 
 ![El error rms contra k en escala logarítmica: un valle con el fondo cerca de k = 1/s, que sin sacudidas se corre a k ≈ 12/s](../media/cap08/Valle.gif)
 
-**Lo que la gravedad no ve.** Inclinar y atornillar cambian lo que lee el reloj; girar alrededor de arriba, no.
+**Lo que la gravedad no ve.** Inclinar y atornillar cambian lo que lee el reloj; girar alrededor de arriba, no. La
+gravedad es una sola flecha, y una flecha no cambia si giras alrededor de ella. Así que el resorte del rumbo no tiene de
+dónde agarrarse: la inclinación queda atada a la gravedad, y el rumbo queda suelto, con un error que crece b·t.
 
 ![El antebrazo con los ejes del reloj y las tres cifras que lee de la gravedad: cambian al inclinar y al atornillar, y no al girar el rumbo](../media/cap08/GravedadNoVeRumbo.gif)
 
 **TRIAD.** Arriba y el antebrazo, conocidos en el reloj y en el mundo, arman la orientación entera, con un rumbo
-supuesto porque arriba no dice hacia qué lado apunta el antebrazo.
+supuesto porque arriba no dice hacia qué lado apunta el antebrazo. Con el trío $a, b, c$ escrito como columnas en los
+dos marcos, $R = [a\ b\ c]_{\text{mundo}}\,[a\ b\ c]_{\text{reloj}}^{\mathsf T}$: de derecha a izquierda, la transpuesta
+pasa del reloj al trío y la otra matriz, del trío al mundo (capítulo 5, sección 2).
 
 ![Arriba y el antebrazo, el círculo de antebrazos posibles, un rumbo supuesto y las dos flechas que completan el trío](../media/cap08/Triad.gif)
 
@@ -58,21 +80,46 @@ Kp = 2 no pasa de unas décimas.
 
 ![Dos flechas, arriba medido y arriba predicho, que se juntan girando alrededor de su producto cruz; luego el error de inclinación con Kp = 0 y con Kp = 2](../media/cap08/Mahony.gif)
 
+El mocap guarda la orientación del reloj en un cuaternión (capítulo 5) y en cada muestra la gira lo que dice el
+giroscopio más esa corrección: $q \leftarrow q \otimes \exp((\omega + K_p e)\,\Delta t/2)$. El $\exp$ de una flecha $u$ es
+$(\cos|u|,\ \hat u\,\sin|u|)$, el cuaternión del capítulo 5: girar $|\omega + K_p e|\,\Delta t$ alrededor de
+$\omega + K_p e$. Las dos flechas "arriba" son casi verticales, así que su producto cruz $e$ es casi horizontal: **la
+corrección inclina y nunca toca el rumbo**. Y como Mahony guarda la orientación entera, no necesita el rumbo del
+antebrazo en cada muestra: no tiene el hueco de la proyección cuando el brazo cuelga.
+
 **Por qué el rumbo se va.** Con Kp = 2 el rumbo se va igual, y casi exactamente ∫ b·ĝ dt (el ruido suma un paseo de unas décimas de grado): la parte del sesgo que gira
-alrededor de la vertical. Unas décimas de °/s son unos 12 cm de cursor en 10 s, con la pantalla a 2.4 m.
+alrededor de la vertical. Unas décimas de °/s son unos 12 cm de cursor en 10 s, con la pantalla a 2.4 m, porque ahí un
+grado son 2.4 m × π/180 ≈ 4.2 cm (capítulo 7).
 
 ![El error de rumbo de la fusión encima de la curva predicha ∫ b·ĝ dt, y el rayo a la pantalla que se corre 12 cm en 10 s](../media/cap08/DerivaDelRumbo.gif)
+
+**Ningún Kp arregla la deriva**: Kp solo tira de la inclinación. Desde Kp = 0.5 la inclinación queda entre unas
+décimas y un par de grados, y el rumbo sigue la punteada casi exacto. Ojo: en la animación el arriba medido no miente,
+porque es la gravedad de la animación; con el acelerómetro crudo vuelve el valle, y un Kp alto tiembla. ¿Qué arreglaría
+el rumbo? Otra flecha fija en el mundo que no sea vertical: el norte de un magnetómetro, que este reloj no entrega, o
+algo que se vea, como la pantalla o una cámara.
+
+**Fusionar una fusión.** El sensor de gravedad del reloj ya es una cuenta de Samsung que junta el acelerómetro y el
+giroscopio: por eso tiembla tan poco, y la página lo usa de referencia en vivo. Mahony con esa gravedad es fusionar una
+fusión. Debería andar bien, porque casi no tiembla, pero no está medido, y no se sabe qué rigidez eligió Samsung. El
+testigo que tiembla de verdad es el acelerómetro crudo.
 
 **Recentrar.** El rumbo es relativo: se fija un frente y se vuelve a él, con un botón o de a poco. De a poco no hace
 falta botón, pero también se come los giros que dejas puestos mucho rato.
 
 ![El rumbo de tu mano, el de la fusión que se va, el recentrado con un botón y el recentrado de a poco con τ = 12 s](../media/cap08/Recentrar.gif)
 
+Lo ideal es recentrar cuando la mano descansa: si está quieta, nadie nota que el frente se mueve un poco. Pero
+`autoCenterStep` de `server/web/avatar.js` no espera al reposo. Con "auto-centrar rumbo" prendido (viene prendido),
+en cada cuadro tira del rumbo del antebrazo hacia el frente una fracción $\Delta t/\tau$ de lo que falta, con
+$\tau$ = 12 s (con 90° fuera, unos 7.5 °/s), y gira lo mismo el filtro del brazo (`ArmFilter.rotateY`). Por eso se come
+también los giros que dejas puestos. La otra forma es el botón, o la tecla R.
+
 ## La matemática
 
 - El filtro complementario: `θ ← θ + ω·Δt + k·Δt·(θ_acel − θ)`.
-- Por qué b/k: `e′ = b − k·e`, que deja de crecer cuando `e = b/k`.
-- El acelerómetro se inclina con cada tirón: una muñeca a r del codo que acelera su giro a α empuja de costado con r·α. Con el brazo colgando, el acelerómetro cree que arriba se inclinó `atan(r·α / g)`; con el brazo horizontal ese tirón no inclina la elevación, y en medio el efecto cambia. La simulación usa esa fórmula en toda postura: es un modelo inventado, para tener sacudidas de un tamaño creíble, no la física de cada postura. Con la física completa el valle sigue ahí.
+- Por qué b/k: `e′ = b − k·e`, que deja de crecer cuando `e = b/k`; llega como `e(t) = (b/k)(1 − e^(−kt))`, en unos 3/k segundos.
+- El acelerómetro se inclina con cada tirón: una muñeca a r del codo que acelera su giro a α empuja de costado con r·α (la aceleración de un punto que gira se ve en el capítulo 9, sección 9). Con el brazo colgando, el acelerómetro cree que arriba se inclinó `atan(r·α / g)`; con el brazo horizontal ese tirón no inclina la elevación, y en medio el efecto cambia. La simulación usa esa fórmula en toda postura: es un modelo inventado, para tener sacudidas de un tamaño creíble, no la física de cada postura. Con la física completa el valle sigue ahí.
 - Mahony: `e = ĝ_medido × ĝ_predicho` y `q ← q ⊗ exp((ω + Kp·e)·Δt/2)`.
 - La deriva del rumbo: `∫ b·ĝ dt`, la parte del sesgo que gira alrededor de la vertical.
 

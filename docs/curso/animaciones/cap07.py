@@ -192,6 +192,15 @@ class RayoTangente(Escena):
         self.decir("Con 13° ya hay un centímetro entre los dos: tan θ − θ ≈ θ³/3")
         self.play(th.animate.set_value(13.2 * GRADO), run_time=1.2)
         self.wait(0.8)
+        # de dónde sale θ³/3: la pendiente de tan θ es 1/cos²θ = 1 + tan²θ, la del arco es 1; la resta, tan²θ ≈ θ²,
+        # sumada desde 0 da exactamente tan θ − θ (y θ³/3 si se cambia tan²θ por θ²)
+        a = 13.2 * GRADO
+        assert abs(np.sum(np.tan(np.linspace(0, a, 20001)[:-1] + a / 40000) ** 2) * a / 20000 - (np.tan(a) - a)) < 1e-9
+        assert abs(a ** 3 / 3 / (np.tan(a) - a) - 1) < 0.03
+        self.decir("Por cada Δθ, el rayo avanza D(1 + tan²θ)·Δθ y el cursor D·Δθ")
+        self.wait(2)
+        self.decir("La diferencia crece a D·tan²θ ≈ D·θ²; sumar θ² desde 0 da θ³/3")
+        self.wait(2)
         self.decir("Con 40° el rayo va por 2.01 m y el cursor por 1.68 m")
         self.play(th.animate.set_value(40 * GRADO), run_time=2.4)
         self.wait(1)
@@ -531,6 +540,16 @@ class Filtro1Euro(Escena):
         self.play(Write(titulo))
         f = MathTex(r"\alpha = \frac{1}{1 + \frac{1}{2\pi f_c \Delta t}}", r"\qquad f_c = f_{min} + \beta\,|\dot x|", font_size=34).next_to(titulo, DOWN, buff=0.12)
         self.play(Write(f))
+        # el α del filtro es el promedio que olvida del capítulo 3 con τ = 1/(2π f_c): α = Δt / (τ + Δt)
+        tau = 1 / (2 * np.pi * 2.0)
+        assert np.isclose(OneEuro.alpha(2.0, DT), DT / (tau + DT))
+        f2 = MathTex(r"\tau = \frac{1}{2\pi f_c} \quad\Rightarrow\quad \alpha = \frac{\Delta t}{\tau + \Delta t}", font_size=32)\
+            .next_to(f, DOWN, buff=0.15)
+        self.decir("Corte f_c: lo más lento que f_c pasa; lo más rápido se achica")
+        self.wait(1.5)
+        self.play(Write(f2))
+        self.decir(f"τ es la constante de tiempo del capítulo 3: a 2 Hz, {1000 * tau:.0f} ms")
+        self.wait(2)
         rng = np.random.default_rng(11)
         n = 200
         t = np.arange(n) * DT
@@ -677,6 +696,58 @@ class Potencias(Escena):
         self.play(Write(f3))
         self.wait(2)
         self.decir(f"Por eso crece tan poco: de 1 a 1000 solo hay {np.log2(1000):.2f} duplicaciones")
+        self.wait(2.5)
+
+        # exponentes que no son enteros, la base e y ln
+        self.play(*[FadeOut(m) for m in (barras, base, f1, f2, f3, self._rotulo)])
+        self._rotulo = None
+        ax = ejes([-2, 3, 1], [0, 10, 2], ancho=7.4, alto=4.8).move_to([-2.4, -0.3, 0])
+        xs = np.linspace(-2, 3, 201)
+        xe = xs[xs <= np.log(10)]
+        dos = linea(ax, xs, 2 ** xs, BLUE, 4)
+        puntos = VGroup(*[Dot(ax.c2p(k, 2 ** k), radius=0.07, color=RAYO) for k in range(-2, 4)])
+        n2 = MathTex("2^x", color=BLUE, font_size=34).move_to(ax.c2p(2.75, 4.6))
+        self.play(Create(ax), FadeIn(puntos))
+        self.decir("Los enteros son duplicar; la curva 2^x llena lo que hay en medio")
+        self.play(Create(dos), FadeIn(n2), run_time=1.5)
+        panel = []
+
+        def anotar(tex, color=WHITE):
+            m = MathTex(tex, font_size=36, color=color).move_to([3.9, 2.3 - 0.75 * len(panel), 0], aligned_edge=LEFT).shift(LEFT * 1.4)
+            panel.append(m)
+            self.play(Write(m))
+
+        def marca(x, y, color):
+            return VGroup(DashedLine(ax.c2p(x, 0), ax.c2p(x, y), color=color), DashedLine(ax.c2p(-2, y), ax.c2p(x, y), color=color),
+                          Dot(ax.c2p(x, y), radius=0.07, color=color))
+
+        m1 = marca(0.5, 2 ** 0.5, RAYO)
+        self.play(Create(m1))
+        anotar(r"2^{1/2} = " + f"{2 ** 0.5:.3f}")
+        self.decir(f"Media duplicación: {2 ** 0.5:.3f} · {2 ** 0.5:.3f} = {(round(2 ** 0.5, 3)) ** 2:.2f}, casi 2")
+        self.wait(1.5)
+        anotar(r"2^{1/12} = " + f"{2 ** (1 / 12):.4f}")
+        self.decir(f"Doce pasos seguidos de ×{2 ** (1 / 12):.4f} también dan 2 (capítulo 11)")
+        self.wait(1.8)
+        m2 = marca(-1, 0.5, RAYO)
+        self.play(Create(m2))
+        anotar(r"2^{-1} = \tfrac12")
+        self.decir("Hacia atrás se divide: cada paso a la izquierda, la mitad")
+        self.wait(1.5)
+        ese = linea(ax, xe, np.exp(xe), ORANGE, 4)
+        ne = MathTex("e^x", color=ORANGE, font_size=34).move_to(ax.c2p(1.55, 7.6))
+        self.play(FadeOut(m1, m2), Create(ese), FadeIn(ne), run_time=1.5)
+        anotar(r"e = " + f"{np.e:.3f}", ORANGE)
+        self.decir(f"Con base e = {np.e:.3f}, el número del capítulo 3, la curva es e^x", ORANGE)
+        self.wait(1.5)
+        m3 = marca(np.log(2), 2, ORANGE)
+        self.play(Create(m3))
+        anotar(r"\ln 2 = " + f"{np.log(2):.3f}", ORANGE)
+        self.decir(f"ln es la pregunta al revés con base e: e a la {np.log(2):.3f} da 2", ORANGE)
+        self.wait(1.8)
+        assert np.isclose(np.log(37.0), np.log(2) * np.log2(37.0))
+        anotar(r"\ln x = " + f"{np.log(2):.3f}" + r"\,\log_2 x")
+        self.decir("Cambiar de base es multiplicar por un número fijo")
         self.wait(2.5)
 
 

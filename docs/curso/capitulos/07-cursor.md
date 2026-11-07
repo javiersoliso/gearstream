@@ -39,6 +39,11 @@ $$y = D\tan\theta$$
 Con 10°, 42.3 cm. Con 40°, 2.01 m, cuando el arco va por 1.68 m. Para un **ángulo pequeño**, $\tan\theta \approx \theta$ y
 los dos coinciden. Lo que los separa es $\tan\theta - \theta \approx \theta^3/3$: con $D$ = 2.4 m, 1 cm a los 13°.
 
+¿De dónde sale? El rayo mide $D/\cos\theta$ hasta la pared, y la pared le queda inclinada $\theta$: girar un poquito
+$\Delta\theta$ mueve el punto $D\,\Delta\theta/\cos^2\theta = D(1 + \tan^2\theta)\,\Delta\theta$ (porque
+$\sin^2 + \cos^2 = 1$), y el cursor solo $D\,\Delta\theta$. La diferencia crece a $D\tan^2\theta \approx D\theta^2$ por
+radián, y sumar $\theta^2\,\Delta\theta$ desde 0 da $\theta^3/3$, igual que sumar $t$ da $t^2/2$ (capítulo 3).
+
 Entonces, ¿por qué el ratón aéreo usa $D\theta$, si $D\tan\theta$ es lo "correcto"? Por tres razones:
 
 - $D\tan\theta$ necesita conocer $D$ y el ángulo absoluto hacia la pantalla. El reloj no sabe ninguno de los dos: solo
@@ -153,8 +158,11 @@ hace el **filtro 1€** (*One Euro*), que es un promedio que olvida con el $\alp
 
 $$\alpha = \frac{1}{1 + \dfrac{1}{2\pi f_c \Delta t}}, \qquad f_c = f_{min} + \beta\,|\dot x|$$
 
-$f_c$ es la frecuencia de corte: alta, $\alpha$ se acerca a 1 y el filtro casi no toca nada. A 100 muestras por segundo,
-$\alpha$ = 0.112 con 2 Hz y 0.430 con 12 Hz. Y $\dot x$ es el salto desde la última salida filtrada, $(x - \hat x)/\Delta t$, suavizado por su cuenta para que
+$f_c$ es la **frecuencia de corte**: lo que oscila más lento que $f_c$ pasa casi entero, y lo más rápido se achica. Es
+otra forma de dar la constante de tiempo del capítulo 3, $\tau = 1/(2\pi f_c)$, y la fórmula de $\alpha$ es
+$\alpha = \Delta t/(\tau + \Delta t)$: con $\Delta t$ chico, casi el $\Delta t/\tau$ del capítulo 3, y nunca pasa de 1.
+Con 2 Hz, $\tau$ = 80 ms: en un $\tau$ se cierra el 63 % (capítulo 3). Con $f_c$ alto, $\alpha$ se acerca a 1 y el filtro
+casi no toca nada. A 100 muestras por segundo, $\alpha$ = 0.112 con 2 Hz y 0.430 con 12 Hz. Y $\dot x$ es el salto desde la última salida filtrada, $(x - \hat x)/\Delta t$, suavizado por su cuenta para que
 el ruido no lo dispare (derivar agranda el ruido).
 
 Esta es la clase, sin su `reset`, `OneEuro` de `tools/air_mouse.py`:
@@ -217,7 +225,7 @@ y `suggest` de `server/web/calibrate.js` propone subir `gain_y` cuando la vertic
 
 ## 11. Potencias y logaritmos
 
-![Barras que se duplican, de 1 a 256; log2 64 es 6; log2 3 es 1.585, y multiplicar es sumar logaritmos](../media/cap07/Potencias.gif)
+![Barras que se duplican, de 1 a 256; log2 64 es 6; log2 3 es 1.585, y multiplicar es sumar logaritmos; después las curvas 2^x y e^x, con 2^(1/2) = 1.414, 2^(1/12) = 1.0595, 2^(−1) = 1/2 y ln 2 = 0.693](../media/cap07/Potencias.gif)
 
 Antes de medir, hace falta una herramienta. $2^k$ es duplicar $k$ veces. El **logaritmo** es la pregunta al revés:
 $\log_2 x$ cuenta cuántas veces hay que duplicar para llegar a $x$. $\log_2 1024 = 10$, y no hace falta que dé entero:
@@ -227,6 +235,12 @@ Como multiplicar por 8 y por 4 es duplicar 3 veces y después 2, los logaritmos 
 $\log_2(8\cdot 4) = 3 + 2$. Y crecen muy despacio: de 1 a 1000 hay menos de 10 duplicaciones. Los logaritmos sirven
 para todo lo que va por proporción y no por diferencia. En el repo también los usan `midiHz` y `Musica.pulse` de
 `server/web/musica.js`, que se ven en el capítulo 11.
+
+Los exponentes no tienen que ser enteros: la curva $2^x$ llena lo que hay entre las barras. $2^{1/2}$ = 1.414 es media
+duplicación, porque dos seguidas dan 2; $2^{1/12}$ = 1.0595 es lo que, doce veces seguido, da 2 (el capítulo 11 lo usa).
+Hacia atrás se divide: $2^{-1} = \tfrac12$. Con base $e$ = 2.718, el número del capítulo 3, se escribe $e^x$, y su
+pregunta al revés es $\ln x$: $\ln 2$ = 0.693, porque $e^{0.693}$ = 2. Cambiar de base es multiplicar por un número
+fijo, $\ln x = 0.693\,\log_2 x$. El capítulo 9 usa $\ln$.
 
 ## 12. Ley de Fitts: medir con un número
 

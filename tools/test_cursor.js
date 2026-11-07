@@ -88,6 +88,17 @@ function cursorDeUnGiro(grados, hz = 100, tasa = 10) {          // un yaw parejo
   for (let k = 0; k < n; k++) r[3 * k + 1] = -tasa;
   return M.cursorTrack(r, hz, [0, 0, 0], D * GRADO);
 }
+// de dónde sale θ³/3: el punto en la pared avanza D·Δθ/cos²θ = D(1 + tan²θ)Δθ; la diferencia con el arco, sumada
+{
+  const th = 13.2 * GRADO, h = 1e-6, n = 20000;
+  near((Math.tan(0.3 + h) - Math.tan(0.3 - h)) / (2 * h), 1 + Math.tan(0.3) ** 2, 1e-6, 'la pendiente de tan θ es 1 + tan²θ');
+  near(1 / Math.cos(0.3) ** 2, 1 + Math.tan(0.3) ** 2, 1e-12, '1/cos² = 1 + tan²');
+  let suma = 0;
+  for (let i = 0; i < n; i++) suma += Math.tan((i + 0.5) * th / n) ** 2 * th / n;
+  near(suma, Math.tan(th) - th, 1e-9, 'sumar tan²θ·Δθ da tan θ − θ');
+  near(th ** 3 / 3 / (Math.tan(th) - th), 1, 0.03, 'y cambiando tan²θ por θ², θ³/3');
+  ok(`la diferencia crece a tan²θ por radián; a 13.2°, tan θ − θ = ${(Math.tan(th) - th).toFixed(5)} y θ³/3 = ${(th ** 3 / 3).toFixed(5)}`);
+}
 const c10 = cursorDeUnGiro(10), c40 = cursorDeUnGiro(40);
 near(c10[c10.length - 3], arco(10), 1e-5, 'cursorTrack da D·θ a 10°');
 near(c40[c40.length - 3], arco(40), 1e-5, 'cursorTrack da D·θ a 40°');
@@ -223,6 +234,14 @@ const llega = (y) => (y.findIndex((v, k) => k >= 50 && v > 63) - 50) * dt * 1000
 const [tFijo, tEuro] = [llega(f(escalon, fijo(2))), llega(f(escalon, euro(0.01)))];
 assert.ok(tEuro < tFijo / 2, 'el 1€ llega antes');
 ok(`temblor de ${tamano(ruido).toFixed(2)} °/s: fijo a 2 Hz deja ${rFijo.toFixed(2)}, 1€ deja ${rEuro.toFixed(2)}; al arrancar a 100 °/s, el fijo tarda ${tFijo.toFixed(0)} ms y el 1€ ${tEuro.toFixed(0)} ms`);
+// la frecuencia de corte: τ = 1/(2π f_c) y α = Δt/(τ + Δt); lo más lento que f_c pasa, lo más rápido se achica
+const tau = (fc) => 1 / (2 * Math.PI * fc);
+for (const fc of [1, 2, 12]) near(OneEuro.alpha(fc, dt), dt / (tau(fc) + dt), 1e-12, `α = Δt/(τ + Δt) a ${fc} Hz`);
+near(tau(2) * 1000, 80, 0.5, 'a 2 Hz, τ = 80 ms');
+near(tFijo, tau(2) * 1000, 15, 'el corte fijo llega al 63 % en un τ');
+const pasa = (hzSeno) => { const y = f(Array.from({ length: 2000 }, (_, k) => Math.sin(2 * Math.PI * hzSeno * k * dt)), fijo(2)).slice(1000); return Math.max(...y); };
+assert.ok(pasa(0.5) > 0.9 && pasa(10) < 0.3, `a 0.5 Hz pasa ${pasa(0.5).toFixed(2)}, a 10 Hz ${pasa(10).toFixed(2)}`);
+ok(`τ = 1/(2π f_c): ${(tau(2) * 1000).toFixed(0)} ms a 2 Hz, y α = Δt/(τ + Δt); una oscilación de 0.5 Hz pasa ${(100 * pasa(0.5)).toFixed(0)} %, una de 10 Hz ${(100 * pasa(10)).toFixed(0)} %`);
 
 // ---------- calibrar los dos ejes ----------
 console.log('Calibrar los dos ejes');
@@ -249,6 +268,12 @@ console.log('Potencias, logaritmos y Fitts');
 near(2 ** 10, 1024, 0, 'duplicar diez veces'); near(Math.log2(1024), 10, 1e-12, 'el logaritmo cuenta'); near(Math.log2(3), 1.585, 0.0005, 'no hace falta que sea entero');
 near(Math.log2(8 * 4), Math.log2(8) + Math.log2(4), 1e-12, 'multiplicar es sumar');
 ok(`2^10 = 1024, log2(1024) = 10, log2(3) = ${Math.log2(3).toFixed(3)}, y log2(8·4) = 3 + 2`);
+near(2 ** 0.5, 1.414, 0.0005, 'media duplicación'); near((2 ** 0.5) ** 2, 2, 1e-12, 'dos medias son una');
+near(2 ** (1 / 12), 1.0595, 0.00005, 'un doceavo'); near((2 ** (1 / 12)) ** 12, 2, 1e-12, 'doce doceavos son una');
+near(2 ** -1, 0.5, 0, 'hacia atrás se divide'); near(Math.E, 2.718, 0.0005, 'la base e');
+near(Math.log(2), 0.693, 0.0005, 'ln 2'); near(Math.exp(Math.log(2)), 2, 1e-12, 'e a la ln 2 da 2');
+for (const x of [3, 37, 0.2]) near(Math.log(x), Math.log(2) * Math.log2(x), 1e-12, 'ln x = ln 2 · log2 x');
+ok(`2^(1/2) = ${(2 ** 0.5).toFixed(3)}, 2^(1/12) = ${(2 ** (1 / 12)).toFixed(4)}, 2^(−1) = 0.5, e = ${Math.E.toFixed(3)}, ln 2 = ${Math.log(2).toFixed(3)} y ln x = ${Math.log(2).toFixed(3)}·log2 x`);
 dice(cal, 'const ID = Math.log2(trial.D / W + 1);', 'calibrate.js');
 dice(cal, 'ID, TP: ID / (MT / 1000),', 'calibrate.js');
 const ID = (d, w) => Math.log2(d / w + 1);
