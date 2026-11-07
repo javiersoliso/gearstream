@@ -177,9 +177,17 @@ En la muñeca izquierda el antebrazo es el +x del reloj; en la derecha, con el r
 
 ## Juego: Revienta globos
 
+![Un amigo juega por primera vez: la mano casi plana sobre la mesa apunta con la muñeca y revienta globos](docs/media/primera-vez-globos.gif)
+
+Así lo jugó un amigo la primera vez. Con una explicación corta (cuanto más fuerte empujas, más lejos llega el dardo) terminó la partida en 4700 puntos, récord.
+
 `http://localhost:8765/game.html` (o el botón Juego del lanzador). Apuntas con la muñeca y **empujas la mano hacia la pantalla** para lanzar un dardo: la fuerza del empujón es la profundidad, suave llega a los globos cercanos y fuerte a los lejanos, que valen el triple. El empujón es la aceleración a lo largo del antebrazo (eje x del reloj, sin gravedad); la escala se adapta a tu fuerza. Botón atrás del reloj: empezar y recentrar la mira. Sin reloj se juega con el ratón y las teclas 1, 2 y 3. Apaga el ratón aéreo mientras juegas.
 
 ## Tornillo y tempo
+
+![El mismo amigo atornilla girando la muñeca como con un destornillador, con la mano apoyada cerca de la mesa](docs/media/primera-vez-tornillo.gif)
+
+El mismo amigo, después de explicarle que el tornillo entra hasta cierto punto y ahí deja de entrar.
 
 `http://localhost:8765/tempo.html`. Gira la muñeca como con un destornillador: el antebrazo es el eje x del reloj, así que el giro es ω_x del giroscopio, y su signo es el sentido (mirando del codo a los dedos, horario = atornillar). Un giro fuerte, de más de 200 °/s, avanza o saca el tornillo una vuelta entera: apuntando con el ratón, los giros accidentales del dataset nunca pasaron de 117 °/s. Un ritmo constante de giros da el tempo en giros por minuto; con el botón atrás o Espacio se fija y suena un metrónomo. Detector en `server/web/flick.js`, probado con el dataset en `tools/test_flick.js`.
 
