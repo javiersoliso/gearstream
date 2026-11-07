@@ -80,9 +80,21 @@ $$\min_W \lVert XW - V \rVert^2$$
 
 Al cuadrado para que un error grande pese mucho y para que el fondo sea fácil de hallar, como en una parábola. (Es uno solo si
 ninguna columna de $X$ se puede armar con las otras. Aquí el roll repite a $\omega_x$, así que de los nueve números de cada mirada
-solo ocho son independientes.) En el fondo el
-error queda perpendicular a cada columna de $X$, y eso da un sistema chico, como el de las coordenadas en una base:
-$X^{\mathsf T}X\,W = X^{\mathsf T}V$. A esto también se le dice una **regresión**. En `tools/analyze_drawing.py` lo hace
+solo ocho son independientes.)
+
+![X como tabla de instantes por rasgos; cada columna es una flecha de N números, V otra; XW recorre el plano de las columnas, y la V − XW más corta es la perpendicular, de donde sale XᵀXW = XᵀV](../media/cap12/LaSombraDeV.gif)
+
+¿Dónde está el fondo? $X$ es una tabla: una fila por instante, una columna por rasgo. Cada columna $x_j$ es una flecha
+de $N$ números, uno por instante, y $V$ es otra. $XW = w_1x_1 + w_2x_2 + \dots$ solo puede caer en el plano que forman
+las columnas, y el punto de ese plano más cercano a $V$ es su sombra: el que deja lo que falta, $V - XW$,
+perpendicular al plano. Cualquier otro punto queda más lejos, porque Pitágoras le suma un cateto. Perpendicular a cada
+columna quiere decir producto punto cero, $x_j \cdot (V - XW) = 0$, y como las filas de $X^{\mathsf T}$ son las columnas
+de $X$ (capítulo 5), todas juntas son $X^{\mathsf T}(V - XW) = 0$:
+
+$$X^{\mathsf T}X\,W = X^{\mathsf T}V$$
+
+Es un sistema chico, como el de las coordenadas en una base: tantas ecuaciones como rasgos, por muchos instantes que
+haya. A esto también se le dice una **regresión**. En `tools/analyze_drawing.py` lo hace
 `r2`, con `np.linalg.lstsq`, y con eso `main` saca la calibración del giro: en la grabación real, 5.3 mm de trazo por
 grado de yaw y 6.9 por grado de pitch, según el README. En la animación los puntos se inventaron con 5.3 y el fondo cae
 en 5.88: doce puntos con ruido no dan más.
@@ -102,7 +114,9 @@ que ajustó, así que su R² es el mejor caso.
 
 ![Polinomios de grado 1 a 11 sobre 12 puntos: el error con lo visto baja hasta cero y el error con datos nuevos se dispara](../media/cap12/Sobreajuste.gif)
 
-Con tantos números como puntos, un modelo pasa por todos: grado 11 con 12 puntos deja error casi 0. Y no aprendió, se
+Un **polinomio** de **grado** $d$ es $c_0 + c_1x + c_2x^2 + \dots + c_dx^d$: $d + 1$ números que se eligen con mínimos
+cuadrados, porque sigue siendo una suma de columnas ($1$, $x$, $x^2$…) con pesos. Con tantos números como puntos, un
+modelo pasa por todos: grado 11 con 12 puntos deja error casi 0. Y no aprendió, se
 los memorizó: con datos nuevos su error es 370, cuando el de grado 5, el mejor, es 0.2. Eso es **sobreajuste**. El error
 con lo visto solo sabe bajar, así que no dice nada. Una **prueba justa** mide siempre con datos que el modelo no vio, y si
 eliges algo mirando esa prueba, ya la viste. Separar los datos varias veces, de modo que cada parte sirva una vez para
@@ -144,7 +158,10 @@ que se cancelan, y que copian el ruido. La **regresión ridge** cobra por el tam
 
 $$\min_W \lVert XW - V \rVert^2 + \lambda \lVert W \rVert^2 \quad\Longrightarrow\quad (X^{\mathsf T}X + \lambda I)\,W = X^{\mathsf T}V$$
 
-Sigue siendo un sistema lineal, con una sola solución. Y es la clase `Ridge` de `tools/reconstruct_drawing.py`, entera:
+¿De dónde sale el $+\lambda I$? El castigo es como agregarle a $X$ unas filas más, $\sqrt\lambda\,I$, que deben dar 0:
+$\lVert XW - V\rVert^2 + \lambda\lVert W\rVert^2$ es la suma de cuadrados de esa tabla más larga. La misma sombra de la
+sección 5 da $X^{\mathsf T}X + \sqrt\lambda I\cdot\sqrt\lambda I = X^{\mathsf T}X + \lambda I$ a la izquierda, y nada nuevo a la
+derecha. Sigue siendo un sistema lineal, con una sola solución. Y es la clase `Ridge` de `tools/reconstruct_drawing.py`, entera:
 
 ```python
 class Ridge:
@@ -198,12 +215,17 @@ fueron 0.60 para la calibración y 0.74 para la velocidad.
 ![En un valle de error, tres pasos: uno chico que apenas avanza, uno que llega rápido y uno demasiado grande que se va](../media/cap12/DescensoPorGradiente.gif)
 
 Ridge tiene fórmula. Casi ningún otro modelo la tiene. Lo que sirve para todos es bajar: el **gradiente** es la dirección
-en que el error sube más rápido, una derivada por cada número del modelo, y se da un paso chico al revés.
+en que el error sube más rápido, una derivada por cada número del modelo, y se da un paso chico al revés. Aquí la
+derivada no es respecto del tiempo sino de cada número de $W$: cuánto cambia el error $E$ si ese número se mueve un
+poquito y los demás no.
 
 $$W \leftarrow W - \alpha\,\nabla E$$
 
-α es el tamaño del paso. Muy chico, no llega. Si pasa de 2 dividido por la curvatura más fuerte del valle (0.56 en la
-animación), cada paso se pasa y el error crece. Con un valle largo hay que ir despacio por culpa de su lado empinado:
+α es el tamaño del paso. Muy chico, no llega. ¿Y muy grande? En la dirección más empinada del valle, el error es una
+parábola $E = \tfrac12 c\,u^2$, donde $u$ es lo que falta hasta el fondo y $c$ la curvatura, la segunda derivada. Su
+derivada es $c\,u$, así que un paso deja $u - \alpha c\,u = (1 - \alpha c)\,u$. Se achica si $|1 - \alpha c| < 1$, o sea si
+$\alpha < 2/c$. Si α pasa de 2 dividido por la curvatura más fuerte del valle (0.56 en la animación), cada paso se pasa
+y el error crece. Con un valle largo hay que ir despacio por culpa de su lado empinado:
 por eso se estandariza. La prueba comprueba que el **descenso por gradiente** llega al mismo $W$ que resolver el sistema.
 
 ## 12. Una red neuronal pequeña
@@ -216,10 +238,14 @@ cualquier forma:
 
 $$\hat v = W_2 \tanh(W_1 x + b_1) + b_2$$
 
-Ya no hay sistema que resolver, así que `MLP.fit` baja por el gradiente. Lo saca hacia atrás, de la salida a la entrada
-(retropropagación), y lo da a **Adam**, un descenso que ajusta el paso de cada número. Entrena por tandas de unos 256
-instantes. Guarda una de cada 7 muestras para validar, se queda con la mejor época y para cuando pasan más de 25 sin
-mejora.
+Ya no hay sistema que resolver, así que `MLP.fit` baja por el gradiente. Lo saca hacia atrás, de la salida a la
+entrada: es la **retropropagación**. El error depende de $W_1$ a través de la capa oculta, y cuánto cambia con $W_1$ es
+cuánto cambia con la capa por cuánto cambia la capa con $W_1$ (la regla de la cadena); el $1 - h^2$ del código es la
+derivada de tanh. Ese gradiente se lo da a **Adam**, un descenso que ajusta el paso de cada número: lleva un promedio
+que olvida del gradiente y otro de su cuadrado, los de $y \leftarrow y + \alpha(x - y)$ del capítulo 3 con α = 0.1 y 0.001,
+y avanza el primero dividido por la raíz del segundo, así que cada número se mueve más o menos lo mismo por paso,
+tenga el gradiente grande o chico. Entrena por tandas de unos 256 instantes; una **época** es una pasada por todas.
+Guarda una de cada 7 muestras para validar, se queda con la mejor época y para cuando pasan más de 25 sin mejora.
 
 Tiene 7874 números; ridge, 242. La prueba comprueba que su gradiente coincide con mover cada número y medir.
 
@@ -231,7 +257,7 @@ En la grabación real, ridge sacó 0.74 y la red 0.60. Con los datos inventados,
 últimas se pueden medir:
 
 - **Pocos datos para tantos números.** Cada pliegue entrena con unos 2600 instantes para 7874 números, y esos instantes
-  no son independientes: salen de 42 o 45 trazos.
+  no son datos aparte: salen de 42 o 45 trazos, y los de al lado se parecen.
 - **Una mala parada.** Las muestras de validación de `MLP.fit` son instantes al azar. Es la trampa de la sección 7: los
   de al lado se entrenaron, y la red cree que sigue mejorando. Dándole trazos enteros para validar, sin cambiar nada más,
   la red sube en las 5 semillas probadas, de 0.71 a 0.74 en promedio. En promedio sigue debajo de ridge.
@@ -311,8 +337,10 @@ Una medida sirve si los gestos difieren entre sí más de lo que cada gesto var�
 
 $$F = \frac{\sum_g n_g(\bar x_g - \bar x)^2 / (G-1)}{\sum_g \sum_i (x_i - \bar x_g)^2 / (N-G)}$$
 
-Arriba, cuánto se separan los promedios de los gestos; abajo, cuánto varía cada uno por dentro. Si la medida no separa
-nada, F ronda 1. En la animación, el cambio de gravedad da 1292.6, el golpe 556.2, el giro 141.8 y el número de golpes
+Arriba, cuánto se separan los promedios de los gestos; abajo, cuánto varía cada uno por dentro. Cada suma se divide
+por cuántos números libres tiene: los $G$ promedios, alrededor del promedio total, tienen $G - 1$ (el último queda fijo
+por los demás), y los $N$ datos, alrededor del promedio de su gesto, pierden uno por gesto, $N - G$. Así las dos son
+promedios de lo mismo cuando la medida no separa nada, y F ronda 1. En la animación, el cambio de gravedad da 1292.6, el golpe 556.2, el giro 141.8 y el número de golpes
 3.2. `fstat` no cambia con la unidad, pero `main` la calcula sobre los rasgos ya comprimidos, y ahí sí cambia, y el orden también;
 la animación usa los rasgos crudos. F además crece con el número de tomas, así que sirve para comparar medidas de una misma
 sesión. Y mide todos los gestos de una vez: el cambio de gravedad gana porque el gesto del brazo

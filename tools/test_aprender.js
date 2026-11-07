@@ -206,6 +206,15 @@ console.log('Mínimos cuadrados y R²');
   const sc = (cc) => suma(REF.y.map((v, i) => (v - pred(cc)[i]) ** 2));
   for (let i = 0; i < 200; i++) assert.ok(sc(c.map((v) => v + 0.1 * normal())) > sc(c), 'mover los coeficientes sube la suma');
   ok('en el mínimo el error queda perpendicular a los rasgos, y cualquier otro W da más suma de cuadrados');
+  // el +λI de ridge: es mínimos cuadrados con unas filas √λ·I más en X, que deben dar 0
+  const k = REF.X[0].length, lam = 3.7;
+  const mu = [...Array(k).keys()].map((j) => prom(col(REF.X, j))), sd = mu.map((_, j) => desv(col(REF.X, j)) + 1e-9);
+  const Z = REF.X.map((r) => [...r.map((v, j) => (v - mu[j]) / sd[j]), 1]);
+  const extra = [...Array(k).keys()].map((j) => [...Array(k + 1)].map((_, i) => (i === j ? Math.sqrt(lam) : 0)));
+  const Za = [...Z, ...extra], ya = [...REF.y, ...extra.map(() => 0)];
+  const Wa = resolver(normales(Za), Za[0].map((_, j) => punto(col(Za, j), ya)));
+  ridgeFit(REF.X, REF.y, lam).W.forEach((v, i) => near(v, Wa[i], 1e-9, 'ridge = mínimos cuadrados con filas √λ·I'));
+  ok('el +λI de ridge sale de agregarle a X unas filas √λ·I que deben dar 0');
 
   const v = [1, 3, 2, 5, 4], m = prom(v);
   near(r2De(v, v), 1, 1e-12, 'modelo perfecto'); near(r2De(v, v.map(() => m)), 0, 1e-12, 'decir siempre el promedio');

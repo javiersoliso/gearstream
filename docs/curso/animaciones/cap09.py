@@ -262,6 +262,76 @@ class Trayectorias(Escena):
 RAYO_C = YELLOW
 
 
+class Probabilidad(Escena):
+    """Qué fracción de las veces pasa algo; si dos cosas no dependen una de la otra, la de las dos es el producto."""
+
+    def construct(self):
+        titulo = texto("Probabilidad", 34).to_edge(UP)
+        self.play(Write(titulo))
+        uv = np.array(D["azar"])[:1000]                  # pares de ArmFilter.rand, de datos_cap09.js
+        u, v = uv[:, 0], uv[:, 1]
+        lado, C = 4.6, np.array([-3.7, -0.55, 0])
+        esq = C - lado / 2 * (RIGHT + UP)
+        Q = lambda a, b: esq + lado * np.array([a, b, 0])
+        cuadro = Square(lado, color=GREY_B).move_to(C)
+        nu = texto("u", 22, color=GREY_B).next_to(cuadro, DOWN, buff=0.08)
+        nv = texto("v", 22, color=GREY_B).next_to(cuadro, LEFT, buff=0.1)
+        self.play(Create(cuadro), FadeIn(nu, nv))
+        A, B = u < 0.3, v < 0.5
+        franja_a = Rectangle(width=0.3 * lado, height=lado, stroke_width=0, fill_color=BLUE, fill_opacity=0.22).move_to(Q(0.15, 0.5))
+        franja_b = Rectangle(width=lado, height=0.5 * lado, stroke_width=0, fill_color=GREEN, fill_opacity=0.22).move_to(Q(0.5, 0.25))
+        franja_b2 = franja_b.copy()
+        rect = Rectangle(width=0.3 * lado, height=0.5 * lado, color=YELLOW, stroke_width=4).move_to(Q(0.15, 0.25))
+        color = lambda i, con_b: YELLOW if (A[i] and B[i] and con_b) else BLUE if A[i] else GREEN if (B[i] and con_b) else GREY_D
+        puntos = VGroup(*[Dot(Q(a, b), radius=0.03, color=color(i, False)) for i, (a, b) in enumerate(uv)])
+        x0 = 0.9
+        fila = lambda s, c, y: texto(s, 24, color=c).move_to([x0, y, 0], aligned_edge=LEFT)
+        self.add(franja_a)
+        self.decir("Probabilidad: qué fracción de las veces pasa algo, de 0 a 1")
+        lin_a = VMobject()
+        self.add(lin_a)
+        for k in range(50, len(uv) + 1, 50):            # los pares llegan de a 50, y la cuenta se rehace
+            self.add(puntos[k - 50:k])
+            lin_a.become(fila(f"u < 0.3:  {A[:k].sum()} de {k} = {A[:k].mean():.3f}", BLUE, 1.6))
+            self.wait(0.12)
+        self.decir("u < 0.3 pasa 0.3 de las veces: el ancho de la franja")
+        self.wait(1.5)
+        self.add(franja_b)
+        self.bring_to_back(franja_b)
+        self.play(FadeIn(franja_b), *[d.animate.set_color(color(i, True)) for i, d in enumerate(puntos) if B[i]], run_time=1)
+        lin_b = fila(f"v < 0.5:  {B.sum()} de {len(uv)} = {B.mean():.3f}", GREEN, 1.0)
+        self.play(FadeIn(lin_b))
+        self.decir("Otra que no depende de la primera: v < 0.5, la mitad de las veces")
+        self.wait(1.5)
+        ambas = A & B
+        lin_ab = fila(f"las dos:  {ambas.sum()} de {len(uv)} = {ambas.mean():.3f}", YELLOW, 0.4)
+        f = MathTex(r"P(A \text{ y } B) = P(A)\,P(B)", font_size=40).move_to([3.7, 2.35, 0])
+        cuenta = MathTex(r"0.3 \times 0.5 = 0.15", font_size=36, color=YELLOW).move_to([x0, -0.3, 0], aligned_edge=LEFT)
+        self.play(Create(rect), FadeIn(lin_ab))
+        self.decir("Las dos a la vez: el rectángulo, de área 0.3 × 0.5")
+        self.play(Write(f), Write(cuenta))
+        self.wait(2.5)
+        # si dependen una de la otra: v es el mismo número que u
+        self.play(FadeOut(franja_b, rect, cuenta, lin_b, lin_ab))
+        ini = [d.get_center() for d in puntos]
+        fin = [Q(a, a) for a in u]
+
+        def al_medio(g, s):
+            for d, p0, p1 in zip(g, ini, fin):
+                d.move_to(p0 + s * (p1 - p0))
+        self.play(UpdateFromAlphaFunc(puntos, al_medio), run_time=2)
+        for i, d in enumerate(puntos):
+            d.set_color(BLUE if A[i] else GREY_D)
+        self.add(franja_b2)
+        self.bring_to_back(franja_b2)
+        juntas = (u < 0.3) & (u < 0.5)
+        self.play(FadeIn(fila(f"v = u:  las dos, {juntas.mean():.3f}; no 0.15", RED, 0.4)))
+        self.decir("Si dependen una de la otra, no vale: con v = u pasan las dos 0.3")
+        self.wait(3)
+        self.decir(f"Cien medidas de 0.9 que no dependen entre sí: 0.9¹⁰⁰ = {0.9 ** 100:.6f}")
+        self.wait(3)
+
+
 class LeyDeCosenos(Escena):
     """c² = a² + b² − 2ab cos C: con los tres lados de un triángulo se saben sus ángulos."""
 
@@ -330,9 +400,25 @@ class CinematicaInversa(Escena):
         nudos = always_redraw(lambda: VGroup(Dot(S, radius=0.1, color=WHITE), Dot(P(sol()[0]), radius=0.1, color=WHITE)))
         blanco = always_redraw(lambda: Circle(0.14, color=RED, stroke_width=4).move_to(P(tgt())))
         self.add(recta, altura, brazo, ante, nudos, blanco)
+        # de dónde sale x: la ley de los cosenos con el ángulo A del hombro, y L₁ cos A es la sombra del brazo en la recta
+        codo0, mun0 = P(sol()[0]), P(sol()[1])
+        a_m, a_c = np.arctan2(*(mun0 - S)[1::-1]), np.arctan2(*(codo0 - S)[1::-1])
+        arco = Arc(radius=0.75, start_angle=a_m, angle=a_c - a_m, arc_center=S, color=RED, stroke_width=4)
+        na = MathTex("A", font_size=32, color=RED).move_to(S + 1.05 * np.array([np.cos((a_m + a_c) / 2), np.sin((a_m + a_c) / 2), 0]))
+        d0 = MathTex(r"L_2^2 = L_1^2 + d^2 - 2d\,(L_1\cos A)", font_size=34).move_to([3.4, 2.1, 0])
+        d1 = MathTex(r"L_1\cos A = x", font_size=34, color=YELLOW).next_to(d0, DOWN, buff=0.22)
+        self.play(Create(arco), FadeIn(na), Write(d0))
+        self.decir("La ley de los cosenos con el ángulo A del hombro, frente a L₂")
+        self.wait(1.5)
+        self.play(Write(d1))
+        self.decir("L₁ cos A es lo que avanza el brazo a lo largo de d: justo x")
+        self.wait(1.5)
         f1 = MathTex(r"x = \frac{L_1^2 - L_2^2 + d^2}{2d}", font_size=38).move_to([3.7, 2.1, 0])
         f2 = MathTex(r"h = \sqrt{L_1^2 - x^2}", font_size=38).next_to(f1, DOWN, buff=0.22)
-        self.play(Write(f1), Write(f2))
+        self.play(ReplacementTransform(VGroup(d0, d1), f1), FadeOut(arco, na))
+        self.decir("Despejando x; y h sale de Pitágoras, con L₁ de hipotenusa")
+        self.play(Write(f2))
+        self.wait(1)
         lect = cada(lambda: VGroup(texto(f"d = {100 * sol()[4]:.1f} cm", 24), texto(f"x = {100 * sol()[2]:.1f} cm", 24), texto(f"h = {100 * sol()[3]:.1f} cm", 24, color=YELLOW)).arrange(DOWN, aligned_edge=LEFT, buff=0.1).move_to([2.6, -0.4, 0], aligned_edge=LEFT))
         self.add(lect)
         self.decir("El triángulo tiene sus tres lados: L₁, L₂ y d. El codo sale de la cuenta")
@@ -559,7 +645,20 @@ class AceleracionDeUnPunto(Escena):
         tg = always_redraw(lambda: flecha(punta(), punta() + esc * al.get_value() * Lm * tan() + 1e-3 * tan(), GREEN, 6))
         self.add(brazo, dot, cen, tg)
         f1 = MathTex(r"\ddot{p} = \alpha\times f\,L + \omega\times(\omega\times f)\,L", font_size=34).move_to([3.3, 2.2, 0])
-        self.play(Write(f1))
+        # derivando otra vez: la regla del producto, con ḟ = ω × f del capítulo 5
+        d0 = MathTex(r"\dot f = \omega\times f", font_size=34).move_to(f1)
+        d1 = MathTex(r"\ddot f = \dot\omega\times f + \omega\times\dot f", font_size=34).move_to(f1)
+        d2 = MathTex(r"\ddot f = \alpha\times f + \omega\times(\omega\times f)", font_size=34).move_to(f1)
+        self.play(Write(d0))
+        self.decir("Del capítulo 5: la punta de f se mueve a ω × f")
+        self.wait(1.2)
+        self.play(ReplacementTransform(d0, d1))
+        self.decir("Regla del producto: se deriva un factor por vez y se suman")
+        self.wait(1.8)
+        self.play(ReplacementTransform(d1, d2))
+        self.decir("La derivada de ω es α, y ḟ = ω × f otra vez. Por L, el punto")
+        self.wait(1.5)
+        self.play(ReplacementTransform(d2, f1))
 
         def cifras():
             ww, aa = w.get_value(), al.get_value()
@@ -680,6 +779,8 @@ class Verosimilitud(Escena):
         self.wait(0.5)
         r_a, r_c = hip[0][0], hip[2][0]
         cociente = lambda n: float(np.exp(-n * (r_c ** 2 - r_a ** 2) / (2 * sig() ** 2)))
+        self.decir("Si el ruido de cada muestra no depende del de las otras,\nla probabilidad de verlas todas es el producto")
+        self.wait(3)
         self.decir(f"Cada muestra multiplica: C pesa {cociente(1):.2f} de A; tras 2 muestras, {cociente(2):.3f}; tras 5, {cociente(5):.5f}")
         self.wait(3)
         self.decir("r es lo que falla la ecuación del codo: ë·u + |ė|²/L_u, que en la esfera debe dar cero")

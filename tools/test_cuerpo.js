@@ -105,6 +105,21 @@ near(rapidez(0.6 + 1e-3), 0, 0.02, 'arranca sin golpe'); near(rapidez(1.2 - 1e-3
 for (let u = 6; u < 9; u += 0.1) near(dist(ap(u), [0, 1.35 + 0.2, -2.5]), 0.2, 1e-9, 'el círculo');
 ok('apuntar: la curva suave llega y sale de cada ícono sin golpe, y el círculo tiene 20 cm de radio');
 
+// ---------- la probabilidad ----------
+console.log('La probabilidad');
+{
+  const az = new ArmFilter({ seed: 4 }), pares = Array.from({ length: 100000 }, () => [az.rand(), az.rand()]);
+  const frac = (cond) => pares.filter(cond).length / pares.length;
+  const pa = frac(([u]) => u < 0.3), pb = frac(([, v]) => v < 0.5), pab = frac(([u, v]) => u < 0.3 && v < 0.5);
+  near(pa, 0.3, 0.005, 'u < 0.3 pasa 0.3 de las veces'); near(pb, 0.5, 0.005, 'v < 0.5, la mitad');
+  near(pab, 0.15, 0.005, 'las dos, 0.3 × 0.5'); near(pab, pa * pb, 0.005, 'el producto');
+  const pmismo = frac(([u]) => u < 0.3 && u < 0.5);
+  near(pmismo, 0.3, 0.005, 'con v = u las dos pasan 0.3 de las veces');
+  assert.ok(Math.abs(pmismo - 0.15) > 0.1, 'si dependen, el producto no vale');
+  near(0.9 ** 100, 0.0000266, 0.0000005, 'cien medidas de 0.9');
+  ok(`en 100 000 pares parejos: u < 0.3 pasa ${pa.toFixed(3)} de las veces, v < 0.5 ${pb.toFixed(3)} y las dos ${pab.toFixed(3)} ≈ 0.3 × 0.5; con v = u, ${pmismo.toFixed(3)}`);
+}
+
 // ---------- la ley de los cosenos ----------
 console.log('La ley de los cosenos');
 const azar = new ArmFilter({ seed: 5 }), u01 = () => azar.rand();

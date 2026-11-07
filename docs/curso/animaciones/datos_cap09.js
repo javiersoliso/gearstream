@@ -51,6 +51,8 @@ const f1 = new ArmFilter({ seed: 7 }), f2 = new ArmFilter({ seed: 7 }), f3 = new
 const uv = Array.from({ length: 3000 }, () => [f1.rand(), f1.rand()]);
 const normales = Array.from({ length: 3000 }, () => f2.randn());
 const otra = Array.from({ length: 3000 }, () => f3.randn());
+// probabilidad: pares de números parejos de ArmFilter.rand, para contar qué fracción cae en cada franja
+const f4 = new ArmFilter({ seed: 4 }), azar = Array.from({ length: 2000 }, () => [f4.rand(), f4.rand()]);
 
 // lo que leería el reloj: caminar, sin y con ruido, 3 s a 50 muestras por segundo
 const limpio = M.synth('caminar', 'l', { noise: false }), sucio = M.synth('caminar', 'l', { noise: true });
@@ -115,7 +117,7 @@ for (let m = 0; m < n; m++) clones[(Math.round(Math.atan2(res.U[3 * m + 1], res.
 
 process.stdout.write(JSON.stringify({
   frente: huesos(parado, 'frente'), levantar, marcha, ciclo, fase, apunta, fk, ikPrueba,
-  uv: uv.slice(0, 400), normales, otra, lectura, trayecto, prueba,
+  uv: uv.slice(0, 400), azar, normales, otra, lectura, trayecto, prueba,
   limites, reposoLim: rep, fLim, prior: { sigmaR: DEFAULTS.sigmaR, sigmaRel: DEFAULTS.sigmaRel },
   nube, serie, remuestreos, shoulder: DEFAULTS.shoulder, Lu: DEFAULTS.Lu, res: { n, pesos, inicio, clones },
 }));

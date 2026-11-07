@@ -419,6 +419,139 @@ class MinimosCuadrados(Scene):
 
 
 # ---------------------------------------------------------------------------------------------------------
+class LaSombraDeV(Scene):
+    """Las columnas de X son flechas de N números; XW recorre su plano, y el mejor W deja V − XW perpendicular a él."""
+
+    def decir(self, s, size=22):
+        nuevo = nota(s, size)
+        viejo = getattr(self, "_rotulo", None)
+        self.play(*([FadeOut(viejo)] if viejo else []), FadeIn(nuevo), run_time=0.5)
+        self._rotulo = nuevo
+
+    def construct(self):
+        X = np.array([[2.0, 0.3], [0.5, 1.6], [0.3, 0.5]])         # 3 instantes × 2 rasgos, inventados
+        V = np.array([1.4, 1.5, 1.8])
+        W = np.linalg.solve(X.T @ X, X.T @ V)
+        assert np.allclose(W, np.linalg.lstsq(X, V, rcond=None)[0])
+        sombra = X @ W
+        titulo = texto("Mínimos cuadrados: la sombra de V", 34).to_edge(UP)
+        self.play(Write(titulo))
+        # la tabla
+        C1, C2, CV, CS = BLUE, GREEN, DATO, ORANGE
+        celdas = VGroup()
+        cab = [texto("rasgo 1", 20, color=C1), texto("rasgo 2", 20, color=C2), texto("V", 22, color=CV)]
+        x0, y0, dx, dy = -5.0, 2.2, 1.35, 0.55
+        for j, c in enumerate(cab):
+            celdas.add(c.move_to([x0 + dx * (j + 1) + (0.25 if j == 2 else 0), y0, 0]))
+        for i in range(3):
+            celdas.add(texto(f"instante {i + 1}", 20, color=GRIS).move_to([x0 - 0.2, y0 - dy * (i + 1), 0]))
+            for j, (v, c) in enumerate(((X[i, 0], C1), (X[i, 1], C2), (V[i], CV))):
+                celdas.add(texto(f"{v:.1f}", 24, color=c).move_to([x0 + dx * (j + 1) + (0.25 if j == 2 else 0), y0 - dy * (i + 1), 0]))
+        barra_x = VGroup(Line([x0 + 0.6, y0 - 0.3, 0], [x0 + 0.6, y0 - 3 * dy - 0.25, 0]),
+                         Line([x0 + 3.35, y0 - 0.3, 0], [x0 + 3.35, y0 - 3 * dy - 0.25, 0])).set_stroke(GRIS, 2)
+        nx = MathTex("X", font_size=36).move_to([x0 + 2 * dx, y0 - 3 * dy - 0.55, 0])
+        self.play(FadeIn(celdas), Create(barra_x), FadeIn(nx))
+        self.decir("X es una tabla: una fila por instante, una columna por rasgo")
+        self.wait(1.5)
+
+        # la vista en 3D: un eje por instante, proyección a mano
+        az, el = ValueTracker(1.3), 0.72
+        C, E = np.array([4.2, -1.9, 0]), 1.55
+
+        def pr(p):
+            a = az.get_value()
+            q0 = p[0] * np.cos(a) - p[1] * np.sin(a)
+            q1 = p[0] * np.sin(a) + p[1] * np.cos(a)
+            return C + E * np.array([q0, p[2] * np.cos(el) + q1 * np.sin(el), 0])
+
+        def flecha(a, b, color, w=6):
+            return Arrow(pr(a), pr(b), buff=0, color=color, stroke_width=w, max_tip_length_to_length_ratio=0.15)
+
+        O = np.zeros(3)
+        ejes3 = always_redraw(lambda: VGroup(*[DashedLine(pr(O), pr(2.4 * e), color=GREY_C, stroke_width=2) for e in np.eye(3)]))
+        nombres = always_redraw(lambda: VGroup(*[texto(f"instante {k + 1}", 16, color=GRIS).move_to(pr(2.7 * e)) for k, e in enumerate(np.eye(3))]))
+        self.play(FadeIn(ejes3, nombres))
+        self.add(ejes3, nombres)
+        caja = lambda j: SurroundingRectangle(VGroup(*[m for m in celdas if abs(m.get_x() - (x0 + dx * (j + 1) + (0.25 if j == 2 else 0))) < 0.3]), color=[C1, C2, CV][j], buff=0.08)
+        f1 = always_redraw(lambda: flecha(O, X[:, 0], C1))
+        f2 = always_redraw(lambda: flecha(O, X[:, 1], C2))
+        fv = always_redraw(lambda: flecha(O, V, CV))
+        e1 = always_redraw(lambda: MathTex("x_1", font_size=30, color=C1).move_to(pr(X[:, 0] * 1.12) + DOWN * 0.15))
+        e2 = always_redraw(lambda: MathTex("x_2", font_size=30, color=C2).move_to(pr(X[:, 1] * 1.15) + RIGHT * 0.1))
+        ev = always_redraw(lambda: MathTex("V", font_size=30, color=CV).move_to(pr(V * 1.08) + UP * 0.12))
+        b1 = caja(0)
+        self.play(Create(b1))
+        self.add(f1, e1)
+        self.decir("Cada columna es una flecha de N números: aquí N = 3, para poder verla")
+        self.wait(1.5)
+        b2 = caja(1)
+        self.play(ReplacementTransform(b1, b2))
+        self.add(f2, e2)
+        self.wait(1)
+        bv = caja(2)
+        self.play(ReplacementTransform(b2, bv))
+        self.add(fv, ev)
+        self.decir("V, lo que se quiere predecir, es otra flecha de N números")
+        self.wait(1.5)
+        self.play(FadeOut(bv))
+
+        # el plano de las columnas: todo lo que XW puede dar
+        def plano():
+            esq = [a * X[:, 0] + b * X[:, 1] for a, b in ((-0.1, -0.1), (1.1, -0.1), (1.1, 1.1), (-0.1, 1.1))]
+            return Polygon(*[pr(p) for p in esq], stroke_width=1, stroke_color=GRIS, fill_color=GRIS, fill_opacity=0.18)
+        pl = always_redraw(plano)
+        self.add(pl)
+        self.bring_to_back(pl)
+        fw = MathTex(r"XW = w_1 x_1 + w_2 x_2", font_size=34).move_to([-3.1, -0.75, 0])
+        self.play(FadeIn(pl), Write(fw))
+        self.decir("XW = w₁x₁ + w₂x₂: lo que el modelo puede dar es este plano")
+        self.wait(1)
+        q = ValueTracker(0)
+        ruta = lambda s: np.array([0.15, 0.2]) + s * (W - [0.15, 0.2]) + np.array([0.5, -0.45]) * np.sin(np.pi * s)
+        punto = lambda: X @ ruta(min(1, q.get_value()))
+        fx = always_redraw(lambda: flecha(O, punto(), CS, 5))
+        falta = always_redraw(lambda: DashedLine(pr(punto()), pr(V), color=ERROR, stroke_width=4))
+        largo = always_redraw(lambda: texto(f"|V − XW| = {np.linalg.norm(V - punto()):.2f}", 24, color=ERROR).move_to([-3.1, -1.5, 0]))
+        self.add(fx, falta, largo)
+        self.decir("Para cada W, lo que falta es V − XW. Se busca el W que lo deja más corto")
+        self.play(q.animate.set_value(1), run_time=5, rate_func=smooth)
+        esquina = always_redraw(lambda: self.angulo_recto(pr, sombra, V, X[:, 0]))
+        self.add(esquina)
+        self.decir("El más corto es la sombra de V: lo que falta queda perpendicular al plano")
+        self.wait(1)
+        self.play(az.animate.set_value(1.65), run_time=4)
+        self.decir("Otro punto del plano queda más lejos: Pitágoras le suma un cateto")
+        self.wait(2)
+
+        # perpendicular a cada columna: producto punto cero
+        cuentas = VGroup(MathTex(r"x_1 \cdot (V - XW) = 0", font_size=32, color=C1),
+                         MathTex(r"x_2 \cdot (V - XW) = 0", font_size=32, color=C2),
+                         MathTex(r"X^{\mathsf T}(V - XW) = 0", font_size=34),
+                         MathTex(r"X^{\mathsf T}X\,W = X^{\mathsf T}V", font_size=40, color=DATO))\
+            .arrange(DOWN, buff=0.2).move_to([-3.1, -1.85, 0])
+        self.play(FadeOut(fw, largo))
+        self.remove(largo)
+        self.play(Write(cuentas[0]), Write(cuentas[1]))
+        self.decir("Perpendicular a cada columna: su producto punto con lo que falta es cero")
+        self.wait(2)
+        self.play(Write(cuentas[2]))
+        self.decir("Las filas de Xᵀ son las columnas de X: las dos cuentas juntas")
+        self.wait(2)
+        self.play(Write(cuentas[3]))
+        self.decir(f"Un sistema de 2 × 2: W = ({W[0]:.2f}, {W[1]:.2f}), lo mismo que da np.linalg.lstsq")
+        self.wait(2.5)
+        self.decir("Con miles de instantes y 120 rasgos es la misma cuenta: XᵀX sigue chica")
+        self.wait(3)
+
+    @staticmethod
+    def angulo_recto(pr, pie, punta, en_plano, lado=0.22):
+        r = punta - pie
+        a = r / np.linalg.norm(r) * lado
+        b = en_plano / np.linalg.norm(en_plano) * lado
+        return VMobject(stroke_color=WHITE, stroke_width=2).set_points_as_corners([pr(pie + a), pr(pie + a + b), pr(pie + b)])
+
+
+# ---------------------------------------------------------------------------------------------------------
 class RCuadrado(Scene):
     """R²: lo que el modelo explica de la variación total."""
 
@@ -487,6 +620,11 @@ class Sobreajuste(Scene):
         self.play(Write(titulo), Create(ax), Create(a2), FadeIn(lx, ly), FadeIn(puntos))
         ley = VGroup(texto("con los datos vistos", 20, color=BIEN), texto("con datos nuevos", 20, color=ERROR)).arrange(RIGHT, buff=0.4).move_to(RIGHT * 4.0 + UP * 2.55)
         self.play(FadeIn(ley))
+        poli = VGroup(MathTex(r"c_0 + c_1 x + c_2 x^2 + \dots + c_d\,x^d", font_size=34),
+                      texto("un polinomio de grado d: d + 1 números, elegidos por mínimos cuadrados", 20))\
+            .arrange(DOWN, buff=0.12).to_edge(DOWN, buff=0.12)
+        self.play(FadeIn(poli))
+        self.wait(2.5)
         ajuste, ev, en = VMobject(), [], []
         rx = np.linspace(-1, 1, 3000)
         g1, g2 = VGroup(), VGroup()
@@ -507,6 +645,7 @@ class Sobreajuste(Scene):
             self.add(ajuste, rot)
             self.wait(1.0 if d in (1, 3, 5, 11) else 0.6)
         mejor = int(np.argmin(en)) + 1
+        self.play(FadeOut(poli))
         self.play(FadeIn(nota(f"Grado 11 pasa por los 12 puntos: error visto casi 0. Con datos nuevos, el mejor fue {mejor}.")))
         self.wait(3)
 
@@ -650,6 +789,12 @@ class RidgeCastigo(Scene):
         self.play(Write(titulo), Create(ax), FadeIn(l1, l2), Create(cont), run_time=2)
         f = MathTex(r"(X^{\mathsf T}X + \lambda I)\,W = X^{\mathsf T}V", font_size=38).move_to(RIGHT * 3.6 + UP * 2.2)
         self.play(Write(f))
+        origen = MathTex(r"\lVert XW - V\rVert^2 + \lambda\lVert W\rVert^2 = \left\lVert \begin{bmatrix} X \\ \sqrt{\lambda}\,I \end{bmatrix} W - \begin{bmatrix} V \\ 0 \end{bmatrix} \right\rVert^2",
+                         font_size=28).move_to(RIGHT * 3.6 + UP * 0.6)
+        n0 = nota("El castigo es como agregar a X unas filas √λ·I, con V = 0 en ellas:\nla misma cuenta de antes da XᵀX + λI")
+        self.play(Write(origen), FadeIn(n0))
+        self.wait(4)
+        self.play(FadeOut(origen, n0))
         ols = Dot(ax.c2p(*W[0, :2]), radius=0.09, color=ERROR)
         tx = texto("sin castigo: mínimos cuadrados", 20, color=ERROR).move_to(RIGHT * 3.6 + UP * 1.3)
         self.play(FadeIn(ols, tx))
@@ -836,9 +981,21 @@ class DescensoPorGradiente(Scene):
         self.play(Write(titulo), Create(ax), Create(cont), Create(a2), FadeIn(l2), Write(f), Write(f2), run_time=2)
         minimo = Dot(ax.c2p(*w_opt), radius=0.08, color=BIEN)
         self.add(minimo)
+        n0 = nota("∇E: una derivada por cada número de W, no por el tiempo.\nCuánto cambia el error si ese número se mueve un poquito")
+        self.play(FadeIn(n0))
+        self.wait(3.5)
+        self.play(FadeOut(n0))
         rot, previo = VMobject(), VGroup()
         pasos = [(0.05, MODELO), (0.45, DATO), (1.05 * 2 / L, ERROR)]
         for alfa, color in pasos:
+            if color == ERROR:
+                n1 = VGroup(MathTex(r"u \leftarrow u - \alpha\,c\,u = (1 - \alpha c)\,u", font_size=32),
+                            texto("u: lo que falta hasta el fondo en la dirección más empinada, de curvatura c.\nCada paso lo multiplica por 1 − αc: se achica si α < 2/c", 20))\
+                    .arrange(DOWN, buff=0.1).to_edge(DOWN, buff=0.1)
+                self.play(FadeOut(previo), FadeIn(n1))
+                previo = VGroup()
+                self.wait(4)
+                self.play(FadeOut(n1))
             w = np.array([-1.6, 2.6])
             ruta = [w.copy()]
             for _ in range(30):

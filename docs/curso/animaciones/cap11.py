@@ -7,10 +7,14 @@
 # f_k = k/T, las ondas rápidas más chicas, la suma de amplitudes igual a 0.75. Las fases salen de una semilla
 # fija para que el video sea siempre el mismo.
 import os
+import sys
 import wave as wavfile
 
 import numpy as np
 from manim import *
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "tools"))
+from analyze_dataset import FS, window_features      # noqa: E402  la de verdad, para la frecuencia dominante
 
 T = 20.0                       # s, como sismomath.T
 PEAK = 0.75
@@ -143,11 +147,121 @@ class FlechaQueGira(Scene):
         self.play(GrowArrow(a2), FadeIn(l2))
         self.play(TransformFromCopy(VGroup(a1, a2), a3), FadeIn(l3))
         self.wait(1)
+        # la misma flecha con las dos notaciones: largo a y ángulo φ
+        euler = VGroup(MathTex(r"a\angle\varphi = a\,e^{i\varphi}", font_size=36),
+                       MathTex(r"a\,e^{i\varphi}\cdot b\,e^{i\psi} = ab\,e^{i(\varphi+\psi)}", font_size=32, color=LINEA))\
+            .arrange(DOWN, aligned_edge=LEFT, buff=0.2).move_to(LEFT * 4.4 + UP * 2.4)
+        self.play(Write(euler[0]))
+        self.wait(1)
+        self.play(Write(euler[1]))
+        self.wait(1.5)
         div = VGroup(
             texto("Dividir dos ondas, Y / R, dice:", 26),
             texto("cuánto más chica es Y (el largo)  y  cuánto atrasada (el ángulo)", 26, color=LINEA),
         ).arrange(DOWN).to_edge(DOWN, buff=0.3)
         self.play(FadeIn(div))
+        self.wait(2.5)
+
+
+# ---------------------------------------------------------------------------------------------------------
+class ElNumeroI(Scene):
+    """i es la flecha de largo 1 hacia arriba; e^{iθ} = cos θ + i sen θ es la flecha de largo 1 y ángulo θ."""
+
+    def decir(self, s, size=24):
+        nuevo = texto(s, size).to_edge(DOWN, buff=0.3)
+        viejo = getattr(self, "_rotulo", None)
+        self.play(*([FadeOut(viejo)] if viejo else []), FadeIn(nuevo), run_time=0.5)
+        self._rotulo = nuevo
+
+    def construct(self):
+        titulo = texto("Una flecha del plano es un número", 34).to_edge(UP)
+        plano = ComplexPlane(x_range=[-2, 2], y_range=[-1.6, 1.6], background_line_style={"stroke_opacity": 0.25})
+        plano.scale(1.55).move_to(LEFT * 3.5 + DOWN * 0.35)
+        p = plano.n2p
+        self.play(Write(titulo), Create(plano))
+        renglon = lambda m, y: m.move_to(RIGHT * 3.2 + UP * y)
+
+        # 1.5 + 1i: lo horizontal cuenta unos, lo vertical cuenta íes
+        z = 1.5 + 1j
+        fz = Arrow(p(0), p(z), buff=0, color=PRUEBA, stroke_width=6)
+        gx = DashedLine(p(0), p(z.real), color=PRUEBA, stroke_opacity=0.7)
+        gy = DashedLine(p(z.real), p(z), color=PRUEBA, stroke_opacity=0.7)
+        lz = MathTex(r"1.5 + 1\,i", font_size=34, color=PRUEBA).next_to(p(z), UR, buff=0.08)
+        self.play(GrowArrow(fz), Create(gx), Create(gy), FadeIn(lz))
+        self.decir("La flecha que llega a (1.5, 1) se escribe 1.5 + 1 i")
+        self.wait(1)
+        fi = Arrow(p(0), p(1j), buff=0, color=LINEA, stroke_width=6)
+        li = MathTex("i", font_size=36, color=LINEA).next_to(p(1j), LEFT, buff=0.12)
+        self.play(GrowArrow(fi), FadeIn(li))
+        self.decir("i es la flecha de largo 1 que apunta hacia arriba")
+        self.wait(1.5)
+
+        # multiplicar por i gira 90°: dos veces, media vuelta
+        uno = Arrow(p(0), p(1), buff=0, color=WHITE, stroke_width=6)
+        self.play(FadeOut(fz, gx, gy, lz), GrowArrow(uno))
+        r1 = renglon(MathTex(r"i \cdot 1 = i", font_size=38), 1.6)
+        r2 = renglon(MathTex(r"i \cdot i = -1", font_size=38), 0.8)
+        self.decir("Multiplicar por i gira 90°")
+        self.play(Rotate(uno, PI / 2, about_point=p(0)), Write(r1), run_time=1.5)
+        self.wait(0.5)
+        self.decir("Dos veces, media vuelta: por eso i · i = −1")
+        self.play(Rotate(uno, PI / 2, about_point=p(0)), Write(r2), run_time=1.5)
+        self.wait(1)
+        fz2 = Arrow(p(0), p(z), buff=0, color=PRUEBA, stroke_width=6)
+        r3 = renglon(MathTex(r"i\,(1.5 + 1\,i) = -1 + 1.5\,i", font_size=34, color=PRUEBA), 0.0)
+        self.play(FadeOut(uno), GrowArrow(fz2))
+        self.play(Rotate(fz2, PI / 2, about_point=p(0)), Write(r3), run_time=1.5)
+        assert abs(1j * z - (-1 + 1.5j)) < 1e-12
+        self.decir("Gira cualquier flecha: 1.5 + 1 i, girada 90°, es −1 + 1.5 i")
+        self.wait(2)
+
+        # la flecha de largo 1 y ángulo θ
+        self.play(FadeOut(fz2, fi, li, r1, r2, r3))
+        circ = Circle(radius=np.linalg.norm(p(1) - p(0)), color=WHITE, stroke_opacity=0.4).move_to(p(0))
+        th = ValueTracker(0.35)
+        punta = lambda: np.exp(1j * th.get_value())
+        fu = always_redraw(lambda: Arrow(p(0), p(punta()), buff=0, color=LINEA, stroke_width=6))
+        cx = always_redraw(lambda: Line(p(0), p(punta().real), color=RED, stroke_width=5))
+        sy = always_redraw(lambda: Line(p(punta().real), p(punta()), color=GREEN, stroke_width=5))
+        arco = always_redraw(lambda: Arc(radius=0.4, start_angle=0, angle=th.get_value(), arc_center=p(0), color=WHITE))
+        self.play(Create(circ))
+        self.add(cx, sy, fu, arco)
+        # piezas sueltas y no partes de un MathTex: aquí manim no encuentra los grupos de las partes
+        e1 = renglon(VGroup(MathTex(r"e^{i\theta} =", font_size=40), MathTex(r"\cos\theta", font_size=40, color=RED),
+                            MathTex(r"+\,i", font_size=40), MathTex(r"\sin\theta", font_size=40, color=GREEN)).arrange(RIGHT, buff=0.15), 1.6)
+        self.decir("La flecha de largo 1 y ángulo θ llega a (cos θ, sen θ)")
+        self.play(th.animate.set_value(1.1), run_time=2)
+        self.play(Write(e1[1:]))
+        self.decir("En números: cos θ + i sen θ. Se escribe e^(iθ)")
+        self.play(Write(e1[0]), th.animate.set_value(2.2), run_time=2)
+        self.wait(1)
+        e2 = renglon(MathTex(r"e^{i\alpha}\, e^{i\beta} = e^{i(\alpha+\beta)}", font_size=36), 0.7)
+        self.decir("Como una potencia: multiplicar suma los ángulos, como e^a · e^b = e^(a+b)")
+        self.play(Write(e2))
+        self.wait(2.5)
+        e3 = renglon(MathTex(r"a\angle\varphi = a\,e^{i\varphi}", font_size=38, color=PRUEBA), -0.2)
+        largo = always_redraw(lambda: Arrow(p(0), p(1.5 * punta()), buff=0, color=PRUEBA, stroke_width=6))
+        self.play(th.animate.set_value(np.radians(25)), run_time=1.2)
+        self.add(largo)
+        self.play(Write(e3))
+        self.decir("Con largo a: a·e^(iφ) es la flecha a∠φ de antes")
+        self.wait(2.5)
+
+        # e^{−2πift}: el ángulo baja con el tiempo, la flecha gira al revés
+        self.play(FadeOut(largo, e2, e3))
+        self.remove(largo)
+        f, t = 0.5, ValueTracker(0)
+        th.set_value(0)
+        e4 = renglon(MathTex(r"e^{-2\pi i f t}:\ \text{largo 1, ángulo } -2\pi f t", font_size=34), 0.4)
+        reloj = always_redraw(lambda: texto(f"f = {f} Hz    t = {t.get_value():.1f} s", 24).move_to(RIGHT * 3.2 + DOWN * 0.6))
+        self.play(Write(e4))
+        self.add(reloj)
+        th.add_updater(lambda m: m.set_value(-2 * PI * f * t.get_value()))
+        self.add(th)
+        self.decir("e^(−2πift) gira f vueltas por segundo, como las agujas del reloj")
+        self.play(t.animate.set_value(2), run_time=4, rate_func=linear)
+        self.wait(1.5)
+        self.decir("Multiplicar una señal por ella: x(t) da el largo, y el ángulo gira")
         self.wait(2.5)
 
 
@@ -181,7 +295,7 @@ class Enrollar(Scene):
         ax = Axes(x_range=[0, 0.3, 0.05], y_range=[0, 0.3, 0.1], x_length=6, y_length=3, tips=False,
                   axis_config={"include_numbers": True, "font_size": 18}).to_edge(RIGHT, buff=0.5).shift(DOWN * 0.3)
         xl = texto("frecuencia de prueba (Hz)", 20).next_to(ax, DOWN, buff=0.35)
-        yl = texto("cuánto hay", 20).next_to(ax, UP, buff=0.15).align_to(ax, LEFT)
+        yl = texto("cuánto hay: el espectro", 20).next_to(ax, UP, buff=0.15).align_to(ax, LEFT)
         espectro = always_redraw(lambda: ax.plot(lambda x: np.interp(x, fs, mag), x_range=[0, max(1e-3, f.get_value()), 0.0005],
                                                  color=RED, stroke_width=3))
         etiqueta = always_redraw(lambda: texto(f"f = {f.get_value():.3f} Hz", 26).next_to(plano, UP, buff=0.2))
@@ -191,14 +305,20 @@ class Enrollar(Scene):
         linea = always_redraw(curva)
         punto = always_redraw(masa)
         self.add(linea, punto, espectro, etiqueta)
-        explica = texto("la línea gira a la frecuencia de prueba;\nel punto rojo es su promedio", 22).next_to(plano, DOWN)
+        explica = texto("x(t)·e^(−2πift): una flecha que gira a −f,\ncon el largo x(t). El punto rojo es el promedio", 20).next_to(plano, DOWN).to_edge(LEFT, buff=0.3)
         self.play(FadeIn(explica))
         self.play(f.animate.set_value(0.05), run_time=4, rate_func=smooth)
         self.wait(1)
-        nota = texto("1 vuelta en 20 s: el promedio se aleja del centro", 22, color=RED).next_to(explica, DOWN, buff=0.15)
+        a1 = COMPS[0][1]
+        c1 = abs(z(0.05).mean())
+        assert abs(c1 - a1 / 2) < 1e-9          # vueltas enteras: queda justo la mitad de la amplitud
+        nota = texto(f"1 vuelta en 20 s: el promedio queda a {c1:.3f} del centro,\nla mitad de la amplitud {a1:.3f}", 20, color=RED).next_to(explica, DOWN, buff=0.15).to_edge(LEFT, buff=0.3)
         self.play(FadeIn(nota))
-        self.wait(1)
-        self.play(FadeOut(nota))
+        self.wait(2)
+        nota2 = texto("La otra mitad del seno gira al doble y se anula:\npor eso X lleva un 2, y 1/N es el promedio", 20, color=RED).next_to(explica, DOWN, buff=0.15).to_edge(LEFT, buff=0.3)
+        self.play(FadeOut(nota), FadeIn(nota2))
+        self.wait(2.5)
+        self.play(FadeOut(nota2))
         self.play(f.animate.set_value(0.3), run_time=14, rate_func=linear)
         picos = VGroup(*[texto(f"{k}", 20, color=PRUEBA).next_to(ax.c2p(k / T, np.interp(k / T, fs, mag)), UP, buff=0.1)
                          for k in KS])
@@ -268,6 +388,82 @@ class Fuga(Scene):
         self.play(FadeIn(menos))
         nota = texto("La línea no la necesita: cada una de sus ondas da vueltas enteras en T.", 24).to_edge(DOWN)
         self.play(FadeIn(nota))
+        self.wait(3)
+
+
+# ---------------------------------------------------------------------------------------------------------
+class FrecuenciaDominante(Scene):
+    """El pico más alto del espectro: el ritmo principal. window_features lo saca del largo del giro, |ω|."""
+
+    def decir(self, s, size=24):
+        nuevo = texto(s, size).to_edge(DOWN, buff=0.25)
+        viejo = getattr(self, "_rotulo", None)
+        self.play(*([FadeOut(viejo)] if viejo else []), FadeIn(nuevo), run_time=0.5)
+        self._rotulo = nuevo
+
+    def construct(self):
+        n = int(2 * FS)                                       # dos segundos, a la rejilla de analyze_dataset.py
+        t = np.arange(n) / FS
+        rng = np.random.default_rng(4)
+        gyr = rng.normal(0, 3, (n, 3))
+        gyr[:, 1] += 90 * np.sin(2 * np.pi * 2.5 * t + 0.4) + 8 * np.sin(2 * np.pi * 9 * t)   # va y viene a 2.5 Hz, con temblor
+        freqs = np.fft.rfftfreq(n, 1 / FS)
+        banda = (freqs >= 0.3) & (freqs <= 15)
+
+        def espectro(x):                                      # las líneas de window_features
+            x = x - x.mean()
+            return np.abs(np.fft.rfft(x * np.hanning(len(x)))) ** 2
+
+        e_y = espectro(gyr[:, 1])
+        mag = np.linalg.norm(gyr, axis=1)
+        e_m = espectro(mag)
+        f_y = freqs[banda][np.argmax(e_y[banda])]
+        f_m = freqs[banda][np.argmax(e_m[banda])]
+        assert f_m == window_features(np.zeros((n, 3)), gyr, np.zeros(n), 0, n)[5]   # lo mismo que el código
+        titulo = texto("La frecuencia dominante: el pico más alto", 34).to_edge(UP)
+        a1 = Axes(x_range=[0, 2, 0.5], y_range=[-120, 120, 60], x_length=10.5, y_length=1.9, tips=False,
+                  axis_config={"include_numbers": True, "font_size": 18}).move_to(RIGHT * 0.6 + UP * 1.55)
+        l1 = texto("giro y\n(°/s)", 18).next_to(a1, LEFT, buff=0.2)
+        lt = texto("s", 18).next_to(a1.x_axis, RIGHT, buff=0.1)
+        a2 = Axes(x_range=[0, 15, 1], y_range=[0, 1.1, 0.5], x_length=10.5, y_length=2.1, tips=False,
+                  axis_config={"include_numbers": False}).move_to(RIGHT * 0.6 + DOWN * 1.55)
+        a2.x_axis.add_numbers(range(0, 16, 1), font_size=16)
+        l2 = texto("cuánto hay", 18).next_to(a2, LEFT, buff=0.2)
+        lf = texto("Hz", 18).next_to(a2.x_axis, RIGHT, buff=0.1)
+        self.play(Write(titulo), Create(a1), FadeIn(l1, lt))
+        s_y = a1.plot_line_graph(t, gyr[:, 1], add_vertex_dots=False, line_color=PRUEBA, stroke_width=3)
+        self.play(Create(s_y), run_time=1.5)
+        self.decir("Dos segundos de la muñeca que va y viene, con un temblor encima")
+        self.wait(1.5)
+        ancho = a2.c2p(0.5, 0)[0] - a2.c2p(0, 0)[0]
+
+        def barras(e, color):
+            e = e / e[banda].max()
+            return VGroup(*[Rectangle(width=0.8 * ancho, height=max(1e-3, a2.y_length / 1.1 * v), stroke_width=0, fill_color=color,
+                                      fill_opacity=0.9).move_to(a2.c2p(fr, 0), aligned_edge=DOWN)
+                            for fr, v in zip(freqs, e) if fr <= 15])
+        b_y = barras(e_y, PRUEBA)
+        self.play(Create(a2), FadeIn(l2, lf))
+        self.play(LaggedStart(*[GrowFromEdge(b, DOWN) for b in b_y], lag_ratio=0.03), run_time=1.5)
+        self.decir("El espectro: cuánto hay de cada frecuencia, con la ventana de Hann")
+        self.wait(1.5)
+        pico = VGroup(Arrow(a2.c2p(f_y, 1.45), a2.c2p(f_y, 1.05), buff=0, color=LINEA, stroke_width=4),
+                      texto(f"{f_y:.1f} Hz", 22, color=LINEA).move_to(a2.c2p(f_y + 1.3, 1.3)))
+        self.play(FadeIn(pico))
+        self.decir("Su pico más alto es la frecuencia dominante: el ritmo principal")
+        self.wait(2.5)
+        # lo que hace el código: el largo del giro, sin signo
+        s_m = a1.plot_line_graph(t, mag, add_vertex_dots=False, line_color=LINEA, stroke_width=3)
+        b_m = barras(e_m, LINEA)
+        l1b = texto("|ω|\n(°/s)", 18, color=LINEA).move_to(l1)
+        self.play(FadeOut(pico), ReplacementTransform(s_y, s_m), ReplacementTransform(l1, l1b), run_time=1.5)
+        self.decir("window_features la saca de |ω|, el largo del giro, que no tiene signo")
+        self.wait(1.5)
+        self.play(ReplacementTransform(b_y, b_m), run_time=1.5)
+        pico2 = VGroup(Arrow(a2.c2p(f_m, 1.45), a2.c2p(f_m, 1.05), buff=0, color=LINEA, stroke_width=4),
+                       texto(f"{f_m:.1f} Hz", 22, color=LINEA).move_to(a2.c2p(f_m + 1.3, 1.3)))
+        self.play(FadeIn(pico2))
+        self.decir(f"Ida y vuelta son dos jorobas de |ω|: la dominante sale al doble, {f_m:.0f} Hz")
         self.wait(3)
 
 
@@ -363,6 +559,18 @@ class RetrasoPorCorrelacion(Scene):
         self.play(Create(linea), FadeIn(ll))
         self.play(Create(aguja), FadeIn(la), run_time=2)
         self.wait(0.5)
+        # una señal de N muestras es una flecha de N números: el producto punto y el largo valen igual
+        flechas = VGroup(
+            texto(f"Cada señal son {ts.size} muestras: una flecha de {ts.size} números.", 24),
+            texto("El producto punto y el largo del capítulo 2 valen igual:", 24),
+            MathTex(r"\text{parecido} = \frac{x \cdot y}{|x|\,|y|} = \cos(\text{ángulo entre las dos})", font_size=34),
+            texto("x y y, las dos centradas: cada una menos su promedio", 20, color=GREY_B),
+        ).arrange(DOWN, buff=0.2).to_edge(DOWN, buff=0.45)
+        self.play(FadeIn(flechas[:2]))
+        self.wait(1.5)
+        self.play(Write(flechas[2]), FadeIn(flechas[3]))
+        self.wait(3)
+        self.play(FadeOut(flechas))
 
         tau = ValueTracker(-0.8)
         movida = always_redraw(lambda: ax.plot(lambda t: r(t - tau.get_value()), color=LINEA, stroke_width=3))
@@ -424,6 +632,11 @@ class Remanente(Scene):
             .to_edge(DOWN, buff=0.3)
         self.play(FadeIn(nota))
         self.wait(3)
+        cuenta = VGroup(MathTex(r"\text{remanente} = 1 - \frac{1}{\operatorname{var}(y)}\sum_k \frac{|Y_k|^2}{2}", font_size=30),
+                        texto("Una onda de amplitud |Y| tiene varianza |Y|²/2, y ondas distintas suman", 20))\
+            .arrange(DOWN, buff=0.12).to_edge(DOWN, buff=0.12).shift(RIGHT * 1.2)
+        self.play(FadeOut(nota), FadeIn(cuenta))
+        self.wait(4)
 
 
 # ---------------------------------------------------------------------------------------------------------
@@ -452,16 +665,27 @@ class Nyquist(Scene):
         self.add(onda, puntos, lbl)
         self.wait(1)
         self.play(f.animate.set_value(4.0), run_time=4, rate_func=linear)
-        lim = texto("el límite: f_s / 2 = 5 Hz (Nyquist)", 26, color=LINEA).to_edge(DOWN, buff=0.3)
-        self.play(f.animate.set_value(5.0), FadeIn(lim), run_time=2)
+        abajo = [None]
+
+        def decir(s, color=WHITE, size=24):
+            nuevo = texto(s, size, color=color).to_edge(DOWN, buff=0.3)
+            self.play(*([FadeOut(abajo[0])] if abajo[0] else []), FadeIn(nuevo), run_time=0.5)
+            abajo[0] = nuevo
+        self.play(f.animate.set_value(5.0), run_time=2)
+        decir("A 5 Hz, media vuelta entre muestra y muestra: dos muestras por vuelta")
+        self.wait(2)
+        decir("el límite: f_s / 2 = 5 Hz (Nyquist)", LINEA, 26)
+        self.wait(1)
         self.add(disfraz)
         self.play(f.animate.set_value(7.0), run_time=4, rate_func=linear)
-        self.wait(1.5)
+        decir("7 Hz: 0.7 de vuelta por muestra, que se ve como 0.3 hacia atrás: 3 Hz")
+        self.wait(3)
         self.play(f.animate.set_value(9.0), run_time=3, rate_func=linear)
-        self.wait(1.5)
-        fin = texto("No desaparecen: se disfrazan. Con el reloj a 100 muestras/s, el límite es 50 Hz.", 24)\
-            .to_edge(DOWN, buff=0.3)
-        self.play(ReplacementTransform(lim, fin))
+        decir("9 Hz: 0.9 de vuelta se ve como 0.1 hacia atrás: 1 Hz")
+        self.wait(2.5)
+        decir("La regla: se le resta f_s hasta que cae entre −f_s/2 y f_s/2")
+        self.wait(3)
+        decir("No desaparecen: se disfrazan. Con el reloj a 100 muestras/s, el límite es 50 Hz.")
         self.wait(3)
 
 

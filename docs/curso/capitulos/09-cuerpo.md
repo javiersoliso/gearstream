@@ -56,7 +56,23 @@ Una animación es una pose que depende de $t$. En `ANIMS` hay tres ideas:
   golpe. Importa más de lo que parece: un quiebre en la posición sería una aceleración enorme en lo que sigue.
 - **Un círculo.** Después dibuja un círculo de 20 cm de radio, con un ángulo que arranca y frena suave.
 
-## 4. La ley de los cosenos
+## 4. Probabilidad
+
+![Mil pares de números parejos en un cuadrado: la franja u < 0.3 junta 0.3 de los puntos, v < 0.5 la mitad, y las dos a la vez caen en el rectángulo de 0.3 × 0.5; si v es el mismo número que u, el producto ya no vale](../media/cap09/Probabilidad.gif)
+
+Para hablar del azar hace falta una palabra. La **probabilidad** de algo es qué fracción de las veces pasa, si se
+repite muchas veces: un número de 0 (nunca) a 1 (siempre). Se escribe $P(A)$. Con números parejos entre 0 y 1,
+$u < 0.3$ pasa 0.3 de las veces: es el ancho de esa franja.
+
+Si dos cosas no dependen una de la otra, la probabilidad de que pasen las dos es el producto:
+
+$$P(A \text{ y } B) = P(A)\,P(B)$$
+
+En el cuadrado es un área: $u < 0.3$ y $v < 0.5$ caen en un rectángulo de $0.3 \times 0.5 = 0.15$. Si dependen, no
+vale: si $v$ es el mismo número que $u$, las dos pasan 0.3 de las veces, no 0.15. Esta regla es la que junta muchas
+medidas en una (sección 12): cien que no dependen una de otra, de 0.9 cada una, dan $0.9^{100} \approx 0.00003$.
+
+## 5. La ley de los cosenos
 
 ![Un triángulo que abre su ángulo C: el término −2ab cos C acorta c con ángulo agudo, desaparece a 90° y lo alarga con ángulo obtuso](../media/cap09/LeyDeCosenos.gif)
 
@@ -69,13 +85,14 @@ Sale del producto punto: si $c = a - b$ como flechas, $|c|^2 = |a|^2 + |b|^2 - 2
 cero y queda Pitágoras. Y dice algo fuerte: **con los tres lados se saben los ángulos**. Con un brazo de 0.29 m, un
 antebrazo de 0.27 m y 0.40 m del hombro a la muñeca, el codo abre 91°.
 
-## 5. Cinemática inversa
+## 6. Cinemática inversa
 
 ![El codo sale del triángulo mientras la muñeca sigue un blanco; el polo elige el lado; lejos, el brazo se estira hasta donde puede; en 3D, los codos posibles son un círculo](../media/cap09/CinematicaInversa.gif)
 
 Y al revés: si sé dónde quiero la muñeca, ¿dónde queda el codo? Es la **cinemática inversa**. Hombro, codo y muñeca
-forman un triángulo de lados $L_1$, $L_2$ y $d$. Con la ley de los cosenos sale cuánto avanza el codo a lo largo de la
-recta hombro-muñeca, y con Pitágoras cuánto se separa de ella:
+forman un triángulo de lados $L_1$, $L_2$ y $d$. La ley de los cosenos con el ángulo $A$ del hombro, que está frente a
+$L_2$, dice $L_2^2 = L_1^2 + d^2 - 2d\,(L_1\cos A)$. Y $L_1\cos A$ es justo lo que avanza el codo a lo largo de la recta
+hombro-muñeca, $x$. Despejando sale $x$, y con Pitágoras, cuánto se separa el codo de la recta:
 
 $$x = \frac{L_1^2 - L_2^2 + d^2}{2d}, \qquad h = \sqrt{L_1^2 - x^2}$$
 
@@ -98,7 +115,7 @@ function ik(a, t, l1, l2, pole) {
 La cuarta línea recorta $d$: si el objetivo está lejos, la muñeca llega hasta donde puede, en esa dirección. `pd` es el
 polo sin la parte que va a lo largo de la recta, de largo 1. La animación de la tablet usa `ik`.
 
-## 6. Fabricar ruido
+## 7. Fabricar ruido
 
 ![Pares de números parejos entran a la fórmula y el histograma se va volviendo una campana; la misma semilla repite la lista y otra no](../media/cap09/FabricarRuido.gif)
 
@@ -108,13 +125,13 @@ pero la computadora solo da números parejos entre 0 y 1. **Box–Muller** convi
 
 $$z = \sqrt{-2\ln u}\,\cos(2\pi v)$$
 
-En 100 000 números salen media 0, tamaño típico 1, y 68 % a menos de $1\sigma$. Es `ArmFilter.randn`, y `rng` de
+En 100 000 números salen media 0, tamaño típico 1, y 68 % a menos de $1\sigma$: la probabilidad de caer ahí es 0.68. Es `ArmFilter.randn`, y `rng` de
 `mocapmath.js` hace lo mismo.
 
 Esos números no son azar de verdad: salen de una cuenta, `mulberry32`, que parte de una **semilla**. Con la misma
 semilla sale la misma lista, número por número. Por eso una prueba con ruido da siempre lo mismo y se puede repetir.
 
-## 7. Lo que leería el reloj
+## 8. Lo que leería el reloj
 
 ![La muñeca al caminar, de costado: lo que le falta a la tercera muestra para seguir derecho es la aceleración; las lecturas limpias y después con ruido y sesgo](../media/cap09/SintetizarIMU.gif)
 
@@ -135,7 +152,7 @@ acelerómetro y 0.02 m/s² en la gravedad. Hay dos comprobaciones fáciles. En u
 llevado al mundo promedia $(0, 9.81, 0)$, porque lo demás se cancela. Y sumando solo el $\omega$ fabricado, el antebrazo
 no se aparta de la animación más de 1.7° en toda la vuelta.
 
-## 8. Probar contra la verdad
+## 9. Probar contra la verdad
 
 ![La animación, synth, reconstruct y la comparación: sin ruido el error es de menos de 1°; si el reloj se mece sobre la piel, unos 6°](../media/cap09/PruebaConVerdad.gif)
 
@@ -149,12 +166,16 @@ les agrega un reloj flojo que se mece ±8° sobre la piel una vez por segundo, e
 Tus grabaciones, además, no tienen verdad: nada dice dónde estaba tu brazo. Al reproducirlas, `build` toma el antebrazo
 de los datos (`over`) y deja el brazo de arriba en una pose fija.
 
-## 9. La aceleración de un punto que gira
+## 10. La aceleración de un punto que gira
 
 ![Un punto en un círculo con su aceleración hacia el eje, que crece con ω²; si además gira cada vez más rápido aparece una flecha de costado](../media/cap09/AceleracionDeUnPunto.gif)
 
-¿Qué se puede deducir del brazo de arriba? Empecemos por lo que el reloj sí mide. En el capítulo 5, un punto que gira
-va a $\omega \times r$. Derivando otra vez sale su aceleración, en dos partes:
+¿Qué se puede deducir del brazo de arriba? Empecemos por lo que el reloj sí mide. En el capítulo 5, la punta de una flecha
+$f$ que gira se mueve a $\dot f = \omega \times f$. Para derivar otra vez hace falta la **regla del producto**: si cambian
+los dos factores, el cambio del producto es el cambio del primero por el segundo más el primero por el cambio del
+segundo, sin cambiar el orden. Sale de $(a + \Delta a)\times(b + \Delta b) - a\times b = \Delta a \times b + a \times \Delta b +
+\Delta a\times\Delta b$, donde el último término, chico por chico, se pierde. Así $\ddot f = \dot\omega\times f + \omega\times\dot f$,
+en dos partes:
 
 $$\ddot f = \alpha \times f + \omega \times (\omega \times f)$$
 
@@ -171,7 +192,7 @@ codo, medida sin ver el codo**. Sale atrasada, porque $\omega$ pasa por un suavi
 brazo tiene que ser su propia centrípeta: $\ddot e \cdot u = -|\dot e|^2/L_u$. Esa ecuación es la pista. Como $\alpha$
 sale de derivar $\omega$, el filtro suaviza $\omega$ antes (`omegaSmooth`), porque derivar agranda el ruido.
 
-## 10. Límites del cuerpo
+## 11. Límites del cuerpo
 
 ![Un mapa de las direcciones del brazo: las que doblan el codo de más, las que dejan la bisagra al revés, las muy atrás o dentro del pecho, y las posibles](../media/cap09/LimitesDelCuerpo.gif)
 
@@ -189,7 +210,7 @@ En el mapa de la animación, con el antebrazo al frente, solo queda posible un p
 `ArmFilter._init` reparte las primeras hipótesis alrededor de `defaultPrior`, la postura de reposo: el codo cuelga y se
 adelanta un poco con el antebrazo.
 
-## 11. Verosimilitud
+## 12. Verosimilitud
 
 ![Tres hipótesis sobre una campana: cuanto más grande el residuo, menos creíble; con el brazo rápido σ crece y la campana se abre](../media/cap09/Verosimilitud.gif)
 
@@ -200,10 +221,11 @@ $$p = e^{-r^2/2\sigma^2}$$
 
 Con $r = \sigma$ vale 0.607; con $r = 2\sigma$, 0.135; con $r = 3\sigma$, 0.011. En `ArmFilter.step`, $r$ es lo que le
 falla a cada hipótesis en la ecuación del codo, $r = z\cdot u + |v|^2/L_u$, y su tamaño crece con el movimiento porque
-el modelo se equivoca más: $\sigma = 0.3 + 0.3\,|z|$ m/s². Los pesos se multiplican muestra a muestra, y por eso una
-diferencia chica, repetida cien veces por segundo, termina decidiendo.
+el modelo se equivoca más: $\sigma = 0.3 + 0.3\,|z|$ m/s². Los pesos se multiplican muestra a muestra porque el filtro
+supone que el ruido de una muestra no depende del de otra: así, la probabilidad de ver todas las medidas es el producto
+de las de cada una (sección 4). Por eso una diferencia chica, repetida cien veces por segundo, termina decidiendo.
 
-## 12. Filtro de partículas
+## 13. Filtro de partículas
 
 ![Una nube de codos posibles alrededor del brazo de verdad: se sigue el codo mientras el brazo se mueve, y con la muñeca quieta la nube se junta en la postura de reposo](../media/cap09/FiltroDeParticulas.gif)
 
@@ -231,7 +253,7 @@ junta**. Pasa de 8 cm moviendo el brazo a menos de 2 cm tras 25 s quieto, porque
 hacia el mismo punto. Y esa nube chica no es certeza: el error de verdad sigue en unos 10 cm. El ancho de la nube dice
 qué tan de acuerdo están las partículas entre sí, y solo mientras el brazo se mueve se parece a lo que sabemos.
 
-## 13. Tamaño efectivo y remuestreo
+## 14. Tamaño efectivo y remuestreo
 
 ![Pocos pesos mandan; las partículas en fila tan anchas como su peso, un peine parejo que elige, y los clones; después, N_ef en el tiempo contra la línea de 200](../media/cap09/Remuestreo.gif)
 
