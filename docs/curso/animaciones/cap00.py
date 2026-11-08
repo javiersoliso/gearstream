@@ -573,18 +573,25 @@ class ResumirVentana(Escena):
 
 # ---------------------------------------------------------------------------------------------------------
 class Latencia(Escena):
-    """Cuánto tarda cada muestra en llegar; un atasco deja una tanda de muestras viejas."""
+    """Cuánto tarda cada muestra en llegar; un atasco retiene una tanda, que sale junta y en orden."""
 
     def construct(self):
         self.titulo("Latencia: de la medida a la laptop")
         rng = np.random.default_rng(21)
-        paso = 50
+        paso = 50                                              # ms entre flechas: una de cada cinco muestras, para verlas
         t_mide = np.arange(0, 1000, paso, dtype=float)
         lat = 30 + rng.gamma(2.0, 9.0, len(t_mide))
-        atasco = (t_mide >= 450) & (t_mide <= 600)            # el Wi-Fi se traba y todo sale junto
         llegada = t_mide + lat
-        llegada[atasco] = 1000 - 40 + 8 * np.arange(atasco.sum())
+        # el Wi-Fi se traba de 450 a 870 ms: sdb entrega en orden, así que lo que se midió en ese rato espera y sale
+        # junto al soltarse, y lo que viene detrás llega después (nada adelanta a nada)
+        suelta = 870.0
+        for k in range(len(t_mide)):
+            if t_mide[k] >= 450:
+                llegada[k] = max(llegada[k], suelta + 6 * (t_mide[k] - 450) / paso)
+        for k in range(1, len(t_mide)):
+            llegada[k] = max(llegada[k], llegada[k - 1] + 4)
         lat = llegada - t_mide
+        atasco = lat > 90
         izq, der = -5.6, 5.8
         x_de = lambda t: izq + (der - izq) * t / 1100
         y_r, y_l = 1.45, -1.05
@@ -592,10 +599,12 @@ class Latencia(Escena):
         laptop = Line([izq, y_l, 0], [der, y_l, 0], color=SUAVE)
         l1 = texto("el reloj mide", 22).next_to(reloj, UP, buff=0.15).align_to(reloj, LEFT)
         l2 = texto("la laptop la usa", 22).next_to(laptop, DOWN, buff=0.15).align_to(laptop, LEFT)
-        self.play(Create(reloj), Create(laptop), FadeIn(l1, l2))
-        self.decir("Cada flecha es una muestra: sale cuando se mide y llega un rato después.", espera=0.5)
+        escala = VGroup(Line([x_de(0), y_l - 0.55, 0], [x_de(500), y_l - 0.55, 0], color=SUAVE, stroke_width=2),
+                        texto("500 ms", 18, color=SUAVE).next_to([x_de(250), y_l - 0.55, 0], DOWN, buff=0.08))
+        self.play(Create(reloj), Create(laptop), FadeIn(l1, l2, escala))
+        self.decir("Cada flecha es una muestra: sale cuando se mide y cae cuando llega. Más inclinada, más tardó.", espera=0.5)
 
-        # la cuenta de AirMouse.on_data: la línea de base baja de golpe y sube a lo sumo 30 ms por segundo
+        # el retraso de Bridge.report: la edad de la muestra más nueva, contra la entrega más rápida vista
         base, ahora_prev, lags = None, None, []
         for a, t in sorted(zip(llegada, t_mide)):
             edad = a - t
@@ -604,28 +613,34 @@ class Latencia(Escena):
             lags.append((t, edad - base))
         lag = dict(lags)
         tarde = [t for t in t_mide if lag[t] > STALE_MS]
+        mejor = lat.min()
+
+        def flecha(k, color):
+            return Arrow([x_de(t_mide[k]), y_r, 0], [x_de(llegada[k]), y_l, 0], buff=0, color=color, stroke_width=3,
+                         max_tip_length_to_length_ratio=0.06)
 
         lect = texto("", 24)
         for k, t in enumerate(t_mide):
             if atasco[k]:
-                continue
-            f = Arrow([x_de(t), y_r, 0], [x_de(llegada[k]), y_l, 0], buff=0, color=SENAL, stroke_width=3, max_tip_length_to_length_ratio=0.06)
+                break
             self.remove(lect)
             lect = texto(f"esta tardó {lat[k]:.0f} ms", 24, color=SENAL).next_to(reloj, UP, buff=0.15).align_to(reloj, RIGHT)
             self.add(lect)
-            self.play(Create(f), run_time=0.22)
+            self.play(Create(flecha(k, SENAL)), run_time=0.22)
         self.remove(lect)
         self.decir("Casi todas tardan parecido. Pero el Wi-Fi a veces se traba.", espera=0.5)
+        primero = int(np.argmax(atasco))
+        muro = DashedLine([x_de(llegada[primero]), y_r, 0], [x_de(llegada[primero]), y_l, 0], color=ERROR, stroke_width=2)
+        lm = texto("se suelta", 18, color=ERROR).next_to(muro, UP, buff=0.05)
+        self.play(Create(muro), FadeIn(lm), run_time=0.5)
+        self.decir("La red entrega en orden: lo que se midió durante el atasco espera, y sale junto cuando se suelta.", espera=0.3)
         for k, t in enumerate(t_mide):
             if atasco[k]:
-                color = ERROR if t in tarde else ORANGE
-                self.play(Create(Arrow([x_de(t), y_r, 0], [x_de(llegada[k]), y_l, 0], buff=0, color=color, stroke_width=3,
-                                       max_tip_length_to_length_ratio=0.06)), run_time=0.4)
-        peor = lat[atasco].max()
-        self.decir(f"Salen juntas: la peor tardó {peor:.0f} ms. La latencia no es un número fijo.", espera=2.5)
-        self.decir(f"AirMouse.on_data compara con la edad mínima reciente: {len(tarde)} pasan de {STALE_MS} ms de más.", espera=1.5)
-        self.decir("Esas no mueven el cursor: una muestra vieja llega tarde para apuntar.", espera=3)
-        self.decir("Bridge.report imprime el retraso: la edad de la muestra más nueva.", espera=3)
+                self.play(Create(flecha(k, ERROR if t in tarde else ORANGE)), run_time=0.3)
+        self.decir("Ninguna adelanta a otra: la última del atasco llega después de la primera, y las de atrás, después.", espera=2)
+        peor = lat.max()
+        self.decir(f"La peor tardó {peor:.0f} ms. Las que llegan {STALE_MS} ms más viejas de lo normal no mueven el cursor.", espera=2.5)
+        self.decir(f"Bridge.report imprime el retraso: la edad de la más nueva, contra la mejor entrega vista ({mejor:.0f} ms).", espera=3)
 
 
 # ---------------------------------------------------------------------------------------------------------

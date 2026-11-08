@@ -155,7 +155,8 @@ más giro por su promedio, y `event_features` de `tools/analyze_dataset.py` resu
 ![Flechas que salen del reloj cuando se mide y llegan a la laptop un rato después; un atasco del Wi-Fi deja una tanda de muestras viejas que llegan juntas](../media/cap00/Latencia.gif)
 
 La **latencia** es cuánto tarda una muestra desde que el reloj la mide hasta que la laptop la usa. No es un número fijo:
-casi todas tardan parecido, pero si el Wi-Fi se traba, una tanda sale junta y tarde.
+casi todas tardan parecido, pero si el Wi-Fi se traba, una tanda sale junta y tarde. La red entrega en orden, así que
+ninguna muestra adelanta a otra: lo que se midió durante el atasco espera, y lo que viene detrás llega después.
 
 `Bridge.report` imprime el `retraso`, la edad de la muestra más nueva. `AirMouse.on_data` compara cada edad con la mínima
 reciente, que baja de golpe y sube a lo sumo 30 ms por segundo; así una tanda atrasada no pasa por normal. Una muestra

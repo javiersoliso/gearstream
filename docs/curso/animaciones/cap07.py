@@ -546,7 +546,7 @@ class Filtro1Euro(Escena):
         assert np.isclose(OneEuro.alpha(2.0, DT), DT / (tau + DT))
         f2 = MathTex(r"\tau_c = \frac{1}{2\pi f_c} \quad\Rightarrow\quad \alpha = \frac{\Delta t}{\tau_c + \Delta t}", font_size=32)\
             .next_to(f, DOWN, buff=0.15)
-        self.decir("Corte f_c: lo más lento que f_c pasa; lo más rápido se achica")
+        self.decir("Corte f_c: una onda justo a f_c pasa al 70 %; lo más lento casi entera, lo más rápido se achica")
         self.wait(1.5)
         self.play(Write(f2))
         self.decir(f"A 2 Hz, τ_c = {1000 * tau:.0f} ms; el τ = Δt/α del cap. 3 es Δt + τ_c = {1000 * (DT + tau):.0f} ms")
