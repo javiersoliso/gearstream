@@ -78,14 +78,15 @@ La respuesta a la pregunta guía es un número que hay que elegir: la **ganancia
 | Dónde | Ganancia | Cruzar 1920 px |
 |---|---|---|
 | Ratón aéreo, despacio (`g_lo`) | 12 px/° | 160° |
-| Dibuja en 2D (`PX_PER_DEG` en `point2`) | 16 px/° | 120° |
+| Dibuja en 2D sin calibrar (`DEFAULT_GAIN` en `calibra.js`) | 16 px/° | 120° |
 | Ratón aéreo, rápido (`g_hi`) | 30 px/° | 64° |
 
 Un láser de verdad no elige: su ganancia sale de la distancia y de los píxeles por metro de la pantalla,
 $g = (D\pi/180)\cdot(\text{px/m})$. Con un monitor inventado de 53 cm y 1920 px, a 60 cm, son 38 px/°; a 2.4 m, 152 px/°.
 El ratón aéreo no mide la distancia: sus 12 a 30 px/° la suponen. Ganancia alta cruza la pantalla con poco giro, pero
 cada temblor se ve más grande. En `Motion.feed_gyro`, el paso del cursor es la ganancia por la tasa por $\Delta t$,
-con `gain`, `gain_x` y `gain_y` como multiplicadores.
+con `gain`, `gain_x` y `gain_y` como multiplicadores. Dibuja en 2D puede además sacar una ganancia por eje de un barrido
+de tu brazo por los bordes de la pantalla (`calibrate` de `server/web/calibra.js`), para que tu movimiento cómodo llene la ventana.
 
 ## 5. Recortar a un rango
 

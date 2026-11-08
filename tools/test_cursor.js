@@ -144,7 +144,7 @@ console.log('Ganancia');
 const raton = fuente('tools', 'air_mouse.py');
 for (const [op, v] of [['--g-lo', '12.0'], ['--g-hi', '30.0'], ['--v-lo', '10.0'], ['--v-hi', '120.0'], ['--mincutoff', '2.0'], ['--beta', '0.01'],
   ['--dcutoff', '1.0'], ['--deadzone', '0.8'], ['--max-speed', '4000.0']]) dice(raton, `a("${op}", type=float, default=${v}`, 'air_mouse.py');
-dice(dibuja, 'const PX_PER_DEG = 16;', 'dibuja.js');
+dice(fuente('server', 'web', 'calibra.js'), 'const DEFAULT_GAIN = { kx: 16, ky: 16 };', 'calibra.js');
 ok('los valores por omisión son los del capítulo: 12 y 30 px/°, 10 y 120 °/s, 0.8 °/s, 2 Hz, 0.01, 1 Hz, 4000 px/s');
 const pxPorGrado = (Dm, pxPorMetro) => Dm * GRADO * pxPorMetro, monitor = 1920 / 0.53;
 near(pxPorGrado(0.6, monitor), 38, 0.5, 'un láser a 60 cm de un monitor');
