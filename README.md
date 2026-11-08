@@ -1,34 +1,24 @@
 # GearStream
 
-![Escribiendo "¡hola!" en el aire con el reloj en Dibuja 3D: la muñeca da la dirección, atornillar da la profundidad, y al final la cámara gira y se ve el trazo en 3D](docs/media/dibuja-hola-3d.gif)
+![Escribiendo «¡hola!» en el aire con el reloj: la muñeca da la dirección, atornillar da la profundidad, y al final la cámara gira y se ve el trazo en 3D](docs/media/dibuja-hola-3d.gif)
 
-Streaming en tiempo real de **todos los sensores** de un Samsung Galaxy Watch (1ª gen, 46 mm, Tizen) a la laptop, con dashboard en vivo y grabación a CSV.
+Un Galaxy Watch de primera generación (46 mm, Tizen) manda todos sus sensores a la laptop, y con la muñeca escribes en el aire, mueves el cursor, revientas globos o aprietas un tornillo.
+
+| | |
+|---|---|
+| <img src="docs/media/primera-vez-globos.gif" width="300" alt="Un amigo revienta globos apuntando con la muñeca"> <br> **[Revienta globos](#revienta-globos).** Un amigo jugando por primera vez. Le expliqué que entre más fuerte empujas, más lejos llega el dardo, y terminó con 4700 puntos, su récord. | <img src="docs/media/primera-vez-tornillo.gif" width="300" alt="El mismo amigo atornilla girando la muñeca"> <br> **[Tornillo y tempo](#tornillo-y-tempo).** El mismo amigo, cuando ya le había explicado que el tornillo entra hasta cierto punto y ahí deja de entrar. |
+| <img src="docs/media/mocap-apuntar.gif" width="400" alt="Un stickman apunta con el reloj a una pantalla virtual"> <br> **[Mocap con un reloj](#mocap-con-un-reloj).** Un stickman que se mueve con lo que leería el reloj. | <img src="docs/media/letras-forma.gif" width="400" alt="Letras escritas en el trackpad y lo que reconstruye el reloj"> <br> **[Lo que el reloj ve de tu escritura](#lo-que-el-reloj-ve-de-tu-escritura).** En cian, el dedo en el trackpad. En coral, lo que reconstruye el reloj. |
+
+## Cómo funciona
 
 ```
-Galaxy Watch (app Tizen web)  --WebSocket/Wi-Fi-->  laptop: server/server.py  --->  dashboard en el navegador
-  watch-app/                    ws://IP:8765/watch     graba recordings/<sesión>/*.csv    http://localhost:8765
+Galaxy Watch  --Wi-Fi-->  laptop (server/server.py)  -->  páginas en el navegador
+                          graba cada sesión en CSV
 ```
 
-**¿Solo quieres usarlo?** Descarga `GearStream-<versión>-windows.zip` de *Releases*, descomprímelo y abre `GearStream.exe`: ver [La app](#la-app-gearstreamexe).
+Con el servidor prendido, las páginas se abren en tu propio computador, en `http://localhost:8765/`. Por eso abajo solo digo el nombre de cada una, por ejemplo `dibuja.html`.
 
-## Qué se transmite
-
-La app del reloj **no tiene una lista fija**: al arrancar pregunta a Tizen qué sensores existen (`tizen.sensorservice.getAvailableSensors()`) y los abre todos a 100 Hz (lo máximo que permite Tizen). Además:
-
-| Fuente | API | Notas |
-|---|---|---|
-| ACCELERATION, GYROSCOPE, GRAVITY, LINEAR_ACCELERATION, GYROSCOPE_ROTATION_VECTOR, *_UNCALIBRATED, MAGNETIC… | `tizen.sensorservice` | lo que el reloj reporte como disponible |
-| HRM_RAW | `tizen.sensorservice` | señal PPG cruda (LED verde) |
-| PRESSURE, LIGHT | `tizen.sensorservice` | barómetro y luz ambiental, 10 Hz |
-| HRM, PEDOMETER, WRIST_UP, SLEEP_MONITOR, SLEEP_DETECTOR, STRESS_MONITOR | `tizen.humanactivitymonitor` | pulso (lpm + intervalo RR), pasos, gestos… |
-| GPS | `navigator.geolocation` | necesita cielo abierto |
-| ORIENTATION | `deviceorientation` | alpha/beta/gamma ya fusionados |
-| BATTERY | `tizen.systeminfo` | |
-| BEZEL | evento `rotarydetent` | giros del bisel |
-
-Las fuentes que el reloj no soporte aparecen en el dashboard en "No disponibles", con el error que devolvió Tizen.
-
-## 1. Probarlo sin el reloj (2 minutos)
+## Probarlo sin reloj
 
 ```bash
 pip install -r requirements.txt
@@ -36,251 +26,267 @@ pip install -r requirements.txt
 ```bash
 python server/server.py
 ```
-En otra terminal:
+En otra terminal, un reloj de mentira que manda datos con el mismo protocolo:
 ```bash
 python tools/fake_watch.py
 ```
-Abre http://localhost:8765. El simulador manda datos con el mismo protocolo que el reloj.
 
-## Modo sin app (lo que funciona hoy)
+## La app: GearStream.exe
 
-Samsung ya no emite certificados para relojes Tizen: su servidor solo da certificados de TV (VD), y el reloj los rechaza con *"Invalid certificate chain"*. Mientras tanto, `tools/sdb_bridge.py` lee los sensores con `sensorctl`, una herramienta interna del reloj, por la conexión de depuración, sin instalar nada:
+Todavía no hay una versión publicada en *Releases*. Mientras tanto se corre desde el código (cualquier sistema; el ratón aéreo es solo para Windows):
+
+```bash
+pip install -r app/requirements.txt
+```
+```bash
+python app/gearstream.py
+```
+
+Si quieres armar el .exe, `python tools/build_app.py --zip` lo deja en `dist/GearStream/` y lo prueba. Con una etiqueta `v*`, GitHub lo publica solo.
+
+Cuando abras el .exe, Windows va a avisar con SmartScreen porque no está firmado: *Más información → Ejecutar de todos modos*.
+
+La primera vez te lleva paso a paso: misma Wi-Fi, modo desarrollador y depuración en el reloj, buscar su IP, conectar y aceptar en el reloj. Con **Probar sin reloj** puedes explorar todo con un reloj simulado.
+
+Después es una ventana y un ícono en la bandeja. Ahí ves la IP de la laptop y la del reloj, si están conectados, cuántas muestras por segundo llegan, un botón por página y el ratón aéreo. En **Ajustes** eliges la muñeca, las muestras por paquete, el puerto, la carpeta de tus datos (por defecto *Documentos/GearStream*) y qué página abrir al conectar.
+
+## Conectar el reloj sin instalarle nada
+
+Samsung ya no da certificados para relojes Tizen, así que instalar una app propia es difícil. Por eso el puente lee los sensores por la conexión de depuración:
 
 ```bash
 python tools/sdb_bridge.py
 ```
-Sin `--device` busca el reloj en la red local (puerto 26101); con `--device <ip>` va directo.
 
-| Sí (100 Hz) | Sí (10 Hz) | No |
+Busca el reloj en la red local; con `--device <ip>` va directo. El reloj necesita la depuración activada y el Bluetooth del teléfono apagado. La primera vez te pide permiso.
+
+| A 100 Hz | A 10 Hz | No se puede |
 |---|---|---|
-| acelerómetro, giroscopio, gravedad, aceleración lineal | barómetro (+ altitud y temperatura), luz | pulso y PPG (permiso denegado al shell), magnetómetro (no existe) |
+| acelerómetro, giroscopio, gravedad, aceleración lineal | barómetro, altitud, temperatura, luz | PPG (permiso denegado), magnetómetro (no tiene) |
 
-Requisitos: depuración activada y Bluetooth del teléfono apagado. El puente habla el protocolo sdb directo desde Python ([tools/sdb_client.py](tools/sdb_client.py)), así que no necesita `sdb.exe`. Usa la llave `~/.tizen/sdbkey` si existe (ya autorizada por el reloj); si no, genera una propia y el reloj pide permiso una vez. El pulso se lee del log de Samsung Health mientras mide (~1 Hz).
+El pulso sale del log de Samsung Health mientras mide, más o menos una vez por segundo.
 
-### En el teléfono, sin laptop (Termux)
+### Preparar el reloj
 
-1. Instala Termux desde F-Droid y en Termux corre: `pkg install -y python unzip` y luego `pip install websockets`.
-2. En la laptop genera el paquete una vez (`python tools/build_phone_zip.py`) y, con el servidor corriendo y el teléfono en la misma Wi-Fi, descárgalo en Termux: `curl -O http://<IP-laptop>:8765/gearstream-phone.zip && unzip -o gearstream-phone.zip`.
-3. Arranca: `bash gearstream/phone/start.sh` (busca el reloj solo; o `bash gearstream/phone/start.sh <IP-del-reloj>`) y abre `http://localhost:8765` en el navegador del teléfono.
+1. Conéctalo a la misma Wi-Fi de la laptop: *Ajustes → Conexiones → Wi-Fi*.
+2. Prende el modo desarrollador: en *Ajustes → Acerca del reloj → Software*, toca **Versión de software** 5 veces. Después activa *Ajustes → Acerca del reloj → Depuración*.
+3. Anota su IP (*Wi-Fi → tu red → detalles*).
+4. En Windows, la primera vez que corras el servidor, permite Python en el firewall para redes privadas.
 
-Sin router: prende el punto de acceso del teléfono (banda 2.4 GHz, WPA2: el SM-R800 no ve 5 GHz ni WPA3) y conecta el reloj a esa red. Ojo: el hotspot de un teléfono **aísla a sus clientes**, así que ahí solo el propio teléfono puede leer el reloj; una laptop conectada al mismo hotspot no lo ve. Para medir la red: `python tools/batch_test.py --device <ip-del-reloj>` compara los modos de agrupamiento.
+Si el reloj está enlazado al teléfono, puede mandar el tráfico por Bluetooth y no llegar a la laptop. Si no conecta, deja el Wi-Fi del reloj en *Siempre activo* o apaga el Bluetooth del teléfono.
+
+### Desde el teléfono, sin laptop
+
+1. Instala Termux desde F-Droid y corre `pkg install -y python unzip`, luego `pip install websockets`.
+2. En la laptop, genera el paquete con `python tools/build_phone_zip.py`. Con el servidor prendido y los dos en la misma Wi-Fi, bájalo en Termux: `curl -O http://<IP-laptop>:8765/gearstream-phone.zip && unzip -o gearstream-phone.zip`.
+3. Corre `bash gearstream/phone/start.sh` y abre el dashboard en el navegador del teléfono.
+
+Si no hay router, prende el punto de acceso del teléfono en 2.4 GHz con WPA2, porque el SM-R800 no ve 5 GHz ni WPA3. En ese caso solo el teléfono puede leer el reloj: el hotspot aísla a sus clientes y una laptop conectada ahí no lo ve.
 
 ### Medir el retraso
 
-Tres puntos del camino reportan cuánto tarda la muestra más reciente en llegar (tiempo desde que el reloj la generó; el reloj de cada sensor se ancla a la entrega más rápida vista, así que el número es relativo al mejor caso):
-- **Puente** (`retraso N ms · ida y vuelta A-B ms, C muestras/paquete`): reloj → Wi-Fi → sdb → Python. El protocolo sdb manda **un paquete por sensor y espera nuestro acuse antes del siguiente**, y el reloj no junta muestras por su cuenta (medido: 0.8 muestras/paquete, y `sensorctl --batch_latency` no cambia nada). Por eso la velocidad máxima es 1 muestra por ida y vuelta: ~10 ms en casa alcanza para 100 Hz; en el hotspot de un teléfono (~60 ms) solo pasan ~17/s y el resto se acumula en el reloj (ese es el "lag" del teléfono). La solución es `--batch 10`: el reloj agrupa 10 muestras por paquete con `awk` (medido: 100 Hz, 10 muestras/paquete, hasta 100 ms más de retraso). `phone/start.sh` ya lo usa. Menos sensores = menos paquetes: `--sensors accelerometer,gyroscope`.
-- **Servidor** (`retraso N ms (puente→servidor M ms)`): lo anterior + el lote del puente (`--flush-ms`, 20 ms por defecto; 10 para menos retraso). El segundo número es solo el tramo puente → servidor, medido con el mismo reloj.
-- **Dashboard** (cabecera): `retraso` = todo el camino; `desde el puente` = solo puente → servidor → navegador (exacto cuando el navegador corre en el mismo equipo que el puente: laptop o teléfono); `ráfaga máx` = la mayor pausa entre lotes en el último segundo y el lote más grande (ráfagas grandes = la red o el navegador se atoran a ratos).
+![Flechas que salen del reloj cuando se mide y llegan a la laptop un rato después; un atasco del Wi-Fi deja una tanda de muestras viejas que llegan juntas](docs/curso/media/cap00/Latencia.gif)
 
-Lo que más pesa en un teléfono es dibujar las gráficas (rasterizar los trazos), no Python: por eso el dashboard limita la densidad a 1.5×, dibuja solo las tarjetas visibles y solo cuando llegan datos (≤30 veces/s).
+El puente, el servidor y el dashboard muestran cuánto tarda en llegar la muestra más reciente. El número es relativo a la entrega más rápida que se haya visto.
 
-## 2. Preparar el reloj
+El protocolo manda un paquete por sensor y espera el acuse antes del siguiente, así que pasa una muestra por ida y vuelta. Con unos 10 ms en casa alcanza para 100 Hz. En el hotspot del teléfono la ida y vuelta es de unos 60 ms, pasan unas 17 muestras por segundo y el resto se acumula en el reloj. Para eso está `--batch 10`, que junta 10 muestras por paquete a cambio de hasta 100 ms más de retraso. `phone/start.sh` ya lo usa. Con menos sensores también mejora: `--sensors accelerometer,gyroscope`.
 
-1. **Misma red Wi-Fi** que la laptop. En el reloj: *Ajustes → Conexiones → Wi-Fi* → conéctate a tu red.
-2. **Modo desarrollador**: *Ajustes → Acerca del reloj → Software* → toca **Versión de software** 5 veces. Luego activa *Ajustes → Acerca del reloj → Depuración*.
-3. Anota la **IP del reloj** (*Wi-Fi → tu red → detalles*).
-4. En Windows, cuando arranques `server.py` por primera vez, **permite Python en el firewall** para redes privadas (y que tu red esté marcada como *Privada*).
+`python tools/batch_test.py --device <ip-del-reloj>` compara los modos en tu red.
 
-> **Ojo con Bluetooth:** si el reloj está enlazado al teléfono, Tizen manda el tráfico por el Bluetooth del teléfono y puede no llegar a tu laptop. Si no conecta, pon el Wi-Fi del reloj en *Siempre activo* o apaga el Bluetooth del teléfono mientras transmites.
+## Instalar la app en el reloj
 
-## 3. Instalar la app en el reloj
+Este camino necesita un certificado de Samsung, y hoy su servidor solo entrega certificados de TV que el reloj rechaza con *"Invalid certificate chain"*. Lo dejo por si consigues uno.
 
-Necesitas **Tizen Studio** (basta con la versión CLI) y, en su *Package Manager*, las extensiones **Samsung Certificate Extension** y **Wearable Extension**.
+Hace falta Tizen Studio (basta la versión CLI) con **Samsung Certificate Extension** y **Wearable Extension**.
 
-1. **Certificado Samsung** (obligatorio en relojes comerciales): *Tools → Certificate Manager → + → Samsung → Mobile/Wearable*, inicia sesión con tu cuenta Samsung y deja que añada el DUID del reloj (el reloj tiene que estar conectado por `sdb` en ese momento). Llámalo, por ejemplo, `gearstream`.
-   > Samsung ha ido retirando partes de este flujo y hay reportes de errores en sus foros. Si falla aquí, avísame y buscamos alternativa.
-2. **Conectar el reloj**:
+1. Crea el certificado en *Tools → Certificate Manager → + → Samsung → Mobile/Wearable*, con el reloj conectado por `sdb`, y llámalo `gearstream`.
+2. Conecta el reloj y acepta la clave que aparece en la pantalla:
    ```bash
    sdb connect 192.168.0.XX
    ```
-   Acepta la clave RSA que aparece en el reloj y comprueba con `sdb devices`.
-3. **IP del servidor**: edita `SERVER_URL` en [watch-app/js/config.js](watch-app/js/config.js) (`server.py` imprime la URL correcta al arrancar). También se puede cambiar después tocando la URL en la pantalla del reloj.
-4. **Empaquetar e instalar**:
+3. Pon la dirección del servidor en `SERVER_URL`, en [watch-app/js/config.js](watch-app/js/config.js). `server.py` la imprime al arrancar.
+4. Empaqueta e instala:
    ```bash
    tizen package -t wgt -s gearstream -- watch-app
    ```
    ```bash
    tizen install -n GearStream.wgt -- watch-app
    ```
-   (Otra opción: en Tizen Studio, *File → Import → Tizen → Tizen Project*, elige `watch-app` y *Run As → Tizen Web Application*.)
-5. Abre **GearStream** en el reloj, toca **Iniciar** y acepta los permisos (sensores de salud y ubicación).
+5. Abre GearStream en el reloj, toca **Iniciar** y acepta los permisos.
 
-En el reloj:
-- El punto verde indica conexión con la laptop; la lista muestra cada fuente (verde = datos, ámbar = esperando, rojo = error).
-- El **bisel** desplaza la lista.
-- **Atrás** mientras transmite solo oculta la app (el stream sigue). Para parar, toca **Detener**.
-- Por defecto mantiene la **pantalla encendida** (`KEEP_SCREEN_ON`), porque con la pantalla apagada Tizen puede pausar sensores. Pantalla + 100 Hz + Wi-Fi gastan mucha batería; mejor transmite con el reloj cargado o en sesiones cortas.
+El bisel mueve la lista de sensores. El botón atrás solo oculta la app y sigue transmitiendo; para parar, toca **Detener**. La pantalla se queda prendida porque apagada Tizen puede pausar los sensores, y eso gasta bastante batería.
 
-## Datos grabados
+## Qué manda el reloj
 
-Cada sesión crea `recordings/AAAAMMDD-HHMMSS/`:
-- `ACCELERATION.csv`, `HRM_RAW.csv`, …: una fila por muestra. `t_watch_ms` es el reloj del Galaxy Watch y `t_recv_ms` el de la laptop, ambos en ms Unix.
-- `meta.jsonl`: info del dispositivo, sensores disponibles, estado de cada fuente y specs del hardware (rango, resolución, intervalo mínimo).
+![El reloj con sus tres flechas x, y, z, que giran con él](docs/curso/media/cap01/EjesDelReloj.gif)
 
-Usa `--no-record` para no grabar y `--out <carpeta>` para grabar en otra parte.
+La app del reloj le pregunta a Tizen qué sensores existen y los abre todos, hasta 100 Hz.
 
-### Privacidad
+| Fuente | API | Notas |
+|---|---|---|
+| ACCELERATION, GYROSCOPE, GRAVITY, LINEAR_ACCELERATION, GYROSCOPE_ROTATION_VECTOR, *_UNCALIBRATED, MAGNETIC… | `tizen.sensorservice` | lo que el reloj reporte |
+| HRM_RAW | `tizen.sensorservice` | señal PPG cruda |
+| PRESSURE, LIGHT | `tizen.sensorservice` | 10 Hz |
+| HRM, PEDOMETER, WRIST_UP, SLEEP_MONITOR, SLEEP_DETECTOR, STRESS_MONITOR | `tizen.humanactivitymonitor` | pulso, pasos, gestos |
+| GPS | `navigator.geolocation` | necesita cielo abierto |
+| ORIENTATION | `deviceorientation` | alpha, beta y gamma |
+| BATTERY | `tizen.systeminfo` | |
+| BEZEL | evento `rotarydetent` | giros del bisel |
 
-Las grabaciones son datos personales (pulso, movimiento) y **nunca salen de tu máquina**: `recordings/` está en `.gitignore`. Las llaves tampoco viven en el repositorio: la llave sdb está en `~/.tizen/sdbkey` o `~/.gearstream/sdbkey.json`, y el perfil del ratón aéreo en `~/.gearstream/airmouse.json`. Si quieres compartir una grabación de ejemplo, cópiala a otra carpeta a propósito.
-
-## La app: GearStream.exe
-
-1. Descarga `GearStream-<versión>-windows.zip` de **Releases** y descomprímelo donde quieras.
-2. Abre `GearStream.exe`. Windows avisa con SmartScreen porque el ejecutable no está firmado: *Más información → Ejecutar de todos modos*.
-3. La primera vez se abre un **paso a paso**: misma Wi-Fi, modo desarrollador y depuración en el reloj, buscar su IP, conectar y aceptar en el reloj. **Probar sin reloj** arranca un reloj simulado para explorar todo sin reloj.
-
-Una ventana (y un ícono en la bandeja) con tu Wi-Fi y la IP de la laptop, la IP del reloj (la busca en la red o la escribes), el estado del servidor y del reloj con sus Hz, un botón por página y el ratón aéreo. En **Ajustes**: la muñeca del reloj (el ratón aéreo y las páginas se ajustan solos), las muestras por paquete (*auto* mide la red y agrupa en el hotspot del teléfono), el puerto, la carpeta de tus datos (por defecto *Documentos/GearStream*, nunca la carpeta de la app) y qué página abrir al conectar. Se guarda en `~/.gearstream/config.json`.
-
-Por dentro, el .exe se llama a sí mismo para cada pieza (`GearStream.exe servidor`, `puente`, `raton`, `reloj-simulado`), cada una en su proceso, y las para con Ctrl+Break para que el reloj quede limpio. `GearStream.exe prueba` es una prueba de punta a punta sin ventana: servidor + reloj simulado + páginas.
-
-**Desde el código** (cualquier sistema; el ratón aéreo es solo Windows):
-
-```bash
-pip install -r app/requirements.txt
-python app/gearstream.py              # la app (python tools/launcher.py hace lo mismo)
-python tools/build_app.py --zip       # arma dist/GearStream/GearStream.exe en un entorno aparte y lo prueba
-```
-
-En GitHub, el flujo `.github/workflows/app.yml` corre las pruebas y arma y prueba el .exe en Windows en cada pull request; con una etiqueta `v*` lo publica en Releases.
-
-## Mocap con un reloj
-
-![Un stickman apunta con el reloj a una pantalla virtual: clic con un giro de muñeca y un círculo dibujado en el aire](docs/media/mocap-apuntar.gif)
-
-`http://localhost:8765/mocap.html` (o el botón Mocap del lanzador). El botón **Comercial** (F) lo filma como un anuncio: planos con cortes, frases y música; así salió el GIF de arriba. Un stickman camina, usa una tablet (la mano del reloj toca la pantalla, la otra la sostiene) o **apunta**: levanta el brazo del reloj, su rayo pega en una pantalla virtual, visita cuatro íconos con un clic de muñeca y dibuja un círculo. En la pantalla hay dos cursores: el cian es donde pega el rayo de verdad y el coral es el del reloj, calculado como el ratón aéreo (x = −∫yaw, y = ∫pitch, a D·π/180 metros por grado). Sin ruido van a menos de 1 cm de mediana y 3.4 cm como máximo; esos centímetros son la diferencia entre D·θ y D·tan θ en los íconos lejanos. Con el ruido de un giroscopio real el del reloj se va unos 12 cm en 10 s. De su movimiento se sintetiza lo que leería el reloj: giroscopio, acelerómetro y gravedad, con el ruido y el sesgo de un sensor real si quieres. Solo con esas lecturas se reconstruye el antebrazo (en coral) encima del de verdad (en cian), y abajo corren las gráficas de cada sensor como en un programa de captura. La cuenta está en `server/web/mocapmath.js` y la prueba en `tools/test_mocap.js`.
-
-Hay dos formas de reconstruir, y se pueden comparar con el botón Fusión/Proyección:
-- **Fusión**, la de los trajes de mocap con IMU: se integra la orientación completa con el giroscopio, q ← q ⊗ exp(ω dt/2), y la gravedad corrige la inclinación (filtro de Mahony). Sin ruido el antebrazo reconstruido queda a menos de 1° del real en las tres animaciones; con ruido solo se desvía el rumbo, porque el giro alrededor de la vertical la gravedad no lo ve.
-- **Proyección**, la de las páginas que apuntan (`wrist.js`): rumbo = ∫ yaw dt y el resto de la gravedad. Funciona con el antebrazo apuntando (tablet, apuntar), pero caminando, con el brazo colgando, el rumbo de un vector casi vertical no existe y se pierde (16° de mediana, hasta 79°). Para apuntar no importa, porque nadie apunta con el brazo colgando.
-
-**Tus grabaciones**: `python tools/export_mocap.py` corta tus sesiones en tomas (una por etiqueta del dataset de gestos o de los dibujos, o los tramos de 30 s con más movimiento) y las deja en `recordings/mocap/`, que no se sube. En la página aparecen en "Tus grabaciones": el antebrazo del reloj lo mueven tus datos y el resto del cuerpo queda de pie.
-
-## Sismógrafo: sigue la línea
-
-`http://localhost:8765/sismo.html` (o el botón Sismógrafo del lanzador). Una línea amarilla viene corriendo por el papel y tu muñeca mueve la aguja: mantenla encima durante 20 segundos. Botón atrás del reloj (o Espacio) para empezar, el bisel cambia el nivel (tranquilo, normal, sismo), E el giro que mueve la aguja (inclinar, girar o atornillar) y V si ves venir la línea o vas a ciegas.
-
-Es una tarea de seguimiento como las que McRuer usaba en los años 60 para medir pilotos. La línea es una suma de senos r(t) = Σ a_k sin(2π k t / T + φ_k) con fases al azar: parece imprevisible, pero cada seno da un número entero de vueltas en T = 20 s, así que al final la transformada de Fourier separa tu respuesta onda por onda. Para cada frecuencia, H = Y/R dice cuánto de esa onda seguiste (|H|), con cuánto retraso (−∠H / 2πf) y cuánto error te quedó (|1 − H|). Si solo te fallara el tiempo de reacción τ, ese error sería 2·|sin(π f τ)|, y la tarjeta del final dibuja esa curva junto a tus barras. También da tu retraso global (la correlación de tu aguja con la línea desplazada) y tu "ruido": lo que moviste que no estaba en ninguna onda. Matemática en `server/web/sismomath.js`, probada en `tools/test_sismo.js`.
+Lo que tu reloj no soporte sale en el dashboard en "No disponibles", con el error de Tizen.
 
 ## Muñeca izquierda o derecha
 
-En la muñeca izquierda el antebrazo es el +x del reloj; en la derecha, con el reloj puesto igual (botones hacia el codo), es −x, y sin avisar arriba sale abajo y atornillar sale desatornillar. Dibuja y el Sismógrafo tienen un botón (o la tecla M) para elegir la muñeca; la elección se guarda en el navegador y la usan también los globos, el tornillo y el avatar (`server/web/wrist.js`). Para el ratón aéreo: `--forearm -x`.
+![El reloj en la derecha, la mano dibuja una F: avisando sale igual, sin avisar sale al revés de arriba abajo](docs/curso/media/cap06/ManoEquivocada.gif)
+
+Si el reloj va en la derecha y no le avisas, arriba sale abajo y atornillar sale desatornillar. Dibuja y el Sismógrafo tienen un botón (o la tecla M) para elegir, y la elección también la usan los globos, el tornillo y el avatar. Para el ratón aéreo: `--forearm=-x`.
 
 ## Dibuja en 1D, 2D y 3D
 
-`http://localhost:8765/dibuja.html`. Mantén el botón atrás del reloj para bajar el lápiz y gira el bisel para cambiar de color. **2D**: apuntas con la muñeca y dibujas en un lienzo (la "sombra" de un puntero: lo que mejor reconstruye tus trazos en los datos). **3D**: la muñeca da la dirección y girar el antebrazo como atornillando da la profundidad (horario aleja); con O orbitas el dibujo. **Modo creativo** (F): vuelas libre como en Minecraft creativo (WASD, E/Q sube y baja, ratón para mirar) y el lápiz va delante de ti. I invierte el sentido de la profundidad. **1D**: un sismógrafo, la muñeca mueve la aguja y el papel corre solo; E elige el giro (inclinar, girar o atornillar). M: muñeca izquierda o derecha. R recentra, Z deshace, S guarda la imagen.
+![El ¡hola! que guardó la página, en cian; encima, en coral, el mismo trazo rehecho solo desde el giroscopio y la gravedad grabados](docs/curso/media/cap07/ElHolaRehecho.gif)
 
-**Todo se guarda solo**, trazo a trazo, en `recordings/dibujos/dibujo-AAAAMMDD-HHMMSS.jsonl`: una operación por línea (empezar trazo, puntos con su tiempo, deshacer, borrar; formato en `server/web/trazos.js`). **Abrir** lista tus dibujos y los vuelve a cargar para seguir dibujando; **P** reproduce el dibujo como timelapse (en 3D la cámara gira alrededor); **X** exporta una página HTML con el dibujo dentro que se reproduce en cualquier navegador, sin servidor. Cada dibujo también se ve en `visor.html?f=<nombre>` desde el teléfono en la misma red. Reproducir aplica las mismas operaciones que dibujar, así que sale exactamente el mismo dibujo (probado en `tools/test_trazos.js`).
+`dibuja.html`. Mantén el botón atrás del reloj para bajar el lápiz y gira el bisel para cambiar de color.
+
+- **2D:** apuntas con la muñeca y dibujas en un lienzo.
+- **3D:** la muñeca da la dirección y atornillar da la profundidad. Con O orbitas el dibujo e I invierte el sentido.
+- **Modo creativo (F):** vuelas como en Minecraft creativo, con WASD, E y Q para subir y bajar y el ratón para mirar. El lápiz va delante de ti.
+- **1D:** la muñeca mueve la aguja de un sismógrafo y el papel corre solo. E elige el giro.
+
+M cambia de muñeca, R recentra, Z deshace y S guarda la imagen.
+
+Cada trazo se guarda solo en `recordings/dibujos/`. **Abrir** carga tus dibujos para seguirlos, **P** los reproduce como timelapse y **X** exporta una página HTML que se reproduce en cualquier navegador. También se ven desde el teléfono en `visor.html?f=<nombre>`.
 
 ### El lápiz suena
 
-**N** cambia el modo (`server/web/musica.js`). **Pulsos**: un pulso es una frecuencia f₀ y varios pulsos son razones sobre ella, `[1 ; a ; b ; c]`, una casilla por dimensión del lápiz: en 1D la altura, en 2D x e y, en 3D x, y y la profundidad (enteros del 1 al 8; en 2D se ven las franjas). Todos cuentan desde el mismo instante, así que coinciden cada 1/f₀ segundos: `[1 ; 3 ; 2]` es un tres contra dos. El bisel dobla o parte f₀, que siempre cae en un do: 2.04 Hz (123 golpes por minuto) es un do siete octavas por debajo del central. Pasando de ~20 golpes por segundo se oye una nota en vez de golpes, y las mismas razones son un acorde de armónicos de do (3 = sol, 5 = mi): ritmo y armonía son lo mismo a distinta velocidad. **Arpa**: la altura es la nota de una pentatónica y el color, el instrumento. El modo y el pulso se guardan con cada trazo, así que reproducir suena igual. En el visor, **Grabar video** guarda solo el lienzo con su sonido (MP4 en Edge y Chrome), sin la barra ni el navegador, listo para publicar.
+![Tres voces de pulsos en razón 1, 3 y 2 coinciden cada ciclo; al doblar la frecuencia varias veces los golpes se vuelven una nota](docs/curso/media/cap11/RitmoYArmonia.gif)
 
-## Juego: Revienta globos
+**N** cambia el modo. En **Pulsos**, cada dimensión del lápiz elige una razón sobre un pulso base: `[1 ; 3 ; 2]` es un tres contra dos. El bisel dobla o parte el pulso, y pasando de unos 20 golpes por segundo dejas de oír golpes y oyes una nota: las mismas razones son un acorde. En **Arpa**, la altura es la nota de una pentatónica y el color es el instrumento.
 
-![Un amigo juega por primera vez: la mano casi plana sobre la mesa apunta con la muñeca y revienta globos](docs/media/primera-vez-globos.gif)
+Reproducir un dibujo suena igual que cuando lo hiciste, y en el visor **Grabar video** guarda el lienzo con su sonido.
 
-Así lo jugó un amigo la primera vez. Con una explicación corta (cuanto más fuerte empujas, más lejos llega el dardo) terminó la partida en 4700 puntos, récord.
+## Revienta globos
 
-`http://localhost:8765/game.html` (o el botón Juego del lanzador). Apuntas con la muñeca y **empujas la mano hacia la pantalla** para lanzar un dardo: la fuerza del empujón es la profundidad, suave llega a los globos cercanos y fuerte a los lejanos, que valen el triple. El empujón es la aceleración a lo largo del antebrazo (eje x del reloj, sin gravedad); la escala se adapta a tu fuerza. Botón atrás del reloj: empezar y recentrar la mira. Sin reloj se juega con el ratón y las teclas 1, 2 y 3. Apaga el ratón aéreo mientras juegas.
+![La aceleración a lo largo del antebrazo y la mira en el momento del empujón](docs/curso/media/cap10/ElEmpujon.gif)
+
+`game.html`. Apuntas con la muñeca y empujas la mano hacia la pantalla para lanzar un dardo. Un empujón suave llega a los globos cercanos y uno fuerte a los lejanos, que valen el triple. El botón atrás empieza y recentra la mira. Sin reloj se juega con el ratón y las teclas 1, 2 y 3. Apaga el ratón aéreo mientras juegas.
 
 ## Tornillo y tempo
 
-![El mismo amigo atornilla girando la muñeca como con un destornillador, con la mano apoyada cerca de la mesa](docs/media/primera-vez-tornillo.gif)
+![Siete giros y uno que falta: la mediana de los intervalos da el tempo](docs/curso/media/cap10/ElTempo.gif)
 
-El mismo amigo, después de explicarle que el tornillo entra hasta cierto punto y ahí deja de entrar.
+`tempo.html`. Gira la muñeca como con un destornillador. Un giro de más de 200 °/s mete o saca el tornillo una vuelta. Apuntando normal, los giros accidentales de mi dataset nunca pasaron de 117 °/s. Si giras a ritmo constante te da el tempo, y con el botón atrás o Espacio lo fijas y suena un metrónomo.
 
-`http://localhost:8765/tempo.html`. Gira la muñeca como con un destornillador: el antebrazo es el eje x del reloj, así que el giro es ω_x del giroscopio, y su signo es el sentido (mirando del codo a los dedos, horario = atornillar). Un giro fuerte, de más de 200 °/s, avanza o saca el tornillo una vuelta entera: apuntando con el ratón, los giros accidentales del dataset nunca pasaron de 117 °/s. Un ritmo constante de giros da el tempo en giros por minuto; con el botón atrás o Espacio se fija y suena un metrónomo. Detector en `server/web/flick.js`, probado con el dataset en `tools/test_flick.js`.
+## Sismógrafo: sigue la línea
 
-## Dibujar con el trackpad (el dedo como esfero)
+![El cociente H entre la flecha de tu aguja y la de la línea; si solo llegas tarde, H gira sobre el círculo y el error crece con la frecuencia](docs/curso/media/cap11/RespuestaH.gif)
+
+`sismo.html`. Una línea amarilla viene corriendo por el papel y tienes 20 segundos para mantener la aguja encima con la muñeca. El botón atrás o Espacio empieza, el bisel cambia el nivel, E cambia el giro y V elige si ves venir la línea o vas a ciegas.
+
+McRuer usaba tareas así en los años 60 para medir pilotos. La línea es una suma de senos que parece imprevisible, pero cada seno da vueltas enteras en los 20 s, así que al final la transformada de Fourier separa tu respuesta onda por onda: cuánto seguiste de cada una, con cuánto retraso y cuánto error te quedó.
+
+## Mocap con un reloj
+
+`mocap.html`. Un stickman camina, usa una tablet o apunta a una pantalla virtual, visita cuatro íconos con un clic de muñeca y dibuja un círculo. El botón **Comercial** (F) lo filma como un anuncio, y así salió el GIF de arriba.
+
+En la pantalla hay dos cursores: el cian es donde pega el rayo de verdad y el coral es el del reloj. Sin ruido van a menos de 1 cm de mediana. Con el ruido de un giroscopio real, el del reloj se va corriendo. El antebrazo se reconstruye solo con lo que leería el reloj, y el botón Fusión/Proyección compara dos formas de hacerlo:
+
+- **Fusión**, la de los trajes de mocap: integra la orientación con el giroscopio y corrige la inclinación con la gravedad. Queda a menos de 1° sin ruido, y con ruido solo se desvía el rumbo.
+- **Proyección**, la de las páginas que apuntan: sirve con el brazo apuntando, pero caminando, con el brazo colgando, se pierde (16° de mediana y hasta 79°).
+
+`python tools/export_mocap.py` corta tus sesiones en tomas y aparecen en "Tus grabaciones", con el antebrazo moviéndose con tus datos.
+
+## Ratón aéreo
+
+![Quieto, un corte fijo y el filtro 1€ bajan el temblor lo mismo; al arrancar, el corte fijo llega tarde y el 1€ llega antes](docs/curso/media/cap07/Filtro1Euro.gif)
+
+El reloj mueve el cursor de Windows:
+
+```bash
+python tools/sdb_bridge.py --flush-ms 10 --sensors accelerometer,gyroscope,gravity
+```
+```bash
+python tools/air_mouse.py
+```
+
+Deja el brazo relajado unos segundos para que calibre el reposo, y después levanta la mano y apunta.
+
+![Un clic de muñeca leído por el reloj: un pico de ida y otro de vuelta, muy por encima de lo que da apuntar](docs/curso/media/cap10/ClicDeTornillo.gif)
+
+- **Clic:** botón atrás, y si lo mantienes arrastras. También hay un toque en la esfera (`--click tap`) o un giro rápido de muñeca y de vuelta (`--click flick`; `button+flick` deja los dos).
+- **Scroll:** el bisel. `--scroll roll` usa el giro del antebrazo.
+- **Para frenarlo:** mover el ratón físico lo pausa, la tecla Pausa lo pausa y lo reanuda, y dejar el cursor 1.5 s en la esquina superior izquierda lo apaga.
+- **Calibrar:** en `calibrate.html`, con el ratón corriendo, ajustas sensibilidad, zona muerta y suavizado en vivo, y haces las pruebas de objetivos, clic y scroll. *Calibrar clic* saca tus umbrales de 8 giros.
+
+`--replay recordings/<sesión>` repite una grabación sin tocar el cursor.
+
+## Dibujar con el trackpad
 
 ```bash
 python tools/draw_recorder.py --device <IP-del-reloj>
 ```
 
-Lee el trackpad de precisión de Windows directo por Raw Input (`tools/touchpad.py`: cada dedo con su posición en milímetros, si toca o no y el Scan Time del propio trackpad) y el reloj directo por sdb a su máxima resolución (acelerómetro y giroscopio a 200 muestras/s, unas 120 lecturas nuevas; gravedad a 200). Escribes qué vas a dibujar, dibujas con el índice de la mano del reloj y queda todo en `recordings/dibujo-*/` con un reloj de tiempo común: el trackpad es la verdad del trazo para entrenar al reloj a reconstruirlo. Cierra el puente antes: el reloj acepta una sola conexión.
+Escribes con el índice de la mano del reloj sobre el trackpad de precisión. El trackpad da el trazo real y el reloj graba a su máxima resolución, con un tiempo común, para poder entrenarlo a reconstruir lo que escribiste. Cierra el puente antes, porque el reloj acepta una sola conexión.
 
 ## Lo que el reloj ve de tu escritura
 
-![Cada letra: el dedo en el trackpad (cian) y lo que reconstruye el reloj (coral)](docs/media/letras-forma.gif)
+![Cada letra sin retoques: el dedo en el trackpad en cian y lo que reconstruye el reloj en coral](docs/media/letras-global.gif)
 
-Dos abecedarios escritos con el índice en el trackpad mientras el reloj grababa a 200 muestras/s. Cian es el trazo real (el trackpad, a 143 lecturas/s y 0.03 mm); coral es lo que reconstruye el reloj con **una sola calibración lineal** para toda la sesión: los ángulos de muñeca integrados (la "sombra" de un puntero) más la aceleración integrada dos veces con velocidad cero al apoyar y al levantar. Cada trazo coral arranca donde arranca el real (el reloj ve la forma, no dónde se apoya el dedo) y en este GIF cada letra se escala con un solo número para comparar la forma; la versión sin retoques es [letras-global.gif](docs/media/letras-global.gif). El número junto a cada letra es el parecido de forma (correlación; 1 = idéntica).
+Escribí dos abecedarios en el trackpad mientras el reloj grababa. Con una sola calibración para toda la sesión, sale esto. El GIF de arriba del todo escala cada letra para comparar la forma, y este va sin retoques. El número junto a cada letra es el parecido, donde 1 es idéntica.
 
-- Parecido de forma mediano **0.69**; las mejores, S 0.96, v 0.90, j 0.89, x 0.87, G 0.86. Las peores salen giradas: U, N, W.
-- Lo que decide la calidad no es la velocidad ni la aceleración del dedo (correlación −0.04 y +0.01) sino **cuánto gira la muñeca** (+0.22), que crece con el tamaño del trazo. Las letras pequeñas se escriben con los dedos y el reloj, en la muñeca, casi no las ve; un círculo grande sí.
-- Apoyar y levantar el dedo casi no deja huella en el reloj (AUC 0.56 y 0.58): el "lápiz abajo" lo da el trackpad.
-- Calibración del giro en postura de escritura: 5.3 mm de trazo por grado de yaw y 6.9 por grado de pitch, con los ejes cruzados (75° entre sí): la muñeca necesita 1.3 veces más ganancia en vertical.
+- El parecido mediano es **0.69**. Las mejores son S 0.96, v 0.90 y j 0.89. Las peores salen giradas: U, N y W.
+- Lo que más ayuda es cuánto gira la muñeca, y eso crece con el tamaño de la letra. Las letras chiquitas se escriben con los dedos y el reloj casi no las ve.
+- Apoyar y levantar el dedo casi no deja huella en el reloj.
 
-### Redibujar con el reloj, letras que el modelo nunca vio
+### Redibujar letras que el modelo nunca vio
 
 ![Letras redibujadas por un modelo entrenado con el otro abecedario](docs/media/letras-forma-aprendido.gif)
 
-En vez de una sola calibración, un modelo aprende a traducir lo que siente el reloj en cada instante (giros de muñeca, giro crudo, aceleración lineal y postura, en una ventana de ±240 ms) a la **velocidad** del dedo, y la integra para redibujar el trazo. Prueba justa: las mayúsculas las redibuja un modelo entrenado sin mayúsculas, y las minúsculas uno entrenado sin minúsculas. Se le da cuándo apoya y levanta el dedo (el reloj no lo ve) y dónde empieza cada trazo; la forma la pone el reloj.
+Aquí un modelo aprende a pasar de lo que siente el reloj a la velocidad del dedo, y esa velocidad se integra para redibujar. Las mayúsculas las redibuja un modelo entrenado sin mayúsculas, y las minúsculas uno entrenado sin minúsculas.
 
-| método (letras nunca vistas) | parecido de forma mediano | letras por encima de 0.8 | largo reconstruido / real |
+| Método, con letras nunca vistas | Parecido mediano | Letras por encima de 0.8 | Largo reconstruido / real |
 |---|---|---|---|
 | una calibración lineal de posición | 0.60 | 12 / 53 | 0.36 |
 | regresión ridge sobre la velocidad | **0.74** | **19 / 53** | 0.58 |
 | red neuronal pequeña (numpy) | 0.60 | 14 / 53 | 0.70 |
 
-Todo con numpy: la regresión es un sistema lineal, (XᵀX + λI)·W = XᵀV, y la red es una capa oculta tanh entrenada con Adam a mano. Variantes probadas (±80 / ±160 / ±240 ms, ridge sola o junto a la red) quedan entre 0.67 y 0.75: con 53 letras de una sola sesión, esas diferencias son ruido. Para avanzar de verdad hacen falta más datos, no un modelo más grande. `tools/reconstruct_drawing.py` entrena y evalúa; `render_letters_gif.py --fuente aprendido` dibuja el GIF.
+Con 53 letras de una sola sesión, las diferencias entre variantes son ruido. Para mejorar hacen falta más datos. `tools/reconstruct_drawing.py` entrena y evalúa.
 
-Herramientas: `tools/draw_recorder.py` (grabar), `tools/analyze_drawing.py` (números), `tools/render_letters_gif.py` (este GIF, con `letters.json` diciendo qué trazos forman cada letra).
+## Grabar gestos
 
-## Gestos nuevos
+![El giroscopio yendo y viniendo: con 4 idas y vueltas por segundo dispara, con 2 no](docs/curso/media/cap10/LaSacudida.gif)
 
-`tools/dataset_capture.py` (consola) o `http://localhost:8765/dataset.html` graban un dataset guiado de 13 gestos con etiquetas; `tools/analyze_dataset.py recordings/<sesión>` dice cuáles se distinguen. `tools/guided_capture.py` graba un gesto guiado por pitidos y luego movimiento normal; `tools/analyze_gesture.py` dice si el gesto se distingue. Con `--device IP` lee el acelerómetro directo a 200 Hz (con la pantalla del reloj encendida: apagada, el reloj baja los sensores a unas 45 muestras por segundo).
+`dataset.html` o `tools/dataset_capture.py` graban 13 gestos guiados, y `tools/analyze_dataset.py recordings/<sesión>` dice cuáles se distinguen. Con la pantalla del reloj apagada, los sensores bajan a unas 45 muestras por segundo, así que déjala prendida.
 
-## Ratón aéreo (el reloj como cursor)
+## Tus datos
 
-`tools/air_mouse.py` mueve el cursor de Windows con el giroscopio (apuntas con la muñeca), con clic y scroll desde el propio reloj:
+Cada sesión crea `recordings/AAAAMMDD-HHMMSS/` con un CSV por sensor y un `meta.jsonl` con la información del reloj. Con `--no-record` no graba y con `--out <carpeta>` graba en otra parte.
 
-```bash
-python tools/sdb_bridge.py --flush-ms 10 --sensors accelerometer,gyroscope,gravity
-python tools/air_mouse.py
-```
+Las grabaciones son datos personales y `recordings/` no se sube al repo. Las llaves tampoco: viven en `~/.tizen/sdbkey` o `~/.gearstream/`.
 
-- Arranca con el brazo relajado unos segundos (calibra el reposo) y luego levanta la mano y apunta.
-- **Clic:** botón *atrás* del reloj (mantenerlo arrastra). Alternativas: un toque seco en la esfera (`--click tap`) o **un giro rápido de muñeca y de vuelta** (`--click flick`, o `button+flick` para tener los dos). El giro es un pico en un solo eje (el roll alrededor del antebrazo), que además casi no mueve el cursor, y el cursor vuelve a donde empezó el giro para que el clic caiga donde apuntabas.
-- **Calibrar el clic por giro:** en `calibrate.html` → *Calibrar clic*: apuntas normal 10 s y haces el giro una vez por pitido (8 pitidos). El mismo detector del ratón mide cada giro y de ahí salen tus umbrales (pico, duración, ángulo, cuánto se puede mover el cursor, pausa previa y sentido), con una gráfica de tus giros contra el fondo y la cuenta de cuántos pasarían y cuántos clics falsos habría. La cuenta está en `server/web/clickcal.js` (prueba: `node tools/test_clickcal.js`).
-- **Scroll:** el bisel, muesca a muesca (`--scroll roll` usa el giro del antebrazo si el puente no manda el bisel).
-- **Seguridad:** mover el ratón físico pausa el aéreo; la tecla Pausa lo pausa/reanuda; dejar el cursor 1.5 s en la esquina superior izquierda lo apaga.
-- **Calibración:** abre `http://localhost:8765/calibrate.html` con el ratón corriendo. Ajusta sensibilidad (incluida la vertical, `gain_y`), zona muerta y suavizado en vivo, haz la prueba de objetivos (sugiere el ajuste por eje), la de clic y la de scroll (verifica el sentido del bisel), y graba gestos de 3 s. El perfil se guarda en `~/.gearstream/airmouse.json`.
-- Pruebas: `python -I tools/test_air_mouse.py` y `python -I tools/test_sdb_bridge.py`. `--replay recordings/<sesión>` repite una grabación sin tocar el cursor (`--dry-run`).
+## Protocolo, por si haces otro cliente
 
-
-## Protocolo (por si haces otro cliente)
-
-JSON por WebSocket, del reloj al servidor (y reenviado tal cual al dashboard por `/ui`):
+JSON por WebSocket, del reloj al servidor:
 
 ```json
 {"type":"hello","app":"1.0.0","device":{"model_name":"SM-R800",...},"available":["ACCELERATION",...]}
 {"type":"status","source":"HRM_RAW","state":"on|waiting|error|unsupported","detail":"...","hw":{...}}
 {"type":"data","samples":[["ACCELERATION",1729800000123,{"x":0.1,"y":9.8,"z":0.3}], ...]}
 ```
+
 El reloj manda un lote cada 50 ms. Si se cae la conexión, guarda hasta 20 000 muestras y reconecta solo.
 
-## Siguiente paso: el teléfono
-
-- **Ya funciona hoy:** abre `http://<IP-laptop>:8765` en el navegador del teléfono; el dashboard se adapta a pantalla chica.
-- **Teléfono como receptor (sin laptop):** una app Android que levante un servidor WebSocket en `:8765/watch` con este mismo protocolo. El reloj no cambia: basta con apuntar `SERVER_URL` a la IP del teléfono (misma Wi-Fi o hotspot del teléfono).
-- **Solo Bluetooth (sin Wi-Fi):** requiere Samsung Accessory SDK (SAP) en ambos lados. Es más trabajo y el SDK ya no recibe mantenimiento.
-
-## Estructura
+## Dónde está cada cosa
 
 ```
-watch-app/          app Tizen web (config.xml, index.html, js/main.js, js/config.js)
-server/server.py    servidor WebSocket + HTTP + grabación (solo depende de `websockets`)
-server/web/         dashboard (JS puro + canvas, sin dependencias)
-tools/fake_watch.py reloj simulado
-tools/sdb_client.py cliente sdb (protocolo de depuración de Tizen) en Python puro
-tools/sdb_bridge.py puente: sensores, pulso, bisel y botones del reloj → servidor
-tools/air_mouse.py  ratón aéreo (cursor de Windows con el reloj) + canal de ajuste en vivo
-tools/batch_test.py mide la red entre el puente y el reloj
-server/web/calibrate.html  página de calibración del ratón aéreo
-server/web/avatar.html     avatar 3D del brazo (orbital, POV y plano del brazo) a partir de gravedad + giroscopio
-server/web/armfilter.js    filtro de partículas del codo: aceleración del reloj + límites del brazo (prueba: node tools/test_armfilter.js)
-phone/start.sh      arranque en Termux (servidor + puente en el teléfono)
-app/gearstream.py   la app (GearStream.exe): conectar el reloj, abrir cada página, ratón aéreo, ajustes
-tools/build_app.py  arma GearStream.exe con PyInstaller y lo prueba
-server/web/game.html  juego Revienta globos (apuntar con la muñeca, empujar hacia la pantalla)
+watch-app/            la app del reloj
+server/server.py      servidor WebSocket, HTTP y grabación
+server/web/           las páginas: dashboard, dibuja, game, tempo, sismo, mocap, avatar, calibrate
+tools/fake_watch.py   reloj simulado
+tools/sdb_bridge.py   puente: sensores, pulso, bisel y botones
+tools/sdb_client.py   cliente del protocolo de depuración de Tizen
+tools/air_mouse.py    ratón aéreo
+tools/batch_test.py   mide la red entre el puente y el reloj
+phone/start.sh        arranque en Termux
+app/gearstream.py     la app de escritorio
+tools/build_app.py    arma GearStream.exe y lo prueba
 ```
