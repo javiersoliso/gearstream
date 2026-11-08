@@ -255,7 +255,7 @@
   // y gravedad (m/s², el vector "arriba" en los ejes del reloj), a hz muestras por segundo
   function synth(key, side, opts) {
     opts = opts || {};
-    const A = ANIMS[key], hz = opts.hz || 100, dt = 1 / hz, n = Math.round(A.dur * hz);
+    const A = ANIMS[key], hz = opts.hz || 100, dt = 1 / hz, loops = opts.loops || 1, n = Math.round(A.dur * loops * hz);   // loops: vueltas seguidas
     const W = [];
     for (let k = -1; k <= n; k++) { const t = ((k * dt) % A.dur + A.dur) % A.dur; W.push(watchOf(build(A.pose(t, side)), side)); }
     const gauss = rng(opts.seed || 7), noise = !!opts.noise;
@@ -278,7 +278,7 @@
         tF[3 * k + i] = C.F[i]; tX[3 * k + i] = C.X[i]; tZ[3 * k + i] = C.Z[i];
       }
     }
-    return { hz, n, dur: A.dur, acc, gyr, grav, truth: { F: tF, X: tX, Z: tZ } };
+    return { hz, n, dur: A.dur * loops, acc, gyr, grav, bias, truth: { F: tF, X: tX, Z: tZ } };
   }
 
   // ---------- la reconstrucción, solo con giroscopio y gravedad ----------
@@ -365,5 +365,6 @@
     return out;
   }
 
-  return { ANIMS, build, hand, watchOf, idlePose, synth, reconstruct, headingOf, cursorTrack, vec: { add, sub, mul, dot, cross, len, unit, rot } };
+  return { ANIMS, build, hand, watchOf, idlePose, synth, reconstruct, headingOf, cursorTrack, vec: { add, sub, mul, dot, cross, len, unit, rot },
+    quat: { qmul, qcols, qfromCols } };
 });

@@ -236,6 +236,7 @@ Escribí dos abecedarios en el trackpad mientras el reloj grababa. Con una sola 
 - El parecido mediano es **0.69**. Las mejores son S 0.96, v 0.90 y j 0.89. Las peores salen giradas: U, N y W.
 - Lo que más ayuda es cuánto gira la muñeca, y eso crece con el tamaño de la letra. Las letras chiquitas se escriben con los dedos y el reloj casi no las ve.
 - Apoyar y levantar el dedo casi no deja huella en el reloj.
+- De esa misma sesión sale la calibración del giro en postura de escritura: 5.3 mm de trazo por grado de yaw y 6.9 por grado de pitch, con los ejes cruzados (75° entre sí). O sea que la muñeca necesita 1.3 veces más ganancia en vertical, y el curso lo usa en el capítulo 7.
 
 ### Redibujar letras que el modelo nunca vio
 

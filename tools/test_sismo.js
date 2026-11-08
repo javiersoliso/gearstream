@@ -45,6 +45,10 @@ let a = M.analyze(play((t) => M.targetAt(comps, t - 0.2)), comps, 0.1);
 near(a.delay, 0.2, 0.012, 'retraso por correlación');
 for (const f of a.freqs) { near(f.delay, 0.2, 0.012, `retraso a ${f.f} Hz`); near(f.gain, 1, 0.02, `ganancia a ${f.f} Hz`); }
 assert.ok(a.remnant < 0.02, 'sin ruido no hay remanente');
+// el ejercicio del capítulo 11: llegar 0.25 s tarde deja |1 − H| = 2|sen(π f τ)| en cada onda
+a = M.analyze(play((t) => M.targetAt(comps, t - 0.25)), comps, 0.1);
+near(a.delay, 0.25, 0.012, 'ejercicio: τ');
+for (const f of a.freqs) near(f.error, 2 * Math.abs(Math.sin(Math.PI * f.f * 0.25)), 0.03, `ejercicio: |1 − H| a ${f.f} Hz`);
 // adelantarse 100 ms (con vista previa)
 a = M.analyze(play((t) => M.wave(comps, t + 0.1)), comps, 0.1);
 near(a.delay, -0.1, 0.012, 'adelantarse sale negativo');
@@ -60,4 +64,29 @@ assert.ok(a.remnant > 0.3, `con ruido el remanente debe crecer (${a.remnant.toFi
 // un congelón de medio segundo en la ventana medida anula la ronda
 const frozen = play((t) => M.wave(comps, t)).filter((s) => s.t < 8 || s.t > 8.5);
 assert.strictEqual(M.analyze(frozen, comps, 0.1), null, 'congelón: sin análisis');
+
+// ---- lo que el capítulo 11 explica de la cuenta ----
+// el remanente es 1 − Σ|Y|²/2 / varianza: una onda de amplitud b fuera de la línea, con vueltas enteras, deja b²/2 sin explicar
+{
+  const b = 0.2, fx = 37 / M.T;
+  assert.ok(!comps.some((c) => Math.abs(c.f - fx) < 1e-9), 'la onda extra no es de la línea');
+  a = M.analyze(play((t) => M.wave(comps, t) + b * Math.sin(2 * Math.PI * fx * t)), comps, 0.1);
+  const linea = comps.reduce((s, c) => s + c.a * c.a / 2, 0);
+  near(a.remnant, (b * b / 2) / (linea + b * b / 2), 0.01, 'remanente = varianza que sobra / varianza total');
+}
+// la cuerda entre H = e^{−iθ} y 1 mide 2 sen(θ/2)
+for (let th = 0.1; th < 6.2; th += 0.3) near(Math.hypot(1 - Math.cos(th), Math.sin(th)), 2 * Math.abs(Math.sin(th / 2)), 1e-12, 'cuerda');
+// la parábola por tres puntos encuentra la cima de una parábola exacta
+{
+  const c = (x) => 0.9 - 3 * (x - 0.2537) ** 2, h = 0.01, x0 = 0.25;
+  const [cm, c0, cp] = [c(x0 - h), c(x0), c(x0 + h)];
+  near(x0 + h * 0.5 * (cm - cp) / (cm - 2 * c0 + cp), 0.2537, 1e-12, 'parábola por tres puntos');
+}
+// Nyquist: con 10 muestras por segundo, 7 Hz deja las mismas muestras que −3 Hz (3 Hz con la fase dada vuelta)
+for (let n = 0; n < 20; n++) near(Math.sin(2 * Math.PI * 7 * n / 10 + 0.3), Math.sin(2 * Math.PI * -3 * n / 10 + 0.3), 1e-9, 'el disfraz');
+// octavas: doce semitonos iguales dan ×2, el la 69 suena a 440 Hz y el do 60 a 261.6 Hz
+const midiHz = (m) => 440 * Math.pow(2, (m - 69) / 12);       // la de musica.js, que no la exporta
+assert.ok(require('fs').readFileSync(path.join(web, 'musica.js'), 'utf8').includes('const midiHz = (m) => 440 * Math.pow(2, (m - 69) / 12);'), 'la copia es la de musica.js');
+near(Math.pow(Math.pow(2, 1 / 12), 12), 2, 1e-12, 'doce semitonos son una octava');
+near(midiHz(69), 440, 1e-12, 'la 69'); near(midiHz(60), 261.63, 0.01, 'do central'); near(midiHz(81) / midiHz(69), 2, 1e-12, 'una octava');
 console.log('OK');

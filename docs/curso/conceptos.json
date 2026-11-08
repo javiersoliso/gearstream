@@ -1,0 +1,1266 @@
+{
+ "acerca": "Mapa de prerrequisitos del curso de GearStream. Cada concepto: id, nombre, definición de una línea, prerrequisitos (los ids que necesita), términos del glosario (las palabras que lo nombran; un * final es un prefijo) y código (las funciones del inventario que lo usan). El inventario: cada función del repo que hace matemática, como archivo:función. El orden de los capítulos vive en indice.md; tools/check_curso.py lo comprueba todo y genera mapa.md.",
+ "conceptos": [
+  {
+   "id": "senal",
+   "nombre": "Señal",
+   "definicion": "Un número que cambia con el tiempo, x(t): el giro de tu muñeca, la gravedad en un eje, la altura de la aguja.",
+   "prerrequisitos": [],
+   "terminos": ["señal", "señales"],
+   "codigo": ["server/web/sismomath.js:wave"]
+  },
+  {
+   "id": "unidades",
+   "nombre": "Unidades",
+   "definicion": "Cada número viene con su medida (m/s², °/s, ms, Hz, px); cambiar de unidad es multiplicar por un factor.",
+   "prerrequisitos": ["senal"],
+   "terminos": ["unidad", "unidades"],
+   "codigo": ["tools/sdb_bridge.py:Bridge.read_sensor", "server/web/flick.js:FlickDetector.tempo", "tools/air_mouse.py:norm"]
+  },
+  {
+   "id": "muestreo",
+   "nombre": "Muestreo",
+   "definicion": "Medir la señal cada cierto tiempo; la frecuencia de muestreo (Hz) es cuántas muestras hay por segundo.",
+   "prerrequisitos": ["senal", "unidades"],
+   "terminos": ["muestreo", "muestra", "muestras", "Hz"],
+   "codigo": ["tools/sdb_bridge.py:Bridge.report", "tools/analyze_dataset.py:load"]
+  },
+  {
+   "id": "marca_de_tiempo",
+   "nombre": "Marca de tiempo",
+   "definicion": "Cada muestra lleva el instante en que se midió; Δt es la diferencia entre dos marcas, y no siempre es la misma.",
+   "prerrequisitos": ["muestreo"],
+   "terminos": ["marca de tiempo", "marcas de tiempo"],
+   "codigo": ["tools/air_mouse.py:Motion.feed_gyro", "server/web/flick.js:FlickDetector.update", "server/web/dibuja.js:onGyro", "server/web/trazos.js:timeline", "tools/export_mocap.py:gap_free"]
+  },
+  {
+   "id": "interpolacion_lineal",
+   "nombre": "Interpolación lineal",
+   "definicion": "Estimar el valor entre dos muestras con la recta que las une; sirve para llevar sensores distintos a una misma rejilla pareja.",
+   "prerrequisitos": ["muestreo", "marca_de_tiempo"],
+   "terminos": ["interpol*", "remuestrear", "remuestreo", "rejilla"],
+   "codigo": ["tools/analyze_drawing.py:interp3", "tools/analyze_dataset.py:load", "tools/export_mocap.py:resample", "server/web/sismomath.js:analyze", "server/web/trazos.js:Drawing.point"]
+  },
+  {
+   "id": "cuantizar",
+   "nombre": "Cuantizar",
+   "definicion": "Redondear a escalones: un número continuo se guarda como uno de pocos valores (píxeles enteros, la resolución de un sensor, del 1 al 8).",
+   "prerrequisitos": ["senal", "unidades"],
+   "terminos": ["cuantizar", "cuantización", "resolución"],
+   "codigo": ["server/web/musica.js:ratio", "tools/air_mouse.py:norm"]
+  },
+  {
+   "id": "lecturas_nuevas",
+   "nombre": "Muestras contra lecturas nuevas",
+   "definicion": "Una muestra repetida no trae información: la tasa real es la de lecturas distintas (a 200 muestras/s el reloj da unas 115 nuevas).",
+   "prerrequisitos": ["muestreo", "marca_de_tiempo"],
+   "terminos": ["lecturas nuevas"],
+   "codigo": ["tools/analyze_drawing.py:main"]
+  },
+  {
+   "id": "resumir_ventana",
+   "nombre": "Resumir una ventana",
+   "definicion": "Describir un tramo de muestras con pocos números: promedio, mediana, máximo, pico a pico; la mediana no se deja arrastrar por valores raros.",
+   "prerrequisitos": ["muestreo"],
+   "terminos": ["promedio", "promedios", "mediana", "medianas", "pico a pico", "ventana", "ventanas"],
+   "codigo": ["tools/air_mouse.py:Motion._rest_window", "server/web/flick.js:FlickDetector.tempo", "tools/export_mocap.py:windows", "tools/analyze_dataset.py:event_features"]
+  },
+  {
+   "id": "latencia",
+   "nombre": "Latencia",
+   "definicion": "Cuánto tarda una muestra desde que el reloj la mide hasta que la laptop la usa.",
+   "prerrequisitos": ["marca_de_tiempo"],
+   "terminos": ["latencia", "retraso", "retrasos"],
+   "codigo": ["tools/sdb_bridge.py:Bridge.report", "tools/air_mouse.py:AirMouse.on_data", "server/web/game.js:aimAt", "tools/sdb_bridge.py:Bridge.map_time"]
+  },
+  {
+   "id": "alinear_relojes",
+   "nombre": "Alinear dos relojes",
+   "definicion": "El reloj y la laptop cuentan el tiempo distinto; el desfase se estima con el mínimo de (llegada − medida), la entrega más rápida vista.",
+   "prerrequisitos": ["latencia", "resumir_ventana"],
+   "terminos": ["desfase"],
+   "codigo": ["tools/sdb_bridge.py:Bridge.map_time", "tools/air_mouse.py:AirMouse.on_data"]
+  },
+  {
+   "id": "agrupar_muestras",
+   "nombre": "Agrupar muestras por paquete",
+   "definicion": "Si pasa un paquete por ida y vuelta, juntar N muestras por paquete multiplica el caudal por N a cambio de esperar a juntarlas, (N−1)·Δt, más el turno de salir.",
+   "prerrequisitos": ["muestreo", "latencia"],
+   "terminos": ["ida y vuelta", "paquete", "paquetes", "caudal"],
+   "codigo": ["tools/sdb_bridge.py:Bridge.read_sensor", "tools/sdb_bridge.py:Bridge.report"]
+  },
+  {
+   "id": "ejes_del_reloj",
+   "nombre": "Los ejes del reloj",
+   "definicion": "Tres direcciones pegadas al reloj (x, y, z; z sale de la pantalla): cada sensor da un número por eje y se mueven con el reloj.",
+   "prerrequisitos": ["senal"],
+   "terminos": ["eje", "ejes"],
+   "codigo": ["server/web/mocapmath.js:watchOf"]
+  },
+  {
+   "id": "acelerometro",
+   "nombre": "Acelerómetro",
+   "definicion": "Mide en m/s² lo que empuja al reloj más la gravedad, en sus tres ejes.",
+   "prerrequisitos": ["ejes_del_reloj", "unidades", "muestreo"],
+   "terminos": ["acelerómetro", "acelerómetros"],
+   "codigo": ["server/web/mocapmath.js:synth", "tools/air_mouse.py:Motion.feed_accel"]
+  },
+  {
+   "id": "giroscopio",
+   "nombre": "Giroscopio",
+   "definicion": "Mide qué tan rápido gira el reloj alrededor de cada uno de sus ejes, en °/s.",
+   "prerrequisitos": ["ejes_del_reloj", "unidades", "muestreo"],
+   "terminos": ["giroscopio", "giroscopios"],
+   "codigo": ["server/web/mocapmath.js:synth", "server/web/wrist.js:Wrist.rates"]
+  },
+  {
+   "id": "sensor_gravedad",
+   "nombre": "El sensor de gravedad",
+   "definicion": "No es un sensor: es una cuenta interna de Samsung que da la dirección de arriba en los ejes del reloj (y que no podemos auditar).",
+   "prerrequisitos": ["acelerometro", "giroscopio"],
+   "terminos": ["sensor de gravedad"],
+   "codigo": ["tools/air_mouse.py:Motion.gravity_measurement"]
+  },
+  {
+   "id": "ruido",
+   "nombre": "Ruido",
+   "definicion": "La parte de la medida que cambia al azar aunque nada se mueva.",
+   "prerrequisitos": ["senal", "resumir_ventana"],
+   "terminos": ["ruido", "ruidos"],
+   "codigo": ["server/web/mocapmath.js:synth", "tools/air_mouse.py:Motion._rest_window", "server/web/fusionmath.js:normal"]
+  },
+  {
+   "id": "tamano_tipico",
+   "nombre": "Tamaño típico: RMS y desviación estándar",
+   "definicion": "√(promedio de x²): el tamaño de algo que va y viene; restando antes el promedio es la desviación estándar.",
+   "prerrequisitos": ["ruido", "resumir_ventana"],
+   "terminos": ["RMS", "desviación estándar", "raíz cuadrática media"],
+   "codigo": ["server/web/sismomath.js:analyze", "tools/analyze_dataset.py:window_features", "tools/analyze_dataset.py:event_features"]
+  },
+  {
+   "id": "varianza",
+   "nombre": "Varianza: sumar azares",
+   "definicion": "σ², el promedio de los cuadrados de lo que se aparta del centro. Los azares que no dependen uno del otro suman sus varianzas, no sus tamaños: por eso el tamaño de una suma crece como una raíz.",
+   "prerrequisitos": ["tamano_tipico"],
+   "terminos": ["varianza", "varianzas"],
+   "codigo": ["server/web/sismomath.js:analyze"]
+  },
+  {
+   "id": "sesgo",
+   "nombre": "Sesgo",
+   "definicion": "Un error que no se va: con la mano quieta el giroscopio no marca cero sino unas décimas de °/s.",
+   "prerrequisitos": ["giroscopio", "ruido", "resumir_ventana"],
+   "terminos": ["sesgo", "sesgos"],
+   "codigo": ["server/web/mocapmath.js:synth", "server/web/wrist.js:Wrist.rates"]
+  },
+  {
+   "id": "umbral",
+   "nombre": "Umbral",
+   "definicion": "Una línea que separa: por debajo cuenta como quieto (o nada), por encima pasó algo.",
+   "prerrequisitos": ["senal", "unidades"],
+   "terminos": ["umbral", "umbrales"],
+   "codigo": ["tools/air_mouse.py:Motion._rest_window", "tools/air_mouse.py:DwellDetector.feed"]
+  },
+  {
+   "id": "aprender_sesgo",
+   "nombre": "Aprender el sesgo en reposo",
+   "definicion": "Si la muñeca está quieta (poco pico a pico, |a| ≈ g, gravedad estable), la mediana del giroscopio es el sesgo; después se sigue de a poco.",
+   "prerrequisitos": ["sesgo", "umbral", "tamano_tipico", "acelerometro"],
+   "terminos": ["calibr*"],
+   "codigo": ["tools/air_mouse.py:Motion._rest_window", "tools/air_mouse.py:Motion._calibrate", "tools/air_mouse.py:Motion._recover_bias", "tools/air_mouse.py:Motion.feed_gyro", "server/web/wrist.js:Wrist.rates", "tools/reconstruct_drawing.py:main"]
+  },
+  {
+   "id": "vector",
+   "nombre": "Vector",
+   "definicion": "Una flecha con dirección y largo, escrita como tres números (x, y, z) en unos ejes.",
+   "prerrequisitos": ["ejes_del_reloj"],
+   "terminos": ["vector", "vectores"],
+   "codigo": ["server/web/mocapmath.js:hand"]
+  },
+  {
+   "id": "norma",
+   "nombre": "Largo de un vector",
+   "definicion": "|v| = √(x² + y² + z²): Pitágoras en tres dimensiones.",
+   "prerrequisitos": ["vector"],
+   "terminos": ["norma"],
+   "codigo": ["tools/air_mouse.py:Motion.feed_accel", "tools/export_mocap.py:windows", "tools/air_mouse.py:ShakeDetector.feed", "server/web/trazos.js:fromRescue", "server/web/trazos.js:Drawing.point"]
+  },
+  {
+   "id": "vector_unitario",
+   "nombre": "Vector unitario",
+   "definicion": "Dividir un vector por su largo deja solo la dirección.",
+   "prerrequisitos": ["norma"],
+   "terminos": ["unitario", "unitarios", "normalizar", "normalizado", "normalizada"],
+   "codigo": ["server/web/wrist.js:Wrist.rates", "tools/air_mouse.py:Motion.feed_gravity"]
+  },
+  {
+   "id": "trigonometria",
+   "nombre": "Seno, coseno, tangente y atan2",
+   "definicion": "Una flecha de largo 1 con ángulo θ llega a (cos θ, sen θ); tan θ = sen/cos; atan2(y, x) devuelve el ángulo en los cuatro cuadrantes; π radianes = 180°.",
+   "prerrequisitos": ["vector_unitario"],
+   "terminos": ["seno", "senos", "coseno", "cosenos", "tangente", "atan2", "radián", "radianes"],
+   "codigo": ["server/web/mocapmath.js:axesOf", "server/web/mocapmath.js:headingOf", "tools/air_mouse.py:Motion.roll_from_gravity"]
+  },
+  {
+   "id": "envolver_angulos",
+   "nombre": "Ángulos que dan la vuelta",
+   "definicion": "350° y −10° son el mismo ángulo: las diferencias de ángulos se llevan a [−180°, 180°) antes de usarlas.",
+   "prerrequisitos": ["trigonometria"],
+   "terminos": [],
+   "codigo": ["tools/air_mouse.py:wrap_deg"]
+  },
+  {
+   "id": "producto_punto",
+   "nombre": "Producto punto",
+   "definicion": "a·b = Σ aᵢbᵢ = |a||b| cos θ: cuánto de un vector va en la dirección del otro (su proyección); cero si forman ángulo recto.",
+   "prerrequisitos": ["vector", "norma", "trigonometria"],
+   "terminos": ["producto punto", "proyección", "proyecciones", "proyectar", "perpendicular", "perpendiculares"],
+   "codigo": ["server/web/wrist.js:Wrist.rates", "server/web/armfilter.js:feasible", "server/web/game.js:onAccel", "server/web/calibrate.js:metrics"]
+  },
+  {
+   "id": "producto_cruz",
+   "nombre": "Producto cruz",
+   "definicion": "a × b es perpendicular a los dos y mide |a||b| sen θ, el área del paralelogramo que forman.",
+   "prerrequisitos": ["vector", "norma", "trigonometria", "producto_punto"],
+   "terminos": ["producto cruz", "producto vectorial"],
+   "codigo": ["server/web/wrist.js:Wrist.rates", "server/web/mocapmath.js:hand", "server/web/armfilter.js:feasible"]
+  },
+  {
+   "id": "regla_mano_derecha",
+   "nombre": "Regla de la mano derecha",
+   "definicion": "x × y = z fija hacia dónde apunta el producto cruz; un eje dado vuelta es un espejo y cambia el signo de los giros.",
+   "prerrequisitos": ["producto_cruz"],
+   "terminos": ["regla de la mano derecha"],
+   "codigo": ["server/web/wrist.js:forearmOf", "server/web/mocapmath.js:watchOf"]
+  },
+  {
+   "id": "marco_de_referencia",
+   "nombre": "Marco de referencia",
+   "definicion": "Tres ejes unitarios en ángulo recto que sirven de regla: el mismo vector tiene números distintos en el marco del reloj y en el del mundo.",
+   "prerrequisitos": ["vector_unitario", "producto_punto", "regla_mano_derecha", "ejes_del_reloj"],
+   "terminos": ["marco", "marcos", "marco de referencia"],
+   "codigo": ["server/web/mocapmath.js:watchOf", "server/web/armfilter.js:ArmFilter.step"]
+  },
+  {
+   "id": "coordenadas_en_una_base",
+   "nombre": "Coordenadas en una base",
+   "definicion": "Escribir un vector como suma de múltiplos de otros: si son unitarios y en ángulo recto cada coeficiente es un producto punto; si no, hay que resolver un sistema chico.",
+   "prerrequisitos": ["marco_de_referencia"],
+   "terminos": ["coordenadas"],
+   "codigo": ["server/web/wrist.js:Wrist.rates", "tools/reconstruct_drawing.py:frame_rates"]
+  },
+  {
+   "id": "cambio_de_marco",
+   "nombre": "Cambiar de marco",
+   "definicion": "Las coordenadas en el mundo de un vector del reloj son productos punto con los ejes; los nueve números juntos forman una matriz.",
+   "prerrequisitos": ["marco_de_referencia", "coordenadas_en_una_base"],
+   "terminos": ["matriz", "matrices", "cambio de marco"],
+   "codigo": ["server/web/armfilter.js:ArmFilter.step", "server/web/avatar.js:rotationRows", "server/web/mocapmath.js:synth"]
+  },
+  {
+   "id": "derivada_discreta",
+   "nombre": "Derivar con números",
+   "definicion": "(x[k+1] − x[k]) / Δt: cuánto cambia por segundo; la diferencia central usa la muestra anterior y la siguiente.",
+   "prerrequisitos": ["marca_de_tiempo", "senal"],
+   "terminos": ["derivada", "derivadas", "derivar", "diferencia central"],
+   "codigo": ["server/web/mocapmath.js:synth", "server/web/armfilter.js:ArmFilter.step", "tools/air_mouse.py:TapDetector.feed_accel", "tools/reconstruct_drawing.py:stroke_data", "tools/air_mouse.py:Motion.feed_accel"]
+  },
+  {
+   "id": "segunda_derivada",
+   "nombre": "Segunda diferencia",
+   "definicion": "(x[k+1] − 2x[k] + x[k−1]) / Δt²: la aceleración a partir de tres posiciones seguidas.",
+   "prerrequisitos": ["derivada_discreta"],
+   "terminos": ["segunda derivada", "segunda diferencia"],
+   "codigo": ["server/web/mocapmath.js:synth"]
+  },
+  {
+   "id": "integral_discreta",
+   "nombre": "Integrar con números",
+   "definicion": "Sumar tasa × Δt muestra a muestra (la suma acumulada) da cuánto cambió en total.",
+   "prerrequisitos": ["marca_de_tiempo", "senal"],
+   "terminos": ["integr*", "suma acumulada"],
+   "codigo": ["server/web/mocapmath.js:cursorTrack", "server/web/flick.js:FlickDetector.update", "server/web/dibuja.js:onGyro", "server/web/game.js:onGyro", "tools/analyze_drawing.py:watch_features"]
+  },
+  {
+   "id": "notacion_derivada_integral",
+   "nombre": "Cómo se escriben la derivada y la integral",
+   "definicion": "x′, ẋ y dx/dt dicen lo mismo: la diferencia dividida por Δt, con Δt muy chico; ∫x dt es la suma de x·Δt, con Δt muy chico.",
+   "prerrequisitos": ["derivada_discreta", "integral_discreta"],
+   "terminos": ["dx/dt"],
+   "codigo": ["server/web/mocapmath.js:cursorTrack"]
+  },
+  {
+   "id": "error_acumulado",
+   "nombre": "Integrar acumula error",
+   "definicion": "Un sesgo b se vuelve un error b·t que no para de crecer (la deriva); el ruido suma como un paseo al azar, que crece como √t.",
+   "prerrequisitos": ["integral_discreta", "sesgo", "ruido", "tamano_tipico", "varianza"],
+   "terminos": ["deriva", "paseo al azar"],
+   "codigo": ["server/web/mocapmath.js:cursorTrack", "server/web/armfilter.js:ArmFilter.step", "server/web/fusionmath.js:soloGiro"]
+  },
+  {
+   "id": "doble_integral_zupt",
+   "nombre": "Integrar dos veces y velocidad cero",
+   "definicion": "De aceleración a velocidad a posición: el error crece como t², así que se fuerza la velocidad a cero cuando se sabe que está quieto (ZUPT).",
+   "prerrequisitos": ["error_acumulado", "segunda_derivada"],
+   "terminos": ["velocidad cero", "ZUPT"],
+   "codigo": ["tools/analyze_drawing.py:watch_features", "server/web/armfilter.js:ArmFilter.step"]
+  },
+  {
+   "id": "suavizar",
+   "nombre": "Suavizar",
+   "definicion": "Promediar con lo reciente: media móvil o un promedio que olvida, y ← y + α(x − y); deja pasar lo lento y frena lo rápido (paso bajo).",
+   "prerrequisitos": ["resumir_ventana", "marca_de_tiempo", "ruido"],
+   "terminos": ["suavizar", "suavizado", "suavizada", "paso bajo", "promedio móvil", "media móvil", "promedio exponencial"],
+   "codigo": ["tools/analyze_dataset.py:movavg", "server/web/armfilter.js:ArmFilter.step", "tools/air_mouse.py:OneEuro.alpha", "tools/air_mouse.py:OneEuro.__call__", "server/web/wrist.js:Wrist.rates", "tools/reconstruct_drawing.py:stroke_data"]
+  },
+  {
+   "id": "exponencial",
+   "nombre": "La exponencial y la constante de tiempo",
+   "definicion": "Repetir y ← y + α(x − y) deja de lo que faltaba (1 − α)^n, que se apaga como e^(−t/τ) con τ = Δt/α: en un τ se cierra el 63 % (1 − 1/e), en tres τ casi todo.",
+   "prerrequisitos": ["suavizar"],
+   "terminos": ["exponencial", "constante de tiempo"],
+   "codigo": ["tools/air_mouse.py:OneEuro.alpha"]
+  },
+  {
+   "id": "derivar_amplifica_ruido",
+   "nombre": "Derivar amplifica el ruido",
+   "definicion": "Dividir por un Δt chico agranda cada temblor: antes de derivar hay que suavizar.",
+   "prerrequisitos": ["derivada_discreta", "ruido", "suavizar", "varianza"],
+   "terminos": [],
+   "codigo": ["server/web/armfilter.js:ArmFilter.step", "tools/reconstruct_drawing.py:stroke_data"]
+  },
+  {
+   "id": "paso_alto",
+   "nombre": "Quitar lo lento",
+   "definicion": "La señal menos su promedio reciente deja solo los cambios rápidos: un golpe se ve aunque la mano se mueva despacio (paso alto).",
+   "prerrequisitos": ["suavizar"],
+   "terminos": ["paso alto"],
+   "codigo": ["tools/analyze_dataset.py:signals", "tools/analyze_drawing.py:main", "tools/air_mouse.py:TapDetector.decide"]
+  },
+  {
+   "id": "curva_suave",
+   "nombre": "Curva suave",
+   "definicion": "3u² − 2u³ va de 0 a 1 con pendiente cero en los dos extremos: une dos tramos sin saltos ni golpes (smoothstep).",
+   "prerrequisitos": ["interpolacion_lineal", "derivada_discreta"],
+   "terminos": ["curva suave", "smoothstep"],
+   "codigo": ["server/web/mocapmath.js:smooth", "server/web/mocapmath.js:env", "server/web/sismomath.js:targetAt", "server/web/mocapmath.js:aimPath"]
+  },
+  {
+   "id": "onda_seno",
+   "nombre": "Una onda",
+   "definicion": "a·sen(2πft + φ): amplitud a, frecuencia f (vueltas por segundo) y fase φ; lo más simple que va y viene.",
+   "prerrequisitos": ["trigonometria", "muestreo"],
+   "terminos": ["onda", "ondas", "amplitud", "fase", "fases"],
+   "codigo": ["server/web/sismomath.js:wave", "server/web/mocapmath.js:ANIMS"]
+  },
+  {
+   "id": "integrar_un_seno",
+   "nombre": "Integrar una onda",
+   "definicion": "Integrar a·sen(2πft) da una onda de amplitud a/(2πf): lo rápido casi no mueve el ángulo.",
+   "prerrequisitos": ["onda_seno", "integral_discreta"],
+   "terminos": [],
+   "codigo": ["tools/analyze_dataset.py:main"]
+  },
+  {
+   "id": "fuerza_especifica",
+   "nombre": "Lo que mide el acelerómetro",
+   "definicion": "Quieto marca 9.81 m/s² hacia arriba: siente lo que lo sostiene, no la caída (fuerza específica = aceleración + gravedad, con la gravedad hacia arriba, como la lee el sensor).",
+   "prerrequisitos": ["acelerometro", "vector", "segunda_derivada"],
+   "terminos": ["fuerza específica"],
+   "codigo": ["server/web/mocapmath.js:synth", "tools/air_mouse.py:Motion._rest_window"]
+  },
+  {
+   "id": "arriba_desde_gravedad",
+   "nombre": "La gravedad dice dónde es arriba",
+   "definicion": "Normalizada, la gravedad es la dirección vertical en los ejes del reloj: absoluta, sin integrar nada.",
+   "prerrequisitos": ["fuerza_especifica", "vector_unitario", "sensor_gravedad"],
+   "terminos": [],
+   "codigo": ["server/web/wrist.js:Wrist.rates", "tools/air_mouse.py:Motion.gravity_measurement", "tools/air_mouse.py:Motion.feed_gravity", "tools/air_mouse.py:AirMouse._calib_forearm"]
+  },
+  {
+   "id": "inclinacion",
+   "nombre": "Inclinación",
+   "definicion": "El ángulo entre un eje del reloj y la vertical: sale de un producto punto (arccos) o de atan2 de dos componentes de la gravedad.",
+   "prerrequisitos": ["arriba_desde_gravedad", "producto_punto", "trigonometria"],
+   "terminos": ["inclinación", "inclinaciones"],
+   "codigo": ["tools/air_mouse.py:Motion.roll_from_gravity", "tools/analyze_dataset.py:event_features", "tools/air_mouse.py:AirMouse._pose_gate", "server/web/fusionmath.js:elevacion"]
+  },
+  {
+   "id": "aceleracion_lineal",
+   "nombre": "Aceleración lineal",
+   "definicion": "Acelerómetro − gravedad: lo que empuja de verdad, sin el peso.",
+   "prerrequisitos": ["fuerza_especifica", "arriba_desde_gravedad"],
+   "terminos": ["aceleración lineal"],
+   "codigo": ["server/web/game.js:onAccel", "tools/analyze_dataset.py:signals", "tools/analyze_drawing.py:watch_features", "server/web/avatar.js:onAccel"]
+  },
+  {
+   "id": "rumbo",
+   "nombre": "Rumbo",
+   "definicion": "Hacia dónde apunta algo en horizontal; girar alrededor de la vertical no cambia la gravedad, así que la gravedad no ve el rumbo.",
+   "prerrequisitos": ["arriba_desde_gravedad", "trigonometria", "producto_cruz"],
+   "terminos": ["rumbo", "rumbos"],
+   "codigo": ["server/web/mocapmath.js:headingOf", "server/web/mocapmath.js:axesOf", "server/web/fusionmath.js:orientacion", "server/web/fusionmath.js:gravedadLeida"]
+  },
+  {
+   "id": "rotacion_2d",
+   "nombre": "Rotar en el plano",
+   "definicion": "(x, y) → (x cos θ − y sen θ, x sen θ + y cos θ): girar una flecha sin cambiar su largo.",
+   "prerrequisitos": ["trigonometria", "vector"],
+   "terminos": ["rotación", "rotaciones", "rotar"],
+   "codigo": ["server/web/armfilter.js:ArmFilter.rotateY"]
+  },
+  {
+   "id": "producto_de_matrices",
+   "nombre": "Multiplicar matrices, transponer e invertir",
+   "definicion": "Multiplicar dos matrices es aplicar una y después la otra (la de la derecha primero); la transpuesta cambia filas por columnas; la identidad I no hace nada y la inversa deshace.",
+   "prerrequisitos": ["cambio_de_marco"],
+   "terminos": ["producto de matrices", "matriz identidad", "matriz inversa"],
+   "codigo": ["server/web/avatar.js:rotationRows"]
+  },
+  {
+   "id": "eje_y_angulo",
+   "nombre": "Eje y ángulo",
+   "definicion": "Todo giro en 3D es girar un ángulo alrededor de un eje; la fórmula de Rodrigues lo aplica a cualquier vector.",
+   "prerrequisitos": ["rotacion_2d", "producto_cruz", "producto_punto", "vector_unitario"],
+   "terminos": ["Rodrigues", "eje y ángulo"],
+   "codigo": ["server/web/mocapmath.js:rot", "server/web/avatar.js:onGyro"]
+  },
+  {
+   "id": "matriz_de_rotacion",
+   "nombre": "Matriz de rotación",
+   "definicion": "Sus columnas son los ejes del reloj vistos en el mundo; es ortonormal: su inversa es su transpuesta.",
+   "prerrequisitos": ["cambio_de_marco", "eje_y_angulo", "producto_de_matrices"],
+   "terminos": ["matriz de rotación", "ortonormal", "transpuesta"],
+   "codigo": ["server/web/mocapmath.js:qcols", "server/web/mocapmath.js:qfromCols", "server/web/avatar.js:rotationRows", "server/web/armfilter.js:ArmFilter.step"]
+  },
+  {
+   "id": "orden_no_conmuta",
+   "nombre": "El orden importa",
+   "definicion": "Girar en x y luego en y no da lo mismo que en y y luego en x: los giros no conmutan.",
+   "prerrequisitos": ["matriz_de_rotacion", "producto_de_matrices"],
+   "terminos": ["conmuta", "conmutan", "conmutativo"],
+   "codigo": ["server/web/mocapmath.js:build"]
+  },
+  {
+   "id": "velocidad_angular",
+   "nombre": "Velocidad angular",
+   "definicion": "Un vector ω: su dirección es el eje del giro y su largo, la rapidez; el giroscopio da sus tres componentes en el marco del reloj.",
+   "prerrequisitos": ["giroscopio", "eje_y_angulo", "derivada_discreta"],
+   "terminos": ["velocidad angular"],
+   "codigo": ["server/web/mocapmath.js:synth", "server/web/avatar.js:onGyro"]
+  },
+  {
+   "id": "velocidad_de_un_punto_que_gira",
+   "nombre": "Un punto que gira",
+   "definicion": "Un punto pegado a algo que gira con ω se mueve a ω × r; un vector fijo en el mundo, visto desde el reloj, cambia a −ω × v.",
+   "prerrequisitos": ["velocidad_angular", "producto_cruz"],
+   "terminos": [],
+   "codigo": ["tools/air_mouse.py:Motion.feed_gyro", "server/web/armfilter.js:ArmFilter.step"]
+  },
+  {
+   "id": "angulos_de_euler",
+   "nombre": "Ángulos de Euler",
+   "definicion": "Tres giros seguidos, cada uno alrededor de un eje que dejó el anterior (rumbo, inclinación, giro): fáciles de leer, pero el orden y el punto de partida importan.",
+   "prerrequisitos": ["eje_y_angulo", "orden_no_conmuta", "rumbo", "inclinacion"],
+   "terminos": ["Euler", "ángulos de Euler"],
+   "codigo": ["server/web/mocapmath.js:build"]
+  },
+  {
+   "id": "singularidad",
+   "nombre": "Singularidad de los ángulos",
+   "definicion": "Cuando el eje que define el rumbo se alinea con la vertical (el antebrazo colgando), el rumbo deja de existir y un ángulo se come al otro (bloqueo del cardán).",
+   "prerrequisitos": ["angulos_de_euler", "producto_cruz"],
+   "terminos": ["singularidad", "singularidades", "bloqueo del cardán", "cardán", "gimbal lock"],
+   "codigo": ["server/web/wrist.js:Wrist.rates", "server/web/mocapmath.js:reconstruct", "tools/air_mouse.py:AirMouse._pose_gate"]
+  },
+  {
+   "id": "cuaternion",
+   "nombre": "Cuaternión",
+   "definicion": "Cuatro números (cos θ/2, eje·sen θ/2) que guardan un giro sin singularidades; componer giros es multiplicarlos.",
+   "prerrequisitos": ["eje_y_angulo", "orden_no_conmuta", "singularidad"],
+   "terminos": ["cuaternión", "cuaterniones"],
+   "codigo": ["server/web/mocapmath.js:qmul", "server/web/mocapmath.js:qcols", "server/web/mocapmath.js:qfromCols", "server/web/avatar.js:onGyro"]
+  },
+  {
+   "id": "integrar_orientacion",
+   "nombre": "Integrar la orientación",
+   "definicion": "Cada muestra gira el cuaternión un poquito, q ← q ⊗ (cos(|ω|Δt/2), ω̂ sen(|ω|Δt/2)), y se normaliza para que no se deforme.",
+   "prerrequisitos": ["cuaternion", "velocidad_angular", "integral_discreta", "vector_unitario"],
+   "terminos": ["mapa exponencial"],
+   "codigo": ["server/web/mocapmath.js:reconstruct", "server/web/avatar.js:onGyro"]
+  },
+  {
+   "id": "antebrazo_eje_x",
+   "nombre": "El antebrazo es un eje del reloj",
+   "definicion": "En la muñeca izquierda el antebrazo (codo → mano) es +x; en la derecha, con el reloj puesto igual, es −x.",
+   "prerrequisitos": ["ejes_del_reloj", "marco_de_referencia", "regla_mano_derecha"],
+   "terminos": ["muñeca izquierda", "muñeca derecha"],
+   "codigo": ["server/web/wrist.js:forearmOf", "server/web/mocapmath.js:watchOf", "tools/air_mouse.py:AirMouse._calib_forearm"]
+  },
+  {
+   "id": "roll",
+   "nombre": "Roll: atornillar",
+   "definicion": "La parte del giro alrededor del antebrazo f: roll = ω·f (positivo: horario visto desde el codo).",
+   "prerrequisitos": ["antebrazo_eje_x", "velocidad_angular", "producto_punto"],
+   "terminos": ["roll"],
+   "codigo": ["server/web/wrist.js:Wrist.rates", "server/web/flick.js:FlickDetector.update", "server/web/dibuja.js:point3", "tools/reconstruct_drawing.py:frame_rates"]
+  },
+  {
+   "id": "pitch",
+   "nombre": "Pitch: subir y bajar",
+   "definicion": "El giro alrededor del eje horizontal perpendicular al antebrazo: pitch = ω·(f × g)/|f × g|.",
+   "prerrequisitos": ["roll", "producto_cruz", "arriba_desde_gravedad", "vector_unitario", "singularidad"],
+   "terminos": ["pitch"],
+   "codigo": ["server/web/wrist.js:Wrist.rates", "tools/air_mouse.py:Motion.feed_gyro", "tools/reconstruct_drawing.py:frame_rates", "tools/analyze_drawing.py:watch_features", "server/web/fusionmath.js:subida"]
+  },
+  {
+   "id": "yaw",
+   "nombre": "Yaw: izquierda y derecha",
+   "definicion": "El giro alrededor de la vertical, sin la parte que ya es roll: el coeficiente de g al escribir ω en la base {g, f, f × g}, (ω·g − roll·(g·f)) / (1 − (g·f)²).",
+   "prerrequisitos": ["roll", "arriba_desde_gravedad", "coordenadas_en_una_base", "singularidad"],
+   "terminos": ["yaw"],
+   "codigo": ["server/web/wrist.js:Wrist.rates", "tools/air_mouse.py:Motion.feed_gyro", "tools/reconstruct_drawing.py:frame_rates", "tools/analyze_drawing.py:watch_features", "server/web/game.js:onGyro"]
+  },
+  {
+   "id": "giros_independientes",
+   "nombre": "Atornillar no mueve el cursor",
+   "definicion": "Un roll puro no tiene nada de yaw ni de pitch, a cualquier inclinación. Al revés no siempre: girar alrededor de la vertical con el antebrazo inclinado también marca roll.",
+   "prerrequisitos": ["yaw", "pitch"],
+   "terminos": [],
+   "codigo": ["tools/air_mouse.py:Motion.feed_gyro"]
+  },
+  {
+   "id": "arco_d_theta",
+   "nombre": "Arco: D·θ",
+   "definicion": "Girar θ radianes a distancia D recorre un arco D·θ; un grado son D·π/180.",
+   "prerrequisitos": ["trigonometria", "integral_discreta", "unidades"],
+   "terminos": ["arco", "longitud de arco"],
+   "codigo": ["server/web/mocapmath.js:cursorTrack"]
+  },
+  {
+   "id": "rayo_tangente",
+   "nombre": "El rayo pega en D·tan θ",
+   "definicion": "En una pantalla plana el punto del rayo se aleja como D·tan θ, más rápido que el arco; para ángulos pequeños tan θ ≈ θ.",
+   "prerrequisitos": ["arco_d_theta"],
+   "terminos": ["ángulo pequeño", "ángulos pequeños"],
+   "codigo": ["server/web/mocapmath.js:cursorTrack"]
+  },
+  {
+   "id": "coordenadas_esfericas",
+   "nombre": "De dos ángulos a una dirección",
+   "definicion": "(sen yaw·cos pitch, sen pitch, −cos yaw·cos pitch): la flecha que apunta con esos dos ángulos.",
+   "prerrequisitos": ["trigonometria", "vector_unitario", "yaw", "pitch"],
+   "terminos": ["coordenadas esféricas"],
+   "codigo": ["server/web/game.js:aimDir", "server/web/dibuja.js:point3"]
+  },
+  {
+   "id": "ganancia",
+   "nombre": "Ganancia",
+   "definicion": "Píxeles por grado: el número que convierte el giro de la muñeca en movimiento del cursor.",
+   "prerrequisitos": ["arco_d_theta", "yaw", "pitch"],
+   "terminos": ["ganancia", "ganancias"],
+   "codigo": ["server/web/dibuja.js:point2", "tools/air_mouse.py:Motion.feed_gyro", "server/web/calibrate.js:suggest"]
+  },
+  {
+   "id": "recortar",
+   "nombre": "Recortar a un rango",
+   "definicion": "Limitar un valor entre un mínimo y un máximo: el borde de la pantalla, la velocidad máxima, la mira, una pausa demasiado larga.",
+   "prerrequisitos": ["unidades"],
+   "terminos": ["recortar", "tope", "topes"],
+   "codigo": ["tools/air_mouse.py:clamp", "tools/air_mouse.py:AirMouse._apply_delta", "server/web/game.js:onGyro", "server/web/trazos.js:timeline", "tools/air_mouse.py:Motion.feed_gyro"]
+  },
+  {
+   "id": "subpixel",
+   "nombre": "Movimientos de menos de un píxel",
+   "definicion": "El cursor vive en píxeles enteros: se guarda la posición con decimales y se redondea al mandarla, para no perder los movimientos chicos.",
+   "prerrequisitos": ["cuantizar", "ganancia", "integral_discreta"],
+   "terminos": ["subpíxel", "subpíxeles"],
+   "codigo": ["tools/air_mouse.py:AirMouse._apply_delta", "tools/air_mouse.py:norm"]
+  },
+  {
+   "id": "zona_muerta",
+   "nombre": "Zona muerta",
+   "definicion": "Por debajo de una rapidez el cursor no se mueve, para que el temblor y el sesgo que queda no lo arrastren; si se resta en vez de cortar, no hay salto.",
+   "prerrequisitos": ["umbral", "sesgo", "norma", "ganancia"],
+   "terminos": ["zona muerta"],
+   "codigo": ["tools/air_mouse.py:Motion.feed_gyro", "server/web/wrist.js:Wrist.rates", "server/web/game.js:onGyro"]
+  },
+  {
+   "id": "curva_de_aceleracion",
+   "nombre": "Curva de aceleración",
+   "definicion": "La ganancia crece con la rapidez del giro (con una curva suave entre v_lo y v_hi): lento para atinar, rápido para cruzar la pantalla.",
+   "prerrequisitos": ["ganancia", "curva_suave"],
+   "terminos": ["curva de aceleración"],
+   "codigo": ["tools/air_mouse.py:Motion.feed_gyro"]
+  },
+  {
+   "id": "filtro_1euro",
+   "nombre": "Filtro 1€",
+   "definicion": "Un suavizado cuyo corte sube cuando la señal cambia rápido: quieta o pareja suaviza mucho (sin temblor); en un cambio brusco casi nada (sin retraso).",
+   "prerrequisitos": ["suavizar", "derivar_amplifica_ruido"],
+   "terminos": ["1€", "One Euro"],
+   "codigo": ["tools/air_mouse.py:OneEuro.alpha", "tools/air_mouse.py:OneEuro.__call__"]
+  },
+  {
+   "id": "mapa_lineal_2x2",
+   "nombre": "Calibrar los dos ejes",
+   "definicion": "Una matriz 2×2 lleva (yaw, pitch) a (x, y): corrige ganancias distintas por eje y ejes que se cruzan a 75° en vez de 90°.",
+   "prerrequisitos": ["ganancia", "cambio_de_marco"],
+   "terminos": ["matriz 2×2"],
+   "codigo": ["server/web/calibrate.js:suggest", "tools/analyze_drawing.py:main"]
+  },
+  {
+   "id": "potencias_y_logaritmos",
+   "nombre": "Potencias y logaritmos",
+   "definicion": "2^k es duplicar k veces; log2(x) cuenta cuántas veces hay que duplicar para llegar a x.",
+   "prerrequisitos": ["unidades"],
+   "terminos": ["logaritmo", "logaritmos", "log2"],
+   "codigo": ["server/web/musica.js:midiHz", "server/web/musica.js:Musica.pulse", "server/web/calibrate.js:metrics"]
+  },
+  {
+   "id": "ley_de_fitts",
+   "nombre": "Ley de Fitts",
+   "definicion": "El tiempo para atinar a un blanco de ancho W a distancia D crece con log2(D/W + 1), el índice de dificultad; dividido por el tiempo da bits por segundo.",
+   "prerrequisitos": ["potencias_y_logaritmos", "ganancia"],
+   "terminos": ["Fitts", "índice de dificultad"],
+   "codigo": ["server/web/calibrate.js:metrics"]
+  },
+  {
+   "id": "fusion_de_sensores",
+   "nombre": "Fusión de sensores",
+   "definicion": "Juntar dos medidas imperfectas para que cada una tape el defecto de la otra: el giroscopio es rápido pero se desvía, la gravedad no se desvía pero no ve el rumbo.",
+   "prerrequisitos": ["error_acumulado", "arriba_desde_gravedad", "rumbo"],
+   "terminos": ["fusion*"],
+   "codigo": ["server/web/mocapmath.js:reconstruct", "server/web/fusionmath.js:verdadera", "server/web/fusionmath.js:inclinacion"]
+  },
+  {
+   "id": "filtro_complementario",
+   "nombre": "Filtro complementario",
+   "definicion": "Integrar el giroscopio y tirar suavemente hacia la medida absoluta: lo rápido de uno y lo lento del otro; con un sesgo b el error va hacia b/k, y llega si hay tiempo (unos 3/k segundos).",
+   "prerrequisitos": ["fusion_de_sensores", "suavizar", "integral_discreta", "velocidad_de_un_punto_que_gira"],
+   "terminos": ["filtro complementario", "complementario"],
+   "codigo": ["tools/air_mouse.py:Motion.feed_gyro", "server/web/avatar.js:onGravity", "server/web/fusionmath.js:paso", "server/web/fusionmath.js:complementario", "server/web/fusionmath.js:errores", "server/web/fusionmath.js:valle", "server/web/fusion.js:onGyro"]
+  },
+  {
+   "id": "triad",
+   "nombre": "TRIAD",
+   "definicion": "Armar la orientación completa con dos direcciones conocidas en los dos marcos: arriba (de la gravedad) y el antebrazo con un rumbo supuesto.",
+   "prerrequisitos": ["arriba_desde_gravedad", "rumbo", "matriz_de_rotacion", "antebrazo_eje_x"],
+   "terminos": ["TRIAD"],
+   "codigo": ["server/web/mocapmath.js:triad"]
+  },
+  {
+   "id": "metodo_de_proyeccion",
+   "nombre": "El método de proyección",
+   "definicion": "Rumbo = ∫yaw dt y el resto de la gravedad (TRIAD): sirve para apuntar, pero con el antebrazo casi vertical el rumbo no existe y se pierde.",
+   "prerrequisitos": ["triad", "yaw", "integral_discreta", "singularidad"],
+   "terminos": ["método de proyección"],
+   "codigo": ["server/web/mocapmath.js:reconstruct"]
+  },
+  {
+   "id": "mahony",
+   "nombre": "Filtro de Mahony",
+   "definicion": "Integrar el cuaternión con ω + Kp·e, donde e = arriba medido × arriba predicho es el giro que falta para que coincidan.",
+   "prerrequisitos": ["filtro_complementario", "integrar_orientacion", "producto_cruz"],
+   "terminos": ["Mahony"],
+   "codigo": ["server/web/mocapmath.js:reconstruct", "server/web/avatar.js:onGravity"]
+  },
+  {
+   "id": "deriva_del_rumbo",
+   "nombre": "Por qué el rumbo se va",
+   "definicion": "El sesgo alrededor de la vertical no tiene quién lo corrija (la gravedad no lo ve): con unas décimas de °/s, unos 16 cm en 10 s a 2.4 m de la pantalla.",
+   "prerrequisitos": ["mahony", "metodo_de_proyeccion", "error_acumulado"],
+   "terminos": ["deriva del rumbo"],
+   "codigo": ["server/web/mocapmath.js:cursorTrack", "server/web/avatar.js:autoCenterStep", "server/web/fusionmath.js:giroVertical", "server/web/fusionmath.js:erroresAntebrazo", "server/web/fusionmath.js:derivaPredicha", "server/web/fusion.js:mesaPaso"]
+  },
+  {
+   "id": "recentrar",
+   "nombre": "Recentrar",
+   "definicion": "Como el rumbo es relativo, se fija un frente y se vuelve a él: con un botón o de a poco, cuando la mano descansa.",
+   "prerrequisitos": ["deriva_del_rumbo"],
+   "terminos": ["recentr*"],
+   "codigo": ["server/web/avatar.js:autoCenterStep", "server/web/armfilter.js:ArmFilter.rotateY", "tools/air_mouse.py:Motion.feed_gyro"]
+  },
+  {
+   "id": "esqueleto",
+   "nombre": "Esqueleto",
+   "definicion": "Huesos de largo fijo unidos por articulaciones; la pose son los ángulos de cada una.",
+   "prerrequisitos": ["vector", "unidades"],
+   "terminos": ["esqueleto", "articulación", "articulaciones"],
+   "codigo": ["server/web/mocapmath.js:build", "server/web/mocapmath.js:hand"]
+  },
+  {
+   "id": "cinematica_directa",
+   "nombre": "Cinemática directa",
+   "definicion": "De los ángulos de cada articulación a las posiciones, encadenando giros desde el tronco hacia la mano.",
+   "prerrequisitos": ["esqueleto", "eje_y_angulo", "orden_no_conmuta", "angulos_de_euler"],
+   "terminos": ["cinemática directa", "cinemática"],
+   "codigo": ["server/web/mocapmath.js:build"]
+  },
+  {
+   "id": "trayectorias",
+   "nombre": "Trayectorias de una animación",
+   "definicion": "Cómo se mueve la pose en el tiempo: una fase periódica para caminar, curvas suaves entre íconos, un círculo.",
+   "prerrequisitos": ["cinematica_directa", "curva_suave", "onda_seno"],
+   "terminos": [],
+   "codigo": ["server/web/mocapmath.js:aimPath", "server/web/mocapmath.js:ANIMS"]
+  },
+  {
+   "id": "probabilidad",
+   "nombre": "Probabilidad",
+   "definicion": "Qué fracción de las veces pasa algo, de 0 a 1. Si dos cosas no dependen una de la otra, la probabilidad de que pasen las dos es el producto.",
+   "prerrequisitos": ["ruido"],
+   "terminos": ["probabilidad", "probabilidades"],
+   "codigo": ["server/web/armfilter.js:ArmFilter.step"]
+  },
+  {
+   "id": "ley_de_cosenos",
+   "nombre": "Ley de los cosenos",
+   "definicion": "c² = a² + b² − 2ab cos C: con los tres lados de un triángulo se saben sus ángulos.",
+   "prerrequisitos": ["trigonometria", "producto_punto"],
+   "terminos": ["ley de los cosenos"],
+   "codigo": ["server/web/mocapmath.js:ik"]
+  },
+  {
+   "id": "cinematica_inversa",
+   "nombre": "Cinemática inversa de dos huesos",
+   "definicion": "Dado dónde debe ir la muñeca, el codo sale de la ley de los cosenos y de un polo que dice hacia dónde se dobla.",
+   "prerrequisitos": ["cinematica_directa", "ley_de_cosenos", "vector_unitario"],
+   "terminos": ["cinemática inversa"],
+   "codigo": ["server/web/mocapmath.js:ik"]
+  },
+  {
+   "id": "ruido_gaussiano",
+   "nombre": "Fabricar ruido",
+   "definicion": "Números al azar con forma de campana (Box–Muller, a partir de dos uniformes) y una semilla fija para que el azar se repita.",
+   "prerrequisitos": ["ruido", "tamano_tipico", "trigonometria", "potencias_y_logaritmos", "probabilidad"],
+   "terminos": ["gaussiano", "gaussiana", "campana de Gauss", "Box-Muller", "Box–Muller", "semilla"],
+   "codigo": ["server/web/mocapmath.js:rng", "server/web/armfilter.js:mulberry32", "server/web/armfilter.js:ArmFilter.randn"]
+  },
+  {
+   "id": "sintetizar_imu",
+   "nombre": "Sintetizar lo que leería el reloj",
+   "definicion": "De la animación: ω por el giro relativo entre muestras, el acelerómetro por segunda diferencia más la gravedad, y encima ruido y sesgo.",
+   "prerrequisitos": ["cinematica_directa", "trayectorias", "matriz_de_rotacion", "velocidad_angular", "fuerza_especifica", "ruido_gaussiano", "sesgo", "antebrazo_eje_x"],
+   "terminos": ["sintetiz*", "sintétic*"],
+   "codigo": ["server/web/mocapmath.js:synth", "server/web/mocapmath.js:watchOf"]
+  },
+  {
+   "id": "prueba_con_verdad",
+   "nombre": "Probar contra la verdad",
+   "definicion": "Si lo reconstruido desde lecturas sintetizadas cae encima de la animación, la cuenta tiene sentido; no prueba el mundo real.",
+   "prerrequisitos": ["sintetizar_imu", "mahony", "metodo_de_proyeccion"],
+   "terminos": [],
+   "codigo": ["server/web/mocapmath.js:reconstruct", "server/web/mocapmath.js:cursorTrack"]
+  },
+  {
+   "id": "aceleracion_de_un_punto_que_gira",
+   "nombre": "Aceleración de un punto que gira",
+   "definicion": "Un punto a distancia L acelera α × f·L (tangencial) más ω × (ω × f)·L (centrípeta, hacia el eje).",
+   "prerrequisitos": ["velocidad_de_un_punto_que_gira", "segunda_derivada"],
+   "terminos": ["centrípeta", "centrípetas", "tangencial"],
+   "codigo": ["server/web/armfilter.js:ArmFilter.step"]
+  },
+  {
+   "id": "limites_articulares",
+   "nombre": "Límites del cuerpo",
+   "definicion": "El codo no se dobla más de 150° ni hacia atrás, el brazo no atraviesa el torso: lo imposible pesa casi cero.",
+   "prerrequisitos": ["esqueleto", "producto_punto", "producto_cruz"],
+   "terminos": ["límites articulares", "límite articular"],
+   "codigo": ["server/web/armfilter.js:feasible", "server/web/armfilter.js:defaultPrior", "server/web/armfilter.js:ArmFilter._init"]
+  },
+  {
+   "id": "verosimilitud",
+   "nombre": "Verosimilitud",
+   "definicion": "Qué tan probable es la medida si una hipótesis fuera cierta; con ruido gaussiano de tamaño σ, exp(−r²/2σ²) para un residuo r.",
+   "prerrequisitos": ["ruido_gaussiano", "probabilidad"],
+   "terminos": ["verosimilitud"],
+   "codigo": ["server/web/armfilter.js:ArmFilter.step"]
+  },
+  {
+   "id": "filtro_de_particulas",
+   "nombre": "Filtro de partículas",
+   "definicion": "Muchas hipótesis del codo a la vez, cada una con un peso: se mueven con el modelo, se pesan con la medida y vuelven al reposo cuando nada las distingue.",
+   "prerrequisitos": ["verosimilitud", "aceleracion_de_un_punto_que_gira", "limites_articulares", "doble_integral_zupt", "aceleracion_lineal"],
+   "terminos": ["partícula", "partículas", "filtro de partículas"],
+   "codigo": ["server/web/armfilter.js:ArmFilter.step", "server/web/armfilter.js:ArmFilter._init", "server/web/armfilter.js:ArmFilter._estimate", "server/web/armfilter.js:defaultPrior"]
+  },
+  {
+   "id": "remuestreo_de_particulas",
+   "nombre": "Tamaño efectivo y remuestreo",
+   "definicion": "Cuando pocos pesos dominan (N_ef = 1/Σw² chico) se clonan las partículas buenas y se olvidan las malas (remuestreo sistemático).",
+   "prerrequisitos": ["filtro_de_particulas"],
+   "terminos": ["tamaño efectivo", "remuestreo sistemático"],
+   "codigo": ["server/web/armfilter.js:ArmFilter._resample", "server/web/armfilter.js:ArmFilter.step"]
+  },
+  {
+   "id": "deteccion_de_picos",
+   "nombre": "Detectar un pico",
+   "definicion": "Cruzar el umbral, seguir el máximo, terminar al bajar: un pico es un evento con instante, signo y tamaño.",
+   "prerrequisitos": ["umbral", "resumir_ventana", "marca_de_tiempo"],
+   "terminos": ["detección de picos", "detector de picos"],
+   "codigo": ["server/web/flick.js:FlickDetector.update", "server/web/game.js:onAccel", "tools/air_mouse.py:TapDetector.feed_accel", "tools/analyze_dataset.py:event_features"]
+  },
+  {
+   "id": "histeresis",
+   "nombre": "Histéresis",
+   "definicion": "Dos umbrales, uno para entrar y otro más bajo para salir, para no parpadear en el borde.",
+   "prerrequisitos": ["umbral"],
+   "terminos": ["histéresis"],
+   "codigo": ["server/web/flick.js:FlickDetector.update", "tools/air_mouse.py:AirMouse._pose_gate", "tools/air_mouse.py:RollScroller.feed"]
+  },
+  {
+   "id": "periodo_refractario",
+   "nombre": "Periodo refractario",
+   "definicion": "Después de un evento no se acepta otro por un rato (90 ms en el tornillo), para no contar dos veces el mismo.",
+   "prerrequisitos": ["deteccion_de_picos"],
+   "terminos": ["refractario", "periodo refractario"],
+   "codigo": ["server/web/flick.js:FlickDetector.update", "server/web/game.js:onAccel", "tools/air_mouse.py:TapDetector.feed_accel"]
+  },
+  {
+   "id": "umbral_adaptativo",
+   "nombre": "Umbral que se adapta",
+   "definicion": "Una fracción de la mediana (o un percentil) de tus picos recientes: se ajusta a tu fuerza sin calibrar.",
+   "prerrequisitos": ["umbral", "deteccion_de_picos", "resumir_ventana"],
+   "terminos": ["umbral adaptativo", "percentil"],
+   "codigo": ["server/web/flick.js:FlickDetector.threshold", "server/web/game.js:onAccel"]
+  },
+  {
+   "id": "dominancia_de_eje",
+   "nombre": "Dominancia de un eje",
+   "definicion": "Un giro de muñeca es |ω_x| mucho mayor que |ω_y| y |ω_z|; si todo el brazo se mueve, los otros ejes también crecen y no cuenta.",
+   "prerrequisitos": ["deteccion_de_picos", "roll"],
+   "terminos": ["dominancia"],
+   "codigo": ["server/web/flick.js:FlickDetector.update", "tools/air_mouse.py:RollScroller.feed", "tools/air_mouse.py:ShakeDetector.feed"]
+  },
+  {
+   "id": "clic_de_tornillo",
+   "nombre": "El clic de tornillo",
+   "definicion": "Un giro rápido del antebrazo (~700 °/s) que domina a los otros ejes; al apuntar, los giros accidentales del dataset nunca pasaron de 117 °/s.",
+   "prerrequisitos": ["dominancia_de_eje", "histeresis", "periodo_refractario", "umbral_adaptativo"],
+   "terminos": ["clic de tornillo"],
+   "codigo": ["server/web/flick.js:FlickDetector.update", "server/web/mocapmath.js:aimPath"]
+  },
+  {
+   "id": "toque",
+   "nombre": "El toque en la esfera",
+   "definicion": "Un salto brusco del acelerómetro z con la muñeca quieta antes y después; se decide 250 ms tarde.",
+   "prerrequisitos": ["deteccion_de_picos", "derivada_discreta", "paso_alto", "periodo_refractario"],
+   "terminos": ["toque en la esfera"],
+   "codigo": ["tools/air_mouse.py:TapDetector.feed_accel", "tools/air_mouse.py:TapDetector.feed_gyro", "tools/air_mouse.py:TapDetector.decide"]
+  },
+  {
+   "id": "empujon",
+   "nombre": "El empujón",
+   "definicion": "La aceleración lineal a lo largo del antebrazo; la mira se toma 120 ms antes, porque empujar también gira la muñeca.",
+   "prerrequisitos": ["aceleracion_lineal", "producto_punto", "deteccion_de_picos", "umbral_adaptativo", "latencia"],
+   "terminos": ["empujón", "empujones"],
+   "codigo": ["server/web/game.js:onAccel", "server/web/game.js:aimAt"]
+  },
+  {
+   "id": "sacudida",
+   "nombre": "Sacudida",
+   "definicion": "Muchos cambios de signo rápidos y fuertes en poco tiempo: la señal para pausar.",
+   "prerrequisitos": ["deteccion_de_picos", "dominancia_de_eje"],
+   "terminos": [],
+   "codigo": ["tools/air_mouse.py:ShakeDetector.feed"]
+  },
+  {
+   "id": "permanencia",
+   "nombre": "Clic por permanencia",
+   "definicion": "Quedarse quieto sobre un punto un rato, después de haber viajado, cuenta como clic.",
+   "prerrequisitos": ["umbral", "marca_de_tiempo"],
+   "terminos": ["permanencia"],
+   "codigo": ["tools/air_mouse.py:DwellDetector.feed"]
+  },
+  {
+   "id": "scroll_por_roll",
+   "nombre": "Scroll con el antebrazo",
+   "definicion": "Girar más de 25° desde la postura neutra, tras una pausa y con una rampa lenta; cada muesca con histéresis.",
+   "prerrequisitos": ["roll", "histeresis", "recentrar"],
+   "terminos": [],
+   "codigo": ["tools/air_mouse.py:RollScroller.feed", "tools/air_mouse.py:Motion.feed_gyro"]
+  },
+  {
+   "id": "tempo",
+   "nombre": "Tempo",
+   "definicion": "El intervalo mediano entre giros: BPM = 60000 / intervalo en ms.",
+   "prerrequisitos": ["deteccion_de_picos", "resumir_ventana", "unidades"],
+   "terminos": ["tempo", "BPM"],
+   "codigo": ["server/web/flick.js:FlickDetector.tempo"]
+  },
+  {
+   "id": "aciertos_y_falsas_alarmas",
+   "nombre": "Aciertos contra falsas alarmas",
+   "definicion": "Bajar el umbral atrapa más gestos pero dispara más veces sin querer; se mide por minuto de uso normal (el pellizco: 12 de 20).",
+   "prerrequisitos": ["umbral", "deteccion_de_picos"],
+   "terminos": ["falsa alarma", "falsas alarmas", "falso positivo", "falsos positivos"],
+   "codigo": ["tools/analyze_dataset.py:main"]
+  },
+  {
+   "id": "auc",
+   "nombre": "AUC",
+   "definicion": "La probabilidad de que un caso positivo dé más señal que uno negativo cualquiera: 0.5 es no distinguir nada, 1 es separar todo.",
+   "prerrequisitos": ["aciertos_y_falsas_alarmas"],
+   "terminos": ["AUC"],
+   "codigo": ["tools/analyze_drawing.py:auc", "tools/analyze_drawing.py:main"]
+  },
+  {
+   "id": "suma_de_senos",
+   "nombre": "Suma de senos",
+   "definicion": "Varias ondas juntas: con fases al azar parece imprevisible, pero se repite cada T si cada onda da vueltas enteras en T.",
+   "prerrequisitos": ["onda_seno"],
+   "terminos": ["suma de senos"],
+   "codigo": ["server/web/sismomath.js:makeTarget", "server/web/sismomath.js:wave", "server/web/sismomath.js:targetAt"]
+  },
+  {
+   "id": "correlacion",
+   "nombre": "Correlación",
+   "definicion": "El producto punto de dos señales centradas, dividido por sus tamaños: 1 es la misma forma, 0 nada que ver.",
+   "prerrequisitos": ["producto_punto", "tamano_tipico"],
+   "terminos": ["correlación", "correlaciones", "correlacionar"],
+   "codigo": ["server/web/sismomath.js:analyze", "tools/reconstruct_drawing.py:shape_sim"]
+  },
+  {
+   "id": "retraso_por_correlacion",
+   "nombre": "Retraso por correlación",
+   "definicion": "Desplazar la línea τ y quedarse con el τ que más se parece a tu aguja; una parábola por tres puntos afina entre muestras.",
+   "prerrequisitos": ["correlacion", "latencia", "interpolacion_lineal"],
+   "terminos": ["tiempo de reacción"],
+   "codigo": ["server/web/sismomath.js:analyze"]
+  },
+  {
+   "id": "numeros_complejos",
+   "nombre": "Números complejos",
+   "definicion": "Flechas del plano que se multiplican: el largo se multiplica y los ángulos se suman; dividir dos ondas compara su tamaño y su atraso.",
+   "prerrequisitos": ["vector", "trigonometria", "rotacion_2d", "exponencial"],
+   "terminos": ["número complejo", "números complejos"],
+   "codigo": ["server/web/sismomath.js:analyze"]
+  },
+  {
+   "id": "dft",
+   "nombre": "Transformada de Fourier discreta",
+   "definicion": "Multiplicar la señal por una onda de prueba y sumar dice cuánto de esa frecuencia hay, con su amplitud y su fase.",
+   "prerrequisitos": ["onda_seno", "producto_punto", "numeros_complejos", "suma_de_senos"],
+   "terminos": ["Fourier", "DFT", "FFT", "transformada", "espectro", "espectros"],
+   "codigo": ["server/web/sismomath.js:analyze", "tools/analyze_dataset.py:window_features"]
+  },
+  {
+   "id": "fuga_y_ventana",
+   "nombre": "Fuga y ventana de Hann",
+   "definicion": "Si una onda no da vueltas enteras en la ventana, su energía se reparte en las frecuencias vecinas; apagar los bordes (Hann) lo reduce.",
+   "prerrequisitos": ["dft"],
+   "terminos": ["fuga espectral", "Hann"],
+   "codigo": ["tools/analyze_dataset.py:window_features", "server/web/sismomath.js:makeTarget"]
+  },
+  {
+   "id": "frecuencia_dominante",
+   "nombre": "Frecuencia dominante",
+   "definicion": "La frecuencia del pico más alto del espectro: el ritmo principal de un movimiento.",
+   "prerrequisitos": ["dft"],
+   "terminos": ["frecuencia dominante"],
+   "codigo": ["tools/analyze_dataset.py:window_features", "tools/analyze_dataset.py:main"]
+  },
+  {
+   "id": "nyquist",
+   "nombre": "Lo que el muestreo no ve",
+   "definicion": "Con f_s muestras por segundo no se distingue nada más rápido que f_s/2 (Nyquist); lo más rápido se disfraza de lento (aliasing).",
+   "prerrequisitos": ["muestreo", "onda_seno", "dft"],
+   "terminos": ["Nyquist", "aliasing"],
+   "codigo": ["tools/analyze_dataset.py:window_features"]
+  },
+  {
+   "id": "funcion_de_transferencia",
+   "nombre": "Respuesta por frecuencia",
+   "definicion": "H = Y/R para cada onda: |H| cuánto de ella seguiste, −∠H/(2πf) tu retraso a esa frecuencia y |1 − H| el error que te quedó.",
+   "prerrequisitos": ["dft", "numeros_complejos"],
+   "terminos": ["función de transferencia", "respuesta en frecuencia", "respuesta por frecuencia"],
+   "codigo": ["server/web/sismomath.js:analyze"]
+  },
+  {
+   "id": "retraso_puro",
+   "nombre": "Un retraso puro",
+   "definicion": "Llegar tarde τ deja |H| = 1 y gira la fase 2πfτ; su error |1 − H| = 2|sen(πfτ)| crece con la frecuencia.",
+   "prerrequisitos": ["funcion_de_transferencia", "retraso_por_correlacion"],
+   "terminos": ["retraso puro"],
+   "codigo": ["server/web/sismomath.js:analyze"]
+  },
+  {
+   "id": "remanente",
+   "nombre": "Remanente",
+   "definicion": "La parte de tu movimiento que no está en ninguna frecuencia de la línea: temblor y correcciones. Es un piso: lo muy lento se fuga a las ondas y cuenta como seguido.",
+   "prerrequisitos": ["dft", "tamano_tipico", "varianza"],
+   "terminos": ["remanente"],
+   "codigo": ["server/web/sismomath.js:analyze"]
+  },
+  {
+   "id": "ritmo_y_armonia",
+   "nombre": "Ritmo y armonía",
+   "definicion": "Pulsos a f₀, a·f₀, b·f₀… coinciden cada 1/f₀; lentos son un polirritmo y pasando de ~20 por segundo se oyen como un acorde de armónicos.",
+   "prerrequisitos": ["onda_seno", "cuantizar"],
+   "terminos": ["polirritmo", "polirritmos", "armónico", "armónicos", "armonía"],
+   "codigo": ["server/web/musica.js:Pulsos.process", "server/web/musica.js:ratio", "server/web/musica.js:unit"]
+  },
+  {
+   "id": "octavas",
+   "nombre": "Octavas y semitonos",
+   "definicion": "Subir una octava es multiplicar la frecuencia por 2; un semitono, por 2^(1/12): la nota m suena a 440·2^((m − 69)/12) Hz.",
+   "prerrequisitos": ["ritmo_y_armonia", "potencias_y_logaritmos"],
+   "terminos": ["octava", "octavas", "semitono", "semitonos", "pentatónica"],
+   "codigo": ["server/web/musica.js:midiHz", "server/web/musica.js:Musica.f0", "server/web/musica.js:Musica.pulse", "server/web/musica.js:Musica.harp"]
+  },
+  {
+   "id": "rasgos",
+   "nombre": "Rasgos",
+   "definicion": "Describir un trozo de señal con pocos números (máximos, RMS, giros, postura) para poder compararlo con otros.",
+   "prerrequisitos": ["resumir_ventana", "tamano_tipico"],
+   "terminos": ["rasgo", "rasgos"],
+   "codigo": ["tools/analyze_dataset.py:event_features", "tools/analyze_dataset.py:window_features", "tools/reconstruct_drawing.py:stroke_data", "tools/analyze_dataset.py:signals"]
+  },
+  {
+   "id": "segmentar",
+   "nombre": "Segmentar",
+   "definicion": "Cortar una grabación en trazos, letras o tomas por huecos y pausas.",
+   "prerrequisitos": ["umbral", "marca_de_tiempo"],
+   "terminos": ["segmentar"],
+   "codigo": ["tools/analyze_drawing.py:strokes_from", "tools/analyze_drawing.py:groups_by_pause", "tools/export_mocap.py:windows", "tools/export_mocap.py:gap_free", "server/web/trazos.js:fromRescue"]
+  },
+  {
+   "id": "estandarizar",
+   "nombre": "Estandarizar",
+   "definicion": "Restar el promedio y dividir por la desviación estándar, para que cada rasgo pese parecido.",
+   "prerrequisitos": ["tamano_tipico"],
+   "terminos": ["estandarizar", "estandarizado", "estandarizados"],
+   "codigo": ["tools/reconstruct_drawing.py:Ridge.fit", "tools/reconstruct_drawing.py:MLP.fit", "tools/analyze_dataset.py:knn_loo"]
+  },
+  {
+   "id": "minimos_cuadrados",
+   "nombre": "Mínimos cuadrados",
+   "definicion": "Elegir los números de un modelo lineal que hacen más chica la suma de los errores al cuadrado (una regresión).",
+   "prerrequisitos": ["coordenadas_en_una_base", "cambio_de_marco", "tamano_tipico", "producto_de_matrices"],
+   "terminos": ["mínimos cuadrados", "regresión", "regresiones"],
+   "codigo": ["tools/analyze_drawing.py:r2", "tools/analyze_drawing.py:main"]
+  },
+  {
+   "id": "r_cuadrado",
+   "nombre": "R²",
+   "definicion": "La fracción de la variación que el modelo explica: 1 es toda, 0 es nada.",
+   "prerrequisitos": ["minimos_cuadrados"],
+   "terminos": ["R²"],
+   "codigo": ["tools/analyze_drawing.py:r2"]
+  },
+  {
+   "id": "validacion_cruzada",
+   "nombre": "Validación cruzada y prueba justa",
+   "definicion": "Medir siempre con datos que el modelo no vio: dejar uno fuera, grupos de trazos, letras nunca vistas; si no, el modelo memoriza (sobreajuste).",
+   "prerrequisitos": ["minimos_cuadrados", "r_cuadrado"],
+   "terminos": ["validación cruzada", "sobreajuste", "dejar uno fuera"],
+   "codigo": ["tools/reconstruct_drawing.py:main", "tools/analyze_dataset.py:knn_loo", "tools/reconstruct_drawing.py:MLP.fit"]
+  },
+  {
+   "id": "ventana_de_retardos",
+   "nombre": "Rasgos con retardos",
+   "definicion": "Los rasgos de ±240 ms alrededor de cada instante (cada 40 ms) dejan ver el antes y el después del movimiento.",
+   "prerrequisitos": ["rasgos", "interpolacion_lineal"],
+   "terminos": ["retardos"],
+   "codigo": ["tools/reconstruct_drawing.py:stroke_data"]
+  },
+  {
+   "id": "ridge",
+   "nombre": "Regresión ridge",
+   "definicion": "Mínimos cuadrados con un castigo λ a los coeficientes grandes: (XᵀX + λI)W = XᵀV.",
+   "prerrequisitos": ["minimos_cuadrados", "estandarizar"],
+   "terminos": ["ridge", "regularización"],
+   "codigo": ["tools/reconstruct_drawing.py:Ridge.fit", "tools/reconstruct_drawing.py:Ridge.predict"]
+  },
+  {
+   "id": "predecir_velocidad",
+   "nombre": "Predecir la velocidad e integrarla",
+   "definicion": "Es más fácil aprender cómo se mueve el dedo que dónde está; integrar la velocidad predicha redibuja el trazo.",
+   "prerrequisitos": ["ridge", "ventana_de_retardos", "integral_discreta", "derivada_discreta", "error_acumulado"],
+   "terminos": [],
+   "codigo": ["tools/reconstruct_drawing.py:main", "tools/reconstruct_drawing.py:stroke_data"]
+  },
+  {
+   "id": "descenso_por_gradiente",
+   "nombre": "Descenso por el gradiente",
+   "definicion": "Mover los números del modelo en la dirección en que el error baja más rápido, un paso chico a la vez.",
+   "prerrequisitos": ["derivada_discreta", "minimos_cuadrados"],
+   "terminos": ["gradiente", "descenso por gradiente"],
+   "codigo": ["tools/reconstruct_drawing.py:MLP.fit"]
+  },
+  {
+   "id": "red_neuronal",
+   "nombre": "Red neuronal pequeña",
+   "definicion": "Una capa oculta tanh entre los rasgos y la salida; se entrena por el gradiente (retropropagación, Adam) y se para cuando la validación deja de mejorar.",
+   "prerrequisitos": ["descenso_por_gradiente", "estandarizar", "validacion_cruzada"],
+   "terminos": ["red neuronal", "redes neuronales", "neurona", "neuronas", "capa oculta", "tanh", "Adam"],
+   "codigo": ["tools/reconstruct_drawing.py:MLP.fit", "tools/reconstruct_drawing.py:MLP.predict"]
+  },
+  {
+   "id": "parecido_de_forma",
+   "nombre": "Parecido de forma",
+   "definicion": "La correlación entre el trazo real y el reconstruido, los dos centrados: 1 es la misma forma, sin importar dónde empieza.",
+   "prerrequisitos": ["correlacion"],
+   "terminos": ["parecido de forma"],
+   "codigo": ["tools/reconstruct_drawing.py:shape_sim", "tools/reconstruct_drawing.py:main"]
+  },
+  {
+   "id": "vecinos_cercanos",
+   "nombre": "Vecinos más cercanos",
+   "definicion": "Un gesto nuevo se compara con los guardados y los k más cercanos votan qué es.",
+   "prerrequisitos": ["rasgos", "estandarizar", "norma", "validacion_cruzada"],
+   "terminos": ["vecino más cercano", "vecinos más cercanos", "k-NN"],
+   "codigo": ["tools/analyze_dataset.py:knn_loo", "tools/analyze_dataset.py:main"]
+  },
+  {
+   "id": "matriz_de_confusion",
+   "nombre": "Matriz de confusión",
+   "definicion": "Una tabla de qué gesto se confunde con cuál: los aciertos en la diagonal.",
+   "prerrequisitos": ["vecinos_cercanos"],
+   "terminos": ["matriz de confusión"],
+   "codigo": ["tools/analyze_dataset.py:confusion"]
+  },
+  {
+   "id": "anova_f",
+   "nombre": "F de ANOVA",
+   "definicion": "Cuánto separa un rasgo a los gestos: la variación entre gestos sobre la variación dentro de cada uno.",
+   "prerrequisitos": ["rasgos", "tamano_tipico"],
+   "terminos": ["ANOVA"],
+   "codigo": ["tools/analyze_dataset.py:fstat"]
+  }
+ ],
+ "inventario": [
+  {"id": "server/web/wrist.js:forearmOf", "que_hace": "El antebrazo en los ejes del reloj: +x en la muñeca izquierda, −x en la derecha."},
+  {"id": "server/web/wrist.js:Wrist.rates", "que_hace": "Del giroscopio y la gravedad a yaw, pitch y roll en °/s; aprende el sesgo en quietud y corta a cero bajo 0.6 °/s."},
+  {"id": "server/web/mocapmath.js:rot", "que_hace": "Gira un vector alrededor de un eje (fórmula de Rodrigues)."},
+  {"id": "server/web/mocapmath.js:smooth", "que_hace": "Curva suave 3x² − 2x³ entre 0 y 1."},
+  {"id": "server/web/mocapmath.js:env", "que_hace": "Envolvente: sube suave, se mantiene y baja suave entre cuatro instantes."},
+  {"id": "server/web/mocapmath.js:axesOf", "que_hace": "De un rumbo H a los vectores «adelante» y «derecha» del cuerpo."},
+  {"id": "server/web/mocapmath.js:ik", "que_hace": "Cinemática inversa de dos huesos: el codo por la ley de los cosenos y un polo."},
+  {"id": "server/web/mocapmath.js:hand", "que_hace": "Los dedos y el pulgar desde la muñeca, el antebrazo y el dorso (producto cruz)."},
+  {"id": "server/web/mocapmath.js:build", "que_hace": "De la pose (ángulos) al esqueleto entero: cinemática directa de tronco, brazos y piernas."},
+  {"id": "server/web/mocapmath.js:watchOf", "que_hace": "El marco del reloj en la muñeca (X, Y, Z) según el lado."},
+  {"id": "server/web/mocapmath.js:aimPath", "que_hace": "La trayectoria del cursor al apuntar: tramos con curva suave, clics de muñeca y un círculo."},
+  {"id": "server/web/mocapmath.js:ANIMS", "que_hace": "Las tres animaciones: caminar en círculo con una fase periódica, usar una tablet y apuntar."},
+  {"id": "server/web/mocapmath.js:rng", "que_hace": "Números al azar con semilla y ruido gaussiano (Box–Muller)."},
+  {"id": "server/web/mocapmath.js:synth", "que_hace": "Lo que leería el reloj: giroscopio por el giro relativo entre muestras, acelerómetro por segunda diferencia más gravedad, y gravedad; con ruido y sesgo si se pide."},
+  {"id": "server/web/mocapmath.js:qmul", "que_hace": "Producto de cuaterniones: componer dos giros."},
+  {"id": "server/web/mocapmath.js:qcols", "que_hace": "De un cuaternión a los ejes del reloj vistos en el mundo (las columnas de la matriz de rotación)."},
+  {"id": "server/web/mocapmath.js:qfromCols", "que_hace": "De una matriz de rotación a cuaternión (por la traza y su mayor elemento)."},
+  {"id": "server/web/mocapmath.js:triad", "que_hace": "TRIAD: la orientación completa desde «arriba», el antebrazo y un rumbo supuesto."},
+  {"id": "server/web/mocapmath.js:reconstruct", "que_hace": "Reconstruye el antebrazo solo con giroscopio y gravedad: fusión (Mahony con cuaterniones) o proyección (rumbo integrado más TRIAD)."},
+  {"id": "server/web/mocapmath.js:headingOf", "que_hace": "Rumbo de un antebrazo con atan2."},
+  {"id": "server/web/mocapmath.js:cursorTrack", "que_hace": "El cursor del ratón aéreo: integra yaw y pitch y multiplica por K = D·π/180 metros por grado."},
+  {"id": "server/web/sismomath.js:makeTarget", "que_hace": "Elige las ondas de la línea: frecuencias k/T, amplitudes que bajan con la frecuencia y fases al azar."},
+  {"id": "server/web/sismomath.js:wave", "que_hace": "Suma de senos en el instante t."},
+  {"id": "server/web/sismomath.js:targetAt", "que_hace": "La línea, que entra suave durante los primeros 2 s."},
+  {"id": "server/web/sismomath.js:analyze", "que_hace": "Tu aguja contra la línea: rejilla de 100 Hz, RMS, retraso por correlación con una parábola, DFT en cada onda, H = Y/R y remanente."},
+  {"id": "server/web/flick.js:FlickDetector.threshold", "que_hace": "Umbral adaptativo: 0.35 × la mediana de tus picos recientes, nunca menos de 70 °/s."},
+  {"id": "server/web/flick.js:FlickDetector.update", "que_hace": "Integra ω_x como ángulo y detecta giros: umbral con histéresis, dominancia del eje x y periodo refractario."},
+  {"id": "server/web/flick.js:FlickDetector.tempo", "que_hace": "Tempo: 60000 / el intervalo mediano entre giros."},
+  {"id": "server/web/armfilter.js:defaultPrior", "que_hace": "La postura de reposo del brazo según hacia dónde apunta el antebrazo."},
+  {"id": "server/web/armfilter.js:mulberry32", "que_hace": "Generador de números al azar con semilla."},
+  {"id": "server/web/armfilter.js:feasible", "que_hace": "¿Es posible este brazo? Límites del codo, la pronación, el hombro y el torso."},
+  {"id": "server/web/armfilter.js:ArmFilter.randn", "que_hace": "Ruido gaussiano con Box–Muller."},
+  {"id": "server/web/armfilter.js:ArmFilter.rotateY", "que_hace": "Gira todas las partículas alrededor de la vertical cuando el avatar recentra."},
+  {"id": "server/web/armfilter.js:ArmFilter._init", "que_hace": "Siembra las partículas alrededor del reposo, solo en posturas posibles."},
+  {"id": "server/web/armfilter.js:ArmFilter.step", "que_hace": "Un paso del filtro: aceleración del codo z = R·a − L·f̈, peso por el residuo centrípeto, predicción con muelle y amortiguación, velocidad cero y sesgo en quietud."},
+  {"id": "server/web/armfilter.js:ArmFilter._resample", "que_hace": "Remuestreo sistemático con un poco de dispersión."},
+  {"id": "server/web/armfilter.js:ArmFilter._estimate", "que_hace": "Dirección media pesada del brazo y su dispersión."},
+  {"id": "server/web/musica.js:ratio", "que_hace": "De una posición 0..1 a un entero del 1 al 8."},
+  {"id": "server/web/musica.js:unit", "que_hace": "Lleva el punto del lápiz a 0..1 en cada dimensión."},
+  {"id": "server/web/musica.js:midiHz", "que_hace": "Nota MIDI a hercios: 440·2^((m − 69)/12)."},
+  {"id": "server/web/musica.js:Musica.f0", "que_hace": "El pulso base: do0 · 2^k."},
+  {"id": "server/web/musica.js:Musica.pulse", "que_hace": "De una frecuencia a la octava de do más cercana (log2)."},
+  {"id": "server/web/musica.js:Musica.harp", "que_hace": "Arpa: la altura elige una nota de la pentatónica; paneo y filtro según la posición."},
+  {"id": "server/web/musica.js:Pulsos.process", "que_hace": "Generador de pulsos: golpea cuando cambia floor(n·f/sr), con un decaimiento exponencial."},
+  {"id": "server/web/trazos.js:fromRescue", "que_hace": "Corta las bolitas viejas en trazos cuando se alejan más de 6 cm o cambia el color."},
+  {"id": "server/web/trazos.js:Drawing.point", "que_hace": "En 3D rellena con bolitas cada 2 cm por interpolación lineal."},
+  {"id": "server/web/trazos.js:timeline", "que_hace": "Tiempos de reproducción: cada pausa se recorta a 400 ms."},
+  {"id": "server/web/game.js:aimDir", "que_hace": "De yaw y pitch a la dirección del dardo."},
+  {"id": "server/web/game.js:onGyro", "que_hace": "Yaw y pitch como wrist.js, zona muerta de 0.8 °/s, integrados y recortados a los límites de la mira."},
+  {"id": "server/web/game.js:aimAt", "que_hace": "La mira de 120 ms antes del empujón."},
+  {"id": "server/web/game.js:onAccel", "que_hace": "Empujón: aceleración lineal a lo largo del antebrazo, su pico, periodo refractario y una escala que se adapta (percentil 80)."},
+  {"id": "server/web/dibuja.js:onGyro", "que_hace": "Integra yaw, pitch y roll en grados."},
+  {"id": "server/web/dibuja.js:point2", "que_hace": "De los ángulos a píxeles (2D) o a la altura de la aguja (1D)."},
+  {"id": "server/web/dibuja.js:point3", "que_hace": "De yaw, pitch y roll a un punto 3D: dirección por dos ángulos y profundidad por el roll."},
+  {"id": "server/web/avatar.js:rotationRows", "que_hace": "Cuaternión a matriz de rotación, por filas."},
+  {"id": "server/web/avatar.js:onGyro", "que_hace": "Integra el cuaternión con el giroscopio y da yaw, pitch y roll en el marco de la gravedad."},
+  {"id": "server/web/avatar.js:onGravity", "que_hace": "Corrige el cuaternión girándolo hacia la gravedad medida, con una ganancia fija."},
+  {"id": "server/web/avatar.js:onAccel", "que_hace": "Aceleración lineal = acelerómetro − gravedad."},
+  {"id": "server/web/avatar.js:autoCenterStep", "que_hace": "Recentra el rumbo de a poco, con una constante de tiempo."},
+  {"id": "server/web/calibrate.js:metrics", "que_hace": "Prueba de objetivos: tiempo, eficiencia del camino, sobrepaso (proyección), índice de Fitts y rendimiento."},
+  {"id": "server/web/calibrate.js:suggest", "que_hace": "Sugiere ganancia por eje, suavizado y zona muerta según los tiempos de la prueba."},
+  {"id": "tools/air_mouse.py:wrap_deg", "que_hace": "Lleva un ángulo a [−180°, 180°)."},
+  {"id": "tools/air_mouse.py:clamp", "que_hace": "Recorta a un rango (y no deja pasar NaN)."},
+  {"id": "tools/air_mouse.py:norm", "que_hace": "Píxel a 0..65535 para el movimiento absoluto de Windows."},
+  {"id": "tools/air_mouse.py:OneEuro.alpha", "que_hace": "α = 1/(1 + 1/(2π f_c Δt)): el paso de un filtro de primer orden con corte f_c."},
+  {"id": "tools/air_mouse.py:OneEuro.__call__", "que_hace": "Filtro 1€: suaviza mucho cuando estás quieto y poco cuando te mueves rápido."},
+  {"id": "tools/air_mouse.py:Motion.feed_gravity", "que_hace": "Normaliza la gravedad medida."},
+  {"id": "tools/air_mouse.py:Motion.feed_accel", "que_hace": "Largo de la aceleración y sacudón entre muestras."},
+  {"id": "tools/air_mouse.py:Motion.gravity_measurement", "que_hace": "«Arriba»: la gravedad si es reciente; si no, la dirección del acelerómetro."},
+  {"id": "tools/air_mouse.py:Motion._rest_window", "que_hace": "¿El último segundo fue reposo? Pico a pico, mediana, |a| ≈ g, sacudón y gravedad estable."},
+  {"id": "tools/air_mouse.py:Motion._calibrate", "que_hace": "Sesgo = la mediana de la primera ventana de reposo."},
+  {"id": "tools/air_mouse.py:Motion._recover_bias", "que_hace": "Si el sesgo quedó muy mal, toma uno nuevo tras 3 s de reposo."},
+  {"id": "tools/air_mouse.py:Motion.roll_from_gravity", "que_hace": "Ángulo de giro del antebrazo desde la gravedad (atan2)."},
+  {"id": "tools/air_mouse.py:Motion.feed_gyro", "que_hace": "El corazón del ratón: Δt, sesgo lento, gravedad propagada y corregida, yaw/pitch/roll, ángulo de roll, filtro 1€, zona muerta, curva de aceleración, ganancia y tope de velocidad."},
+  {"id": "tools/air_mouse.py:TapDetector.feed_accel", "que_hace": "Diferencia de a_z cada 10 ms, umbral y candidato si la muñeca venía quieta."},
+  {"id": "tools/air_mouse.py:TapDetector.feed_gyro", "que_hace": "Espera 250 ms para decidir; no espera para siempre si falta el acelerómetro."},
+  {"id": "tools/air_mouse.py:TapDetector.decide", "que_hace": "Forma del golpe (ancho, sin cambio de nivel, polaridad) y muñeca quieta antes y después."},
+  {"id": "tools/air_mouse.py:DwellDetector.feed", "que_hace": "Clic por permanencia: quieto en 6 px un tiempo, después de haber viajado."},
+  {"id": "tools/air_mouse.py:RollScroller.feed", "que_hace": "Scroll con el roll: entra más allá de 25°, tras una pausa y con una rampa; muescas con histéresis o modo continuo."},
+  {"id": "tools/air_mouse.py:ShakeDetector.feed", "que_hace": "Sacudida: picos de más de 600 °/s con 4 cambios de signo en 700 ms."},
+  {"id": "tools/air_mouse.py:AirMouse.on_data", "que_hace": "Retraso de base: el mínimo de la edad de las muestras, que sube como mucho 30 ms por segundo."},
+  {"id": "tools/air_mouse.py:AirMouse._calib_forearm", "que_hace": "Con el brazo colgando, qué eje del reloj se lleva la gravedad (cuál es el antebrazo)."},
+  {"id": "tools/air_mouse.py:AirMouse._pose_gate", "que_hace": "Pausa con el brazo caído (más de 60° bajo la horizontal), con dos umbrales."},
+  {"id": "tools/air_mouse.py:AirMouse._apply_delta", "que_hace": "Presupuesto de píxeles, recorte a la pantalla y diferencias enteras."},
+  {"id": "tools/analyze_drawing.py:strokes_from", "que_hace": "Trazos del dedo: tramos tocando, cortados por huecos de más de 60 ms."},
+  {"id": "tools/analyze_drawing.py:groups_by_pause", "que_hace": "Agrupa trazos en letras por pausas de más de 0.9 s."},
+  {"id": "tools/analyze_drawing.py:auc", "que_hace": "AUC: probabilidad de que un positivo supere a un negativo."},
+  {"id": "tools/analyze_drawing.py:r2", "que_hace": "Mínimos cuadrados con término constante y R²."},
+  {"id": "tools/analyze_drawing.py:interp3", "que_hace": "Interpolación lineal de las tres componentes a otros instantes."},
+  {"id": "tools/analyze_drawing.py:watch_features", "que_hace": "Lo que el reloj ve de un trazo: yaw y pitch integrados, y la aceleración lineal integrada dos veces con velocidad cero en los extremos."},
+  {"id": "tools/analyze_drawing.py:main", "que_hace": "Tasas reales (Scan Time, lecturas nuevas), golpe en el acelerómetro con AUC, y reconstrucción con R² y mm por grado."},
+  {"id": "tools/reconstruct_drawing.py:frame_rates", "que_hace": "yaw, pitch y roll para muchas muestras a la vez."},
+  {"id": "tools/reconstruct_drawing.py:stroke_data", "que_hace": "Rasgos con retardos de ±240 ms y la velocidad del dedo, suavizada (Savitzky–Golay) y derivada."},
+  {"id": "tools/reconstruct_drawing.py:Ridge.fit", "que_hace": "Estandariza y resuelve (ZᵀZ + λI)W = ZᵀY sin castigar el término constante."},
+  {"id": "tools/reconstruct_drawing.py:Ridge.predict", "que_hace": "Aplica la misma estandarización y W."},
+  {"id": "tools/reconstruct_drawing.py:MLP.fit", "que_hace": "Red de una capa oculta tanh: retropropagación, Adam, castigo L2 y parada temprana con validación."},
+  {"id": "tools/reconstruct_drawing.py:MLP.predict", "que_hace": "Pasa los rasgos por la red."},
+  {"id": "tools/reconstruct_drawing.py:shape_sim", "que_hace": "Parecido de forma: correlación de los trazos centrados."},
+  {"id": "tools/reconstruct_drawing.py:main", "que_hace": "Elige λ con validación cruzada de 5 grupos, prueba con letras nunca vistas, integra la velocidad predicha y mide el largo relativo."},
+  {"id": "tools/analyze_dataset.py:load", "que_hace": "Lleva los tres sensores a una rejilla común de 100 Hz."},
+  {"id": "tools/analyze_dataset.py:movavg", "que_hace": "Media móvil causal con suma acumulada."},
+  {"id": "tools/analyze_dataset.py:signals", "que_hace": "Aceleración lineal, golpe (paso alto), cambio lento y golpe limpio."},
+  {"id": "tools/analyze_dataset.py:event_features", "que_hace": "Rasgos alrededor de cada pitido: máximos, RMS, golpes contados y cuánto giró la gravedad."},
+  {"id": "tools/analyze_dataset.py:knn_loo", "que_hace": "k vecinos más cercanos con votos pesados, dejando uno fuera."},
+  {"id": "tools/analyze_dataset.py:fstat", "que_hace": "F de ANOVA por medida."},
+  {"id": "tools/analyze_dataset.py:confusion", "que_hace": "Matriz de confusión."},
+  {"id": "tools/analyze_dataset.py:window_features", "que_hace": "Rasgos de ventanas de 1 s: RMS, frecuencia dominante con ventana de Hann y energía sobre 8 Hz."},
+  {"id": "tools/analyze_dataset.py:main", "que_hace": "Barrido del umbral del pellizco (aciertos contra falsas alarmas por minuto) y frecuencia y amplitud del giro de muñeca (±A/(2πf) grados)."},
+  {"id": "tools/sdb_bridge.py:Bridge.map_time", "que_hace": "Alinea el reloj de cada sensor con la laptop: desfase = mínimo de (llegada − medida), con una fuga lenta; descarta saltos."},
+  {"id": "tools/sdb_bridge.py:Bridge.read_sensor", "que_hace": "µs a ms, y agrupa N muestras por paquete en el reloj (caudal × N)."},
+  {"id": "tools/sdb_bridge.py:Bridge.report", "que_hace": "Muestras por segundo, retraso de la más nueva e ida y vuelta."},
+  {"id": "tools/export_mocap.py:resample", "que_hace": "Interpolación a una rejilla común."},
+  {"id": "tools/export_mocap.py:gap_free", "que_hace": "¿Hay huecos de más de 500 ms en el tramo?"},
+  {"id": "tools/export_mocap.py:windows", "que_hace": "Los tramos de 30 s con más giro medio (suma acumulada), sin solaparse."},
+  {"id": "server/web/fusionmath.js:normal", "que_hace": "Números al azar con forma de campana, repetibles (el ruido de la muñeca inventada)."},
+  {"id": "server/web/fusionmath.js:verdadera", "que_hace": "La elevación de verdad de la muñeca inventada: va y viene despacio y cada 6 s sube rápido y vuelve."},
+  {"id": "server/web/fusionmath.js:inclinacion", "que_hace": "Lo que medirían de esa muñeca el giroscopio (con sesgo y ruido) y el acelerómetro (inclinado atan(r·α/g) por cada sacudida)."},
+  {"id": "server/web/fusionmath.js:paso", "que_hace": "Un paso del filtro complementario: θ + ω·Δt + k·Δt·(medido − θ)."},
+  {"id": "server/web/fusionmath.js:complementario", "que_hace": "El filtro complementario sobre una grabación entera."},
+  {"id": "server/web/fusionmath.js:soloGiro", "que_hace": "El giroscopio sumado solo (el filtro con k = 0): se va b·t."},
+  {"id": "server/web/fusionmath.js:errores", "que_hace": "Error promedio con signo, rms y el más grande de una estimación contra la verdad."},
+  {"id": "server/web/fusionmath.js:valle", "que_hace": "El error rms del filtro para rigideces de 0.01 a 50 por segundo."},
+  {"id": "server/web/fusionmath.js:elevacion", "que_hace": "La elevación del antebrazo, asin(f·ĝ), con la gravedad o con el acelerómetro."},
+  {"id": "server/web/fusionmath.js:subida", "que_hace": "Qué tan rápido sube la mano, ω·(f × ĝ)/|f × ĝ|, sin restar el sesgo."},
+  {"id": "server/web/fusionmath.js:giroVertical", "que_hace": "El giro alrededor de la vertical, ω·ĝ: lo que mueve el rumbo."},
+  {"id": "server/web/fusionmath.js:orientacion", "que_hace": "Los ejes de un reloj inclinado, atornillado y con un rumbo: Ry · Rz · Rx · (reloj plano)."},
+  {"id": "server/web/fusionmath.js:gravedadLeida", "que_hace": "Lo que lee de la gravedad ese reloj: no depende del rumbo."},
+  {"id": "server/web/fusionmath.js:erroresAntebrazo", "que_hace": "Errores de inclinación y de rumbo de un antebrazo reconstruido contra el de verdad."},
+  {"id": "server/web/fusionmath.js:derivaPredicha", "que_hace": "Lo que debería irse el rumbo: ∫ b·ĝ dt con la orientación de verdad."},
+  {"id": "server/web/fusion.js:onGyro", "que_hace": "En vivo: suma el giroscopio, lo filtra contra el acelerómetro y lo compara con la gravedad del reloj."},
+  {"id": "server/web/fusion.js:mesaPaso", "que_hace": "La prueba de la mesa: mide el sesgo vertical 10 s y cuánto se va el rumbo en 50 s."}
+ ]
+}

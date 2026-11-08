@@ -9,10 +9,10 @@
 //                τ < 0 te adelantas (pasa cuando ves la línea venir).
 //   por frecuencia, H_k = Y(f_k) / R(f_k):
 //     |H_k|            cuánto de esa onda reprodujiste (1 = toda),
-//     −∠H_k / (2π f_k) tu retraso a esa frecuencia,
+//     −∠H_k / (2π f_k) tu retraso a esa frecuencia, si es de menos de media vuelta de la onda,
 //     |1 − H_k|        el error que te quedó a esa frecuencia, relativo a la onda (0 = la borraste).
 //   remanente: la parte de tu movimiento que no está en ninguna de las frecuencias de la línea (temblor,
-//              correcciones, deriva): tu "ruido".
+//              correcciones): tu "ruido". Es un piso: lo muy lento se fuga a esas casillas y cuenta como seguido.
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;

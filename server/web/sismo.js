@@ -101,8 +101,9 @@ function showResult() {
     + cell(`${Math.round(100 * r.remnant)} %`, 'ruido tuyo');
   $('explain').innerHTML = 'Cada barra es una de las ondas que formaban la línea, de la lenta a la rápida: su altura es el error que te '
     + 'quedó en esa onda (0 % = la borraste, 100 % = como si no hubieras hecho nada). La curva punteada es lo que predice tu retraso '
-    + `solo: con τ = ${Math.abs(ms)} ms, el error crece como <b>2·|sin(π f τ)|</b>. Si las barras se pegan a la curva, lo que te falla `
-    + 'es el tiempo de reacción; si quedan por encima, la amplitud. El ruido es lo que hiciste que no estaba en ninguna onda.';
+    + `solo: con τ = ${Math.abs(ms)} ms, el error crece como <b>2·|sin(π f τ)|</b>. Si las barras se pegan a la curva, tu error es casi `
+    + 'solo un retraso (el tuyo más el de la cadena). Si se apartan, hay algo más: seguiste menos o de más, o llegaste tarde distinto '
+    + 'en esa onda. El ruido es lo que hiciste fuera de las ondas de la línea; lo muy lento se cuenta como onda, así que es un piso.';
   $('card').style.display = 'block';
   drawChart();
 }
@@ -130,7 +131,7 @@ function drawChart() {
     g.fillStyle = C.text; g.fillText(`${f.f.toFixed(2)}`, X(f.f), H - B + 14);
     g.fillStyle = C.ink; g.fillText(`${Math.round(f.delay * 1000)}`, X(f.f), Y(f.error) - 5);
   }
-  g.fillStyle = C.text; g.textAlign = 'left'; g.fillText('Hz (encima de cada barra: tu retraso en ms a esa onda)', L, H - 4);
+  g.fillStyle = C.text; g.textAlign = 'left'; g.fillText('Hz (encima de cada barra: tu retraso en ms a esa onda, si es de menos de media vuelta)', L, H - 4);
 }
 
 // ---------- botones y teclas ----------
