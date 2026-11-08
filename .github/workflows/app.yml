@@ -1,0 +1,78 @@
+# Pruebas y GearStream.exe en una máquina Windows limpia de GitHub.
+#   - en cada pull request y a mano (Actions → app → Run workflow): pruebas + armar y probar el .exe
+#   - con una etiqueta v* (git tag v0.1.0 && git push --tags): además lo publica en Releases
+# El .exe se arma desde el código del repo, así que cualquiera puede comprobar de dónde sale.
+name: app
+
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write          # para subir el .zip a Releases
+  id-token: write          # para la atestación: GitHub firma de qué código y qué ejecución salió el .zip
+  attestations: write
+
+jobs:
+  app:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: instalar lo que necesita la app
+        run: python -m pip install -r app/requirements.txt
+
+      - name: pruebas de la matemática (Node)
+        run: |
+          node tools/test_mocap.js
+          node tools/test_trazos.js
+          node tools/test_sismo.js
+          node tools/test_armfilter.js
+          node tools/test_calibra.js
+          node tools/test_clickcal.js
+
+      - name: pruebas del puente y del ratón aéreo (Python)
+        run: python -m unittest tools/test_sdb_bridge.py tools/test_air_mouse.py tools/test_server_seguridad.py
+
+      - name: armar GearStream.exe y probarlo (servidor + reloj simulado + páginas)
+        run: python tools/build_app.py --no-venv --zip
+
+      - name: suma SHA-256 del .zip
+        shell: pwsh
+        run: |
+          Get-ChildItem dist/GearStream-*-windows.zip | ForEach-Object {
+            "{0}  {1}" -f (Get-FileHash $_ -Algorithm SHA256).Hash.ToLower(), $_.Name | Out-File -Encoding ascii "$($_.FullName).sha256"
+          }
+
+      # gh attestation verify GearStream-<versión>-windows.zip -R <dueño>/<repo> comprueba que el .zip salió de este
+      # workflow y de qué commit. GitHub solo las da en repositorios públicos (o con Enterprise): en uno privado se salta.
+      - name: atestación de compilación
+        if: startsWith(github.ref, 'refs/tags/v') && !github.event.repository.private
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/GearStream-*-windows.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GearStream-windows
+          path: |
+            dist/GearStream-*-windows.zip
+            dist/GearStream-*-windows.zip.sha256
+
+      - name: publicar en Releases
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/GearStream-*-windows.zip
+            dist/GearStream-*-windows.zip.sha256

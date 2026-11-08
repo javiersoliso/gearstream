@@ -43,22 +43,27 @@
     return { el: add(add(a, mul(dir, x)), mul(pd, h)), wr: add(a, mul(dir, d)) };
   }
 
-  // la mano: cuatro dedos y el pulgar desde la muñeca wr, con el antebrazo F y el dorso d; k = −1 izquierda
-  function hand(wr, F, d, k, fist) {
-    const S = cross(F, d), thumb = -k, reach = 0.18 - 0.08 * fist, pts = [], segs = [];
+  // la mano: cuatro dedos y el pulgar desde la muñeca wr, con el antebrazo F y el dorso d; k = −1 izquierda.
+  // pinch (0..1) junta la punta del índice con la del pulgar, delante de la palma
+  function hand(wr, F, d, k, fist, pinch) {
+    const S = cross(F, d), thumb = -k, reach = 0.18 - 0.08 * fist, pts = [], segs = [], p = pinch || 0;
+    const meet = add(add(add(wr, mul(F, 0.115)), mul(S, thumb * 0.035)), mul(d, -0.035));
     for (const o of [-0.03, -0.01, 0.01, 0.03]) {
       const kn = add(add(wr, mul(F, 0.09)), mul(S, o));
-      const tip = add(add(add(wr, mul(F, reach)), mul(S, o)), mul(d, -0.045 * fist));
+      let tip = add(add(add(wr, mul(F, reach)), mul(S, o)), mul(d, -0.045 * fist));
+      if (p && o * thumb > 0.02) tip = lerp(tip, meet, p);          // el índice: el dedo del lado del pulgar
       pts.push(kn, tip); segs.push([wr, kn], [kn, tip]);
     }
     const tb = add(add(wr, mul(F, 0.03)), mul(S, thumb * 0.03));
-    const tt = add(add(add(wr, mul(F, 0.08 - 0.02 * fist)), mul(S, thumb * 0.06)), mul(d, -0.02));
+    let tt = add(add(add(wr, mul(F, 0.08 - 0.02 * fist)), mul(S, thumb * 0.06)), mul(d, -0.02));
+    if (p) tt = lerp(tt, meet, p);
     pts.push(tb, tt); segs.push([wr, tb], [tb, tt]);
     return { pts, segs, S, thumb };
   }
 
   // la pose de una animación → puntos del esqueleto, segmentos, antebrazos y accesorios. Un brazo con
-  // `over: {F, d}` toma el antebrazo de los datos (el reloj) en vez de la animación.
+  // `over: {F, d}` toma el antebrazo de los datos (el reloj) en vez de la animación; con `over.hand: {F, d}`
+  // la mano se dobla en la muñeca (el reloj sigue al antebrazo).
   function build(P) {
     const { fwd, right } = axesOf(P.H);
     const lean = (P.lean || 0) * D2R;
@@ -87,7 +92,7 @@
         el = add(sh, mul(U, LEN.up));
         const F = unit(A.over.F), d = unit(sub(A.over.d, mul(F, dot(A.over.d, F))));
         wr = add(el, mul(F, LEN.fore));
-        const h = hand(wr, F, d, k, A.fist || 0);
+        const H = A.over.hand, h = H ? hand(wr, unit(H.F), unit(H.d), k, A.fist || 0, A.pinch) : hand(wr, F, d, k, A.fist || 0, A.pinch);
         pts.push(sh, el, wr, ...h.pts);
         segs.push([chest, sh], [sh, el], [el, wr], ...h.segs);
         arms[s] = { sh, el, wr, F, d, k };
@@ -119,7 +124,7 @@
       // dorso de la mano con el antebrazo "dando la mano" (pronación 0): hacia afuera del cuerpo
       const dn = unit(mul(sub(hinge, mul(F, dot(hinge, F))), k));
       const d = rot(dn, F, -k * (A.pron || 0) * D2R);   // pronación + : la palma mira hacia abajo
-      const h = hand(wr, F, d, k, A.fist || 0), S = h.S, thumb = h.thumb;
+      const h = hand(wr, F, d, k, A.fist || 0, A.pinch), S = h.S, thumb = h.thumb;
       pts.push(sh, el, wr, ...h.pts);
       segs.push([chest, sh], [sh, el], [el, wr], ...h.segs);
       arms[s] = { sh, el, wr, F, d, k };

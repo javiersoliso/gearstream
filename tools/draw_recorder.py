@@ -358,11 +358,14 @@ class App:
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     saved = {}
-    try:
-        with open(os.path.join(os.path.expanduser("~"), ".gearstream", "launcher.json"), encoding="utf-8") as f:
-            saved = json.load(f)
-    except (OSError, ValueError):
-        pass
+    for name in ("config.json", "launcher.json"):          # la app guarda la IP en config.json; el lanzador viejo, en launcher.json
+        try:
+            with open(os.path.join(os.path.expanduser("~"), ".gearstream", name), encoding="utf-8") as f:
+                saved = json.load(f)
+            if saved.get("watch_ip"):
+                break
+        except (OSError, ValueError):
+            pass
     ap.add_argument("--device", default=saved.get("watch_ip"), help="IP del reloj (por defecto, la del lanzador)")
     ap.add_argument("--no-watch", action="store_true", help="grabar solo el trackpad (o el ratón)")
     ap.add_argument("--teacher", choices=("trackpad", "mouse"), default="trackpad", help="qué da la verdad del trazo")

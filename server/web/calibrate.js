@@ -16,11 +16,12 @@ const BEZEL_WHEEL_MS = 300;   // wheel events this soon after a detent belong to
 const PATH_CAP = 20000;
 
 const CLICK_MODES = [['auto', 'auto'], ['button', 'botón atrás'], ['tap', 'toque en la esfera'], ['dwell', 'reposo'],
-                     ['tap+dwell', 'toque + reposo'], ['none', 'ninguno']];
+                     ['tap+dwell', 'toque + reposo'], ['flick', 'giro de muñeca'], ['button+flick', 'botón + giro'], ['none', 'ninguno']];
+const FLICK_DIRS = [['any', 'los dos'], ['cw', 'horario (atornillar)'], ['ccw', 'antihorario']];
 const SCROLL_MODES = [['auto', 'auto'], ['bezel', 'bisel'], ['roll', 'rodar el antebrazo'], ['none', 'ninguno']];
 const HOME_KEYS = [['none', 'nada'], ['right', 'botón derecho'], ['middle', 'botón central']];
 const MODE_NAMES = { auto: 'auto', button: 'botón', tap: 'toque', dwell: 'reposo', 'tap+dwell': 'toque + reposo',
-                     none: 'ninguno', bezel: 'bisel', roll: 'rodar el antebrazo' };
+                     none: 'ninguno', bezel: 'bisel', roll: 'rodar el antebrazo', flick: 'giro', 'button+flick': 'botón + giro' };
 
 // Ranges mirror TUNABLES in air_mouse.py; `def` lets the page render something before the first `params`.
 const CONTROLS = [
@@ -45,6 +46,13 @@ const CONTROLS = [
   { group: 'Clic', name: 'tap_pre', label: 'Toque: giro máx antes °/s', type: 'range', min: 1, max: 90, step: 1, def: 15 },
   { group: 'Clic', name: 'tap_post', label: 'Toque: giro máx después °/s', type: 'range', min: 1, max: 90, step: 1, def: 20 },
   { group: 'Clic', name: 'tap_post_ms', label: 'Toque: ventana después ms', type: 'range', min: 80, max: 600, step: 10, def: 250 },
+  { group: 'Clic', name: 'flick_thr', label: 'Giro: pico mínimo °/s', type: 'range', min: 80, max: 800, step: 10, def: 200 },
+  { group: 'Clic', name: 'flick_max_ms', label: 'Giro: duración máx ms', type: 'range', min: 80, max: 500, step: 10, def: 220 },
+  { group: 'Clic', name: 'flick_dir', label: 'Giro: sentido', type: 'select', options: FLICK_DIRS, def: 'any' },
+  { group: 'Clic', name: 'flick_dom', label: 'Giro: movimiento máx (fracción del pico)', type: 'range', min: 0.2, max: 0.95, step: 0.01, def: 0.6 },
+  { group: 'Clic', name: 'flick_deg_min', label: 'Giro: ángulo mín °', type: 'range', min: 1, max: 60, step: 1, def: 8 },
+  { group: 'Clic', name: 'flick_deg_max', label: 'Giro: ángulo máx °', type: 'range', min: 20, max: 180, step: 1, def: 100 },
+  { group: 'Clic', name: 'flick_quiet_ms', label: 'Giro: muñeca quieta antes ms', type: 'range', min: 0, max: 400, step: 10, def: 120 },
   { group: 'Clic', name: 'dwell_time', label: 'Reposo: segundos', type: 'range', min: 0.3, max: 3, step: 0.1, def: 0.7 },
   { group: 'Clic', name: 'dwell_speed', label: 'Reposo: velocidad máx °/s', type: 'range', min: 0.2, max: 10, step: 0.1, def: 1.5 },
   { group: 'Scroll', name: 'scroll', label: 'Scroll', type: 'select', options: SCROLL_MODES, def: 'auto' },
@@ -299,6 +307,7 @@ function describeEvent(ev) {
     case 'calibrated': return `calibrado · sesgo ${Array.isArray(d.bias) ? d.bias.map((b) => Number(b).toFixed(2)).join(', ') : '?'} · p2p ${fmt(d.p2p)}`;
     case 'held_release': return `suelto el botón ${d.button || '?'} (${d.reason || '?'})`;
     case 'gesture': return `gesto guardado: ${d.path || '?'} (${fmt(d.muestras)} muestras)`;
+    case 'lobe': return `giro medido: pico ${fmt(d.peak)} °/s · ${fmt(d.ms)} ms · ${fmt(d.deg)}° · cursor ${fmt(d.rho_ratio)} · quieta antes ${fmt(d.quiet_ms)} ms`;
     case 'profile': return `perfil ${{ saved: 'guardado', loaded: 'cargado', defaults: 'restaurado' }[d.action] || d.action || ''}: ${d.path || ''}`;
     default: return Object.keys(d).length ? JSON.stringify(d) : '';
   }
@@ -1125,7 +1134,103 @@ function onEvent(ev) {
       clickTest.dirty = true;
       break;
     case 'gesture': cmd('list_gestures'); break;
+    case 'lobe': ccLobe(ev); break;
   }
+}
+
+// ---------- Calibrar el clic por giro (la cuenta en clickcal.js) ----------
+// Fondo: 10 s apuntando normal. Giros: 8 pitidos, un giro por pitido. El ratón aéreo, con flick_calib, manda
+// cada lóbulo de giro que corta su FlickClicker (el mismo que después decide el clic) y no hace clic mientras.
+
+const CC_BG_MS = 10000, CC_BEEPS = 8, CC_BEEP_EVERY = 1800, CC_WIN = [-300, 1400];
+const cc = { phase: null, bg: [], lobes: [], beeps: [], fit: null, audio: null, timer: null };
+
+function ccBeep() {
+  try {
+    const a = cc.audio || (cc.audio = new AudioContext()), o = a.createOscillator(), g = a.createGain(), t = a.currentTime;
+    o.frequency.value = 880; g.gain.setValueAtTime(0.25, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + 0.13);
+  } catch (e) { /* sin audio: queda el texto */ }
+}
+
+function ccLobe(ev) {
+  const d = ev.detail || {};
+  const lobe = { peak: +d.peak || 0, ms: +d.ms || 0, deg: +d.deg || 0, sign: d.sign > 0 ? 1 : -1, rho_ratio: +d.rho_ratio || 0,
+                 quiet_ms: +d.quiet_ms || 0, t: (ev.t || Date.now()) - (+d.ms || 0) };     // la hora en que empezó el giro
+  if (cc.phase === 'fondo') cc.bg.push(lobe);
+  else if (cc.phase === 'giros') cc.lobes.push(lobe);
+}
+
+function ccStart() {
+  if (!cmd('flick_calib', { on: true })) { showMsg($('#ccMsg'), 'ratón aéreo no conectado: enciéndelo desde la app', 'critical'); return; }
+  clearTimeout(cc.timer);
+  Object.assign(cc, { phase: 'fondo', bg: [], lobes: [], beeps: [], fit: null });
+  ccBeep();
+  $('#ccApply').disabled = true; $('#ccWarn').textContent = ''; $('#ccChart').textContent = '';
+  const t0 = Date.now();
+  const tickBg = () => {
+    const left = Math.ceil((CC_BG_MS - (Date.now() - t0)) / 1000);
+    if (left > 0) { $('#ccPhase').textContent = `Apunta normal, sin clics… ${left}`; cc.timer = setTimeout(tickBg, 250); return; }
+    cc.phase = 'giros';
+    let n = 0;
+    const beep = () => {
+      if (n >= CC_BEEPS) { cc.timer = setTimeout(ccFinish, CC_WIN[1]); $('#ccPhase').textContent = 'Listo, calculando…'; return; }
+      n++; cc.beeps.push(Date.now()); ccBeep();
+      $('#ccPhase').textContent = `Gira y vuelve: ${n} de ${CC_BEEPS}`;
+      cc.timer = setTimeout(beep, CC_BEEP_EVERY);
+    };
+    $('#ccPhase').textContent = 'Ahora el giro, uno por pitido';
+    cc.timer = setTimeout(beep, 1200);
+  };
+  tickBg();
+}
+
+function ccFinish() {
+  cmd('flick_calib', { on: false });
+  cc.phase = null;
+  const rounds = cc.beeps.map((b) => cc.lobes.filter((l) => l.t >= b + CC_WIN[0] && l.t <= b + CC_WIN[1]));
+  const r = cc.fit = fitFlick(rounds, cc.bg);
+  const warn = $('#ccWarn'); warn.textContent = '';
+  for (const w of r.warnings) { const li = document.createElement('li'); li.textContent = w; warn.appendChild(li); }
+  if (!r.ok) { $('#ccPhase').textContent = 'No alcanzó: repite con giros más rápidos.'; $('#ccStart').textContent = 'Repetir'; return; }
+  const p = r.params;
+  $('#ccDetected').textContent = `${r.detected} de ${r.total}`;
+  $('#ccFalse').textContent = `${r.falsos} de ${r.bgCount}`;
+  $('#ccThr').textContent = p.flick_thr;
+  $('#ccDir').textContent = (FLICK_DIRS.find(([v]) => v === p.flick_dir) || [, p.flick_dir])[1];
+  $('#ccMs').textContent = p.flick_max_ms;
+  $('#ccDeg').textContent = `${p.flick_deg_min}–${p.flick_deg_max}`;
+  $('#ccPhase').textContent = r.falsos === 0 && r.detected === r.total ? 'Tus giros pasan todos y apuntar no hace clic.' : 'Revisa los avisos.';
+  $('#ccStart').textContent = 'Repetir';
+  $('#ccApply').disabled = false;
+  ccChart(r);
+}
+
+// los picos de cada lóbulo sobre una recta: gris el fondo, verde tus giros, y la raya del umbral
+function ccChart(r) {
+  const W = 640, H = 120, pad = 30, all = [...cc.bg.map((l) => l.peak), ...r.mains.map((m) => m.peak), r.params.flick_thr];
+  const max = Math.max(300, ...all) * 1.08, x = (v) => pad + (W - 2 * pad) * v / max;
+  const dot = (v, y, col, title) => `<circle cx="${x(v).toFixed(1)}" cy="${y}" r="5" fill="${col}" fill-opacity="0.8"><title>${title}</title></circle>`;
+  const ticks = [0, 100, 200, 300, 400, 500, 600, 700, 800].filter((v) => v <= max)
+    .map((v) => `<line x1="${x(v)}" y1="${H - 26}" x2="${x(v)}" y2="${H - 22}" stroke="currentColor" stroke-opacity="0.4"/><text x="${x(v)}" y="${H - 8}" font-size="10" text-anchor="middle" fill="currentColor" fill-opacity="0.6">${v}</text>`).join('');
+  $('#ccChart').innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="picos de giro: fondo y tus giros">
+    <text x="${pad}" y="22" font-size="11" fill="currentColor" fill-opacity="0.7">apuntando (no clic)</text>
+    <text x="${pad}" y="62" font-size="11" fill="currentColor" fill-opacity="0.7">tus giros (clic)</text>
+    ${cc.bg.map((l) => dot(l.peak, 34, '#888780', `fondo ${Math.round(l.peak)} °/s`)).join('')}
+    ${r.mains.map((m) => dot(m.peak, 74, '#1D9E75', `giro ${Math.round(m.peak)} °/s · ${Math.round(m.ms)} ms`)).join('')}
+    <line x1="${x(r.params.flick_thr)}" y1="12" x2="${x(r.params.flick_thr)}" y2="${H - 26}" stroke="#BA7517" stroke-width="2"/>
+    <text x="${x(r.params.flick_thr) + 4}" y="12" font-size="10" fill="#BA7517" dominant-baseline="hanging">umbral ${r.params.flick_thr}</text>
+    <line x1="${pad}" y1="${H - 24}" x2="${W - pad}" y2="${H - 24}" stroke="currentColor" stroke-opacity="0.3"/>${ticks}
+    <text x="${W - pad}" y="${H - 30}" font-size="10" text-anchor="end" fill="currentColor" fill-opacity="0.6">pico del giro °/s</text></svg>`;
+}
+
+function ccApply() {
+  if (!cc.fit || !cc.fit.ok) return;
+  const now = (params && params.click) || (efectivo && efectivo.click) || 'auto';
+  const click = String(now).includes('button') ? 'button+flick' : 'flick';
+  if (!setParams({ ...cc.fit.params, click })) { showMsg($('#ccMsg'), 'ratón aéreo no conectado', 'critical'); return; }
+  cmd('save_profile');
+  showMsg($('#ccMsg'), `listo: clic por ${MODE_NAMES[click]}, guardado en tu perfil. Pruébalo abajo.`, 'good', 8000);
 }
 
 // ---------- Render loop ----------
@@ -1177,6 +1282,8 @@ function init() {
   $('#clickReset').addEventListener('click', resetClickTest);
   $('#scrollReset').addEventListener('click', resetScrollTest);
   $('#gestureRecord').addEventListener('click', recordGesture);
+  $('#ccStart').addEventListener('click', ccStart);
+  $('#ccApply').addEventListener('click', ccApply);
 
   setInterval(() => { stateHz = stateCount; stateCount = 0; }, 1000);
 

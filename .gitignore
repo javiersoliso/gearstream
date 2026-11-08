@@ -19,3 +19,8 @@ Thumbs.db
 # Animaciones del curso (python docs/curso/animaciones/render.py): el entorno de Manim y sus videos intermedios
 .venv-manim/
 docs/curso/animaciones/media/
+
+# La app armada (python tools/build_app.py): se publica en GitHub Releases, no en el repo
+.venv-build/
+build/
+dist/

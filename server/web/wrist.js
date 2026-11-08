@@ -21,7 +21,11 @@
   const norm = (a) => Math.hypot(a[0], a[1], a[2]);
 
   function loadHand() {
-    try { return localStorage.getItem(KEY) === 'right' ? 'right' : 'left'; } catch { return 'left'; }
+    try {
+      const m = typeof location !== 'undefined' && new URLSearchParams(location.search).get('mano');   // la app abre ?mano=derecha
+      if (m === 'derecha' || m === 'izquierda') saveHand(m === 'derecha' ? 'right' : 'left');
+      return localStorage.getItem(KEY) === 'right' ? 'right' : 'left';
+    } catch { return 'left'; }
   }
   function saveHand(hand) {
     try { localStorage.setItem(KEY, hand); } catch { /* sin almacenamiento: solo dura esta visita */ }

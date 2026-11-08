@@ -1,0 +1,5 @@
+# Lo que necesita la app (y armar el .exe). El servidor y el puente solos solo necesitan websockets.
+websockets>=13
+pystray>=0.19
+pillow>=10
+pyinstaller>=6.16

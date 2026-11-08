@@ -163,6 +163,15 @@ class SdbConnection:
 
     async def connect(self, timeout=60):
         self.reader, self.writer = await asyncio.wait_for(asyncio.open_connection(self.host, self.port), 10)
+        try:
+            await self._handshake(timeout)
+        except BaseException:      # el reloj cerró a mitad del saludo (EOF), no contestó o nos cancelaron
+            self.writer.close()
+            raise
+        self.reader_task = asyncio.create_task(self._dispatch())
+        return self
+
+    async def _handshake(self, timeout):
         key = load_or_create_key()
         self._send(A_CNXN, 0x100000, 0x40000, b"host::\x00")
         sent_signature = False
@@ -178,9 +187,7 @@ class SdbConnection:
             elif cmd == A_CNXN:
                 parts = payload.rstrip(b"\x00").decode(errors="replace").split("::")
                 self.model = parts[1] if len(parts) > 1 else "?"
-                break
-        self.reader_task = asyncio.create_task(self._dispatch())
-        return self
+                return
 
     def _send(self, cmd, a0, a1, payload=b""):
         header = struct.pack("<6I", cmd, a0, a1, len(payload), sum(payload) & 0xFFFFFFFF, cmd ^ 0xFFFFFFFF)
@@ -334,4 +341,6 @@ async def _demo(host):
 
 if __name__ == "__main__":
     import sys
-    asyncio.run(_demo(sys.argv[1] if len(sys.argv) > 1 else "192.168.0.XX"))
+    if len(sys.argv) < 2:
+        sys.exit("uso: python tools/sdb_client.py <IP-del-reloj>")
+    asyncio.run(_demo(sys.argv[1]))

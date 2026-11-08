@@ -1224,12 +1224,16 @@ class AirMouseTests(unittest.TestCase):
         rig.am.apply_params({"bezel_invert": False, "bezel_notches": 1})
         rig.bezel("CCW", 2)
         self.assertEqual(rig.wheel(), [-4, 2])
-        # roll mode: reported, not applied
+        # roll mode: the bezel keeps scrolling next to the roll
         rig = Rig(scroll="roll").calibrate().hello(["BEZEL"])
+        rig.bezel("CW")
+        self.assertEqual(rig.wheel(), [-1])
+        # none: reported, not applied
+        rig = Rig(scroll="none").calibrate().hello(["BEZEL"])
         rig.bezel("CW")
         self.assertEqual(rig.wheel(), [])
         self.assertEqual(rig.events("bezel")[-1]["applied"], False)
-        self.assertEqual(rig.events("bezel")[-1]["reason"], "modo roll")
+        self.assertEqual(rig.events("bezel")[-1]["reason"], "modo none")
         # stale and paused samples are not applied
         rig = Rig().calibrate().hello(["BEZEL"])
         rig.bezel("CW", age_ms=1500)
@@ -1367,7 +1371,9 @@ class AirMouseTests(unittest.TestCase):
     def test_params_validation(self):
         expected = {"gain", "gain_x", "gain_y", "accel", "g_lo", "g_hi", "v_lo", "v_hi", "mincutoff", "beta", "dcutoff",
                     "deadzone", "click", "scroll", "bezel_invert", "bezel_notches", "home_key", "tap_thr", "tap_width",
-                    "tap_pre", "tap_post", "tap_post_ms", "dwell_time", "dwell_speed", "scroll_enter", "scroll_exit",
+                    "tap_pre", "tap_post", "tap_post_ms", "flick_thr", "flick_max_ms", "flick_dir", "flick_dom",
+                    "flick_deg_min", "flick_deg_max", "flick_quiet_ms", "dwell_time", "dwell_speed",
+                    "scroll_enter", "scroll_exit",
                     "scroll_deg_per_notch", "max_speed", "calib_p2p", "yield"}
         self.assertEqual(set(air_mouse.TUNABLES), expected)
         actions = {a.dest: a for a in air_mouse.build_parser()._actions}
@@ -1660,6 +1666,93 @@ class AirMouseTests(unittest.TestCase):
         ev = rig.am.event_queue[-1]
         self.assertEqual(json.loads(json.dumps(ev))["detail"], {"verdict": "forma", "pre_max": None, "peak": 1.235})
         self.assertIsNotNone(rig.am.event_queue.maxlen)
+
+
+class FlickClickerTests(unittest.TestCase):
+    """Click by a forearm-roll flick: one click per twist (its return swallowed), none for a slow roll
+    (the scroll), a twist while pointing or a twist out of a busy wrist."""
+
+    def run_roll(self, profile, rho=0.0, quiet_ms=300, cfg_args=()):
+        """profile: list of (ms, roll °/s) segments at 100 Hz after quiet_ms of stillness; returns the clicks."""
+        f = air_mouse.FlickClicker(air_mouse.build_parser().parse_args(list(cfg_args)))
+        t, clicks, segs = 0.0, [], [(quiet_ms, 0.0)] + list(profile) + [(400, 0.0)]
+        for ms, rate in segs:
+            for _ in range(int(ms // 10)):
+                t += 10
+                lobe = f.feed(t, rate, rho if rate else 0.0, 0.01, True)
+                if lobe is not None:
+                    clicks.append(lobe)
+        return clicks, f
+
+    def test_twist_and_back_is_one_click(self):
+        clicks, f = self.run_roll([(120, 300.0), (120, -300.0)])
+        self.assertEqual(len(clicks), 1)
+        self.assertAlmostEqual(abs(clicks[0]["deg"]), 36.0, delta=4)
+        self.assertEqual(f.rejected["vuelta del giro"], 1)      # the return swing, swallowed
+
+    def test_slow_roll_is_scroll_not_click(self):
+        clicks, f = self.run_roll([(600, 90.0)])
+        self.assertEqual(clicks, [])
+        self.assertEqual(f.candidates, 0)
+
+    def test_twist_while_pointing_is_not_a_click(self):
+        clicks, f = self.run_roll([(120, 300.0)], rho=250.0)
+        self.assertEqual(clicks, [])
+        self.assertEqual(f.rejected["con movimiento"], 1)
+
+    def test_twist_out_of_a_busy_wrist_is_not_a_click(self):
+        clicks, f = self.run_roll([(120, 300.0)], quiet_ms=50)
+        self.assertEqual(clicks, [])
+        self.assertEqual(f.rejected["sin pausa previa"], 1)
+
+    def test_long_twist_and_threshold(self):
+        self.assertEqual(self.run_roll([(400, 250.0)])[0], [])                        # 400 ms: too long
+        self.assertEqual(self.run_roll([(120, 300.0)], cfg_args=["--flick-thr", "350"])[0], [])
+
+    def test_two_clicks_need_a_pause_between(self):
+        clicks, _ = self.run_roll([(120, 300.0), (120, -300.0), (400, 0.0), (120, 300.0), (120, -300.0)])
+        self.assertEqual(len(clicks), 2)
+
+    def test_direction_gate(self):
+        # calibrado al giro horario (roll +): el horario hace clic; el antihorario no, y su vuelta (horaria)
+        # tampoco, porque no sale de una muñeca quieta
+        self.assertEqual(len(self.run_roll([(120, 300.0), (120, -300.0)], cfg_args=["--flick-dir", "cw"])[0]), 1)
+        clicks, f = self.run_roll([(120, -300.0), (120, 300.0)], cfg_args=["--flick-dir", "cw"])
+        self.assertEqual(clicks, [])
+        self.assertEqual(f.rejected["sentido"], 1)
+
+    def test_calibrated_gates_are_tunable(self):
+        # un giro con algo de movimiento del cursor: rechazado con la dominancia de serie, aceptado si tu
+        # calibración dice que tus giros siempre mueven un poco el cursor
+        self.assertEqual(self.run_roll([(120, 300.0)], rho=200.0)[0], [])
+        self.assertEqual(len(self.run_roll([(120, 300.0)], rho=200.0, cfg_args=["--flick-dom", "0.8"])[0]), 1)
+        self.assertEqual(self.run_roll([(120, 300.0)], quiet_ms=80)[0], [])
+        self.assertEqual(len(self.run_roll([(120, 300.0)], quiet_ms=80, cfg_args=["--flick-quiet-ms", "60"])[0]), 1)
+        self.assertEqual(self.run_roll([(60, 300.0)], cfg_args=["--flick-deg-min", "20"])[0], [])   # 18°: poco giro
+
+    def test_calibration_reports_every_lobe_and_never_clicks(self):
+        lobes = []
+        f = air_mouse.FlickClicker(air_mouse.build_parser().parse_args([]))
+        f.sink = lobes.append
+        t = 0.0
+        for ms, rate in [(300, 0.0), (120, 300.0), (120, -300.0), (400, 0.0)]:
+            for _ in range(int(ms // 10)):
+                t += 10
+                self.assertIsNone(f.feed(t, rate, 0.0, 0.01, True))
+        self.assertEqual([lb["sign"] for lb in lobes], [1, -1])          # el giro y su vuelta, medidos
+        self.assertEqual(f.confirmed, 0)
+        self.assertGreaterEqual(lobes[0]["quiet_ms"], 290)
+        self.assertEqual(lobes[0]["rho_ratio"], 0.0)
+
+    def test_flick_calib_command(self):
+        rig = Rig().calibrate()
+        srv = air_mouse.ControlServer(rig.am, 0, None)
+        self.assertEqual(srv.command("flick_calib", {"on": True})[0][1]["type"], "ack")
+        rig.am.flick.sink(dict(t0=1.0, sign=1, peak=310.0, deg=35.0, rho=12.0, quiet_ms=400.0, ms=110.0, t_end=2.0, rho_ratio=0.04))
+        ev = rig.am.event_queue[-1]
+        self.assertEqual((ev["kind"], ev["detail"]["peak"]), ("lobe", 310.0))
+        srv.command("flick_calib", {"on": False})
+        self.assertIsNone(rig.am.flick.sink)
 
 
 if __name__ == "__main__":
